@@ -2811,6 +2811,7 @@ def render_head_to_head_css() -> str:
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 14px;
+      margin-top: 16px;
     }
     .h2h-highlight-card {
       background: var(--panel);
@@ -2884,6 +2885,57 @@ def render_head_to_head_css() -> str:
       color: var(--ink);
       font-variant-numeric: tabular-nums;
       text-align: right;
+    }
+    .h2h-heatmap-section {
+      margin-top: 18px;
+    }
+    .h2h-heatmap-grid {
+      display: grid;
+      gap: 16px;
+    }
+    .h2h-role-heatmap {
+      margin: 0;
+    }
+    .h2h-role-heatmap .table-wrap {
+      max-height: 640px;
+      overflow: auto;
+    }
+    .h2h-matrix {
+      min-width: max-content;
+    }
+    .h2h-matrix th,
+    .h2h-matrix td {
+      min-width: 82px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .h2h-matrix th:first-child {
+      left: 0;
+      min-width: 126px;
+      position: sticky;
+      text-align: left;
+      z-index: 2;
+    }
+    .h2h-matrix thead th {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+    }
+    .h2h-matrix thead th:first-child {
+      z-index: 4;
+    }
+    .h2h-heatmap-cell span,
+    .h2h-heatmap-cell small {
+      display: block;
+    }
+    .h2h-heatmap-cell span {
+      font-size: 0.95rem;
+      font-weight: 950;
+      letter-spacing: 0;
+    }
+    .h2h-heatmap-cell small {
+      font-size: 0.7rem;
+      opacity: 0.86;
     }
     .h2h-empty {
       display: none;
@@ -2999,12 +3051,112 @@ def render_head_to_head_script() -> str:
     """
 
 
-def h2h_item_attrs(row: dict[str, object]) -> str:
-    players = f"{row.get('player', '')}|||{row.get('opponent', '')}"
+def h2h_filter_attrs(role: object, players: Iterable[object]) -> str:
+    players_value = "|||".join(str(player) for player in players if str(player))
     return (
-        f'data-h2h-item data-h2h-role="{html_attr(row.get("role", ""))}" '
-        f'data-h2h-players="{html_attr(players)}"'
+        f'data-h2h-item data-h2h-role="{html_attr(role)}" '
+        f'data-h2h-players="{html_attr(players_value)}"'
     )
+
+
+def h2h_item_attrs(row: dict[str, object]) -> str:
+    return h2h_filter_attrs(
+        row.get("role", ""), [row.get("player", ""), row.get("opponent", "")]
+    )
+
+
+def render_head_to_head_heatmaps(rows: Sequence[dict[str, object]]) -> str:
+    role_sections = []
+    for role in ROLE_ORDER:
+        role_rows = [row for row in rows if str(row.get("role", "")) == role]
+        if not role_rows:
+            continue
+
+        player_games: Counter[str] = Counter()
+        for row in role_rows:
+            games = int(row.get("games", 0))
+            player_games[str(row.get("player", ""))] += games
+            player_games[str(row.get("opponent", ""))] += games
+
+        players = [
+            name
+            for name, _games in sorted(
+                player_games.items(), key=lambda item: (-item[1], item[0])
+            )
+            if name
+        ]
+        by_pair = {
+            tuple(sorted([str(row.get("player", "")), str(row.get("opponent", ""))])): row
+            for row in role_rows
+        }
+
+        header = "".join(f"<th>{escape(player)}</th>" for player in players)
+        body = []
+        for player in players:
+            cells = []
+            for opponent in players:
+                if player == opponent:
+                    cells.append('<td class="empty-cell" data-sort="-1">-</td>')
+                    continue
+                row = by_pair.get(tuple(sorted([player, opponent])))
+                if not row:
+                    cells.append('<td class="empty-cell" data-sort="-1">-</td>')
+                    continue
+
+                player_is_leader = player == str(row.get("player", ""))
+                wins = int(row.get("wins", 0) if player_is_leader else row.get("losses", 0))
+                losses = int(
+                    row.get("losses", 0) if player_is_leader else row.get("wins", 0)
+                )
+                games = int(row.get("games", 0))
+                winrate = safe_div(wins, games)
+                color = heat_color(winrate)
+                text_color = heat_text_color(winrate)
+                cells.append(
+                    f'<td class="h2h-heatmap-cell" style="background: {color}; color: {text_color}" '
+                    f'data-sort="{winrate:.4f}" title="{html_attr(player)} vs {html_attr(opponent)}: {wins}-{losses} over {games} games">'
+                    f'<span>{wins}-{losses}</span><small>{pct(winrate)} / {games}g</small></td>'
+                )
+            body.append(
+                f"""
+                <tr>
+                  <th>{escape(player)}<small>{integer(player_games[player])} games</small></th>
+                  {''.join(cells)}
+                </tr>
+                """
+            )
+
+        role_sections.append(
+            f"""
+            <section class="table-panel h2h-role-heatmap" {h2h_filter_attrs(role, players)}>
+              <div class="section-heading">
+                <h3>{escape(role)} Head To Head Heatmap</h3>
+                <small>Cells show player record against the column opponent</small>
+              </div>
+              <div class="table-wrap">
+                <table class="heatmap-table h2h-matrix">
+                  <thead><tr><th>Player</th>{header}</tr></thead>
+                  <tbody>{''.join(body)}</tbody>
+                </table>
+              </div>
+            </section>
+            """
+        )
+
+    if not role_sections:
+        return ""
+
+    return f"""
+    <section class="h2h-heatmap-section">
+      <div class="section-title">
+        <div>
+          <h3>Role Head To Head Heatmaps</h3>
+          <p class="note">Each role gets its own matrix. Row player score is shown against the player in the column.</p>
+        </div>
+      </div>
+      <div class="h2h-heatmap-grid">{''.join(role_sections)}</div>
+    </section>
+    """
 
 
 def render_head_to_head_highlight(
@@ -3235,6 +3387,7 @@ def render_head_to_head_page(
         </div>
       </section>
       {empty_html}
+      {render_head_to_head_heatmaps(rows)}
       <div class="h2h-highlight-grid">{highlights}</div>
       <section class="chart-panel">
         <h3>Strongest Head To Head Edges</h3>
