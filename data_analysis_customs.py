@@ -41,11 +41,11 @@ TEAM_COMBO_MIN_GAMES = {
     5: 2,
 }
 MVP_WEIGHTS = {
-    "Adjusted WR": 0.35,
+    "Net Wins": 0.30,
+    "Adjusted WR": 0.25,
     "KDA": 0.25,
-    "Games": 0.20,
     "Champion Pool": 0.15,
-    "Low Deaths": 0.05,
+    "Takedown Impact": 0.05,
 }
 ROLE_SCORE_WEIGHTS = {
     "Adjusted WR": 0.30,
@@ -572,6 +572,7 @@ def aggregate(
                 "games": games,
                 "wins": wins,
                 "losses": games - wins,
+                "net_wins": wins - (games - wins),
                 "winrate": safe_div(wins, games),
                 "kills": kills,
                 "deaths": deaths,
@@ -596,28 +597,35 @@ def aggregate(
 
 def mvp_score_rows(player_rows: Sequence[dict[str, object]]) -> list[dict[str, object]]:
     kda_low, kda_high = metric_bounds(player_rows, "kda_ratio")
-    death_low, death_high = metric_bounds(player_rows, "avg_deaths")
-    max_games = max((int(row.get("games", 0)) for row in player_rows), default=1)
+    net_wins_low, net_wins_high = metric_bounds(player_rows, "net_wins")
+    takedown_low, takedown_high = metric_bounds(player_rows, "avg_takedowns")
     rows = []
     for player in player_rows:
         games = int(player.get("games", 0))
         winrate = float(player.get("winrate", 0))
         reliability = clamp(games / MIN_PLAYER_GAMES)
         adjusted_winrate = 0.5 + ((winrate - 0.5) * reliability)
+        net_wins_raw_score = (
+            0.5
+            if net_wins_high == net_wins_low
+            else normalized_metric(
+                float(player.get("net_wins", 0)), net_wins_low, net_wins_high
+            )
+        )
+        net_wins_score = 0.5 + ((net_wins_raw_score - 0.5) * reliability)
         kda_score = normalized_metric(float(player.get("kda_ratio", 0)), kda_low, kda_high)
-        games_score = (safe_div(games, max_games)) ** 0.5
         champion_pool_score = (
             float(player.get("champion_pool_rate", 0)) * reliability
         ) ** 0.5
-        low_death_score = normalized_metric(
-            float(player.get("avg_deaths", 0)), death_low, death_high, invert=True
+        takedown_score = normalized_metric(
+            float(player.get("avg_takedowns", 0)), takedown_low, takedown_high
         )
         total_score = 100 * (
-            MVP_WEIGHTS["Adjusted WR"] * clamp(adjusted_winrate)
+            MVP_WEIGHTS["Net Wins"] * net_wins_score
+            + MVP_WEIGHTS["Adjusted WR"] * clamp(adjusted_winrate)
             + MVP_WEIGHTS["KDA"] * kda_score
-            + MVP_WEIGHTS["Games"] * games_score
             + MVP_WEIGHTS["Champion Pool"] * champion_pool_score
-            + MVP_WEIGHTS["Low Deaths"] * low_death_score
+            + MVP_WEIGHTS["Takedown Impact"] * takedown_score
         )
         row = dict(player)
         row.update(
@@ -625,10 +633,11 @@ def mvp_score_rows(player_rows: Sequence[dict[str, object]]) -> list[dict[str, o
                 "mvp_score": total_score,
                 "adjusted_winrate": adjusted_winrate,
                 "reliability": reliability,
+                "net_wins_score": net_wins_score,
+                "net_wins_raw_score": net_wins_raw_score,
                 "kda_score": kda_score,
-                "games_score": games_score,
                 "champion_pool_score": champion_pool_score,
-                "low_death_score": low_death_score,
+                "takedown_score": takedown_score,
             }
         )
         rows.append(row)
@@ -4697,8 +4706,8 @@ def render_scoring_formula_explainer(
         role_example = max(example_roles, key=lambda row: float(row.get("role_score", 0)))
 
     kda_low, kda_high = metric_bounds(player_rows, "kda_ratio")
-    death_low, death_high = metric_bounds(player_rows, "avg_deaths")
-    max_games = max((int(row.get("games", 0)) for row in player_rows), default=1)
+    net_wins_low, net_wins_high = metric_bounds(player_rows, "net_wins")
+    takedown_low, takedown_high = metric_bounds(player_rows, "avg_takedowns")
     role_kda_low, role_kda_high = metric_bounds(player_role_rows, "kda_ratio")
     max_role_games = max(
         (int(row.get("games", 0)) for row in player_role_rows), default=1
@@ -4761,14 +4770,15 @@ def render_scoring_formula_explainer(
         """
 
     mvp_reliability = float(player_example.get("reliability", 0))
+    mvp_net_wins_score = float(player_example.get("net_wins_score", 0))
     mvp_kda_score = float(player_example.get("kda_score", 0))
-    mvp_games_score = float(player_example.get("games_score", 0))
     mvp_pool_score = float(player_example.get("champion_pool_score", 0))
-    mvp_low_death_score = float(player_example.get("low_death_score", 0))
+    mvp_takedown_score = float(player_example.get("takedown_score", 0))
     mvp_adjusted_wr = clamp(float(player_example.get("adjusted_winrate", 0)))
     player_games = int(player_example.get("games", 0))
     player_wins = int(player_example.get("wins", 0))
     player_losses = int(player_example.get("losses", 0))
+    player_net_wins = int(player_example.get("net_wins", player_wins - player_losses))
     player_kills = int(player_example.get("kills", 0))
     player_deaths = int(player_example.get("deaths", 0))
     player_assists = int(player_example.get("assists", 0))
@@ -4776,6 +4786,14 @@ def render_scoring_formula_explainer(
     player_pool_rate = float(player_example.get("champion_pool_rate", 0))
 
     mvp_example_rows = [
+        (
+            "Net Wins",
+            f"Net wins = wins - losses. It is normalized against the current player range, then pulled toward 50% when reliability is below {MIN_PLAYER_GAMES} games.",
+            f"{player_wins} wins - {player_losses} losses = {player_net_wins}; range {integer(net_wins_low)} to {integer(net_wins_high)}; reliability {pct(mvp_reliability)}",
+            pct(mvp_net_wins_score),
+            pct(MVP_WEIGHTS["Net Wins"]),
+            weighted_points(mvp_net_wins_score, MVP_WEIGHTS["Net Wins"]),
+        ),
         (
             "Adjusted WR",
             f"Reliability = min(games / {MIN_PLAYER_GAMES}, 1). Adjusted WR = 50% + ((raw WR - 50%) x reliability).",
@@ -4793,14 +4811,6 @@ def render_scoring_formula_explainer(
             weighted_points(mvp_kda_score, MVP_WEIGHTS["KDA"]),
         ),
         (
-            "Games",
-            "Sample-size credit with diminishing returns: sqrt(player games / most games by any player).",
-            f"{player_games} games / {max_games} max games",
-            pct(mvp_games_score),
-            pct(MVP_WEIGHTS["Games"]),
-            weighted_points(mvp_games_score, MVP_WEIGHTS["Games"]),
-        ),
-        (
             "Champion Pool",
             "Unique-pick rate with reliability: sqrt((unique champions / games) x reliability).",
             f"{player_unique_champs} unique champions / {player_games} games = {pct(player_pool_rate)}; reliability {pct(mvp_reliability)}",
@@ -4809,16 +4819,20 @@ def render_scoring_formula_explainer(
             weighted_points(mvp_pool_score, MVP_WEIGHTS["Champion Pool"]),
         ),
         (
-            "Low Deaths",
-            "Average deaths per game, normalized against the player range and inverted so lower is better.",
-            f"{one_decimal(float(player_example.get('avg_deaths', 0)))} deaths/game; range {one_decimal(death_low)} to {one_decimal(death_high)}",
-            pct(mvp_low_death_score),
-            pct(MVP_WEIGHTS["Low Deaths"]),
-            weighted_points(mvp_low_death_score, MVP_WEIGHTS["Low Deaths"]),
+            "Takedown Impact",
+            "Average kills plus assists per game, normalized against the current player range.",
+            f"{one_decimal(float(player_example.get('avg_takedowns', 0)))} takedowns/game; range {one_decimal(takedown_low)} to {one_decimal(takedown_high)}",
+            pct(mvp_takedown_score),
+            pct(MVP_WEIGHTS["Takedown Impact"]),
+            weighted_points(mvp_takedown_score, MVP_WEIGHTS["Takedown Impact"]),
         ),
     ]
 
     definition_rows = [
+        (
+            "Net Wins",
+            "Wins minus losses. This rewards players who have moved teams toward wins over time, but low samples are pulled toward neutral through reliability.",
+        ),
         (
             "Adjusted WR",
             "A sample-adjusted winrate. Under the reliability threshold, a player's raw winrate is pulled toward 50% so one hot or cold night does not dominate.",
@@ -4828,16 +4842,16 @@ def render_scoring_formula_explainer(
             "Kills plus assists divided by deaths. The dashboard converts this to a 0-100% component by comparing it to the lowest and highest KDA in the current dataset.",
         ),
         (
-            "Games / Role Games",
-            "A sample-size component using square root scaling. More games help, but the benefit slows down as the sample gets larger.",
+            "Takedown Impact",
+            "Average kills plus assists per game. This keeps high-KDA but low-involvement games from carrying the whole MVP score.",
         ),
         (
             "Champion Pool / Role Champion Pool",
             "Unique-pick rate rather than raw unique champion count. A player with 16 unique champions in 17 games rates higher than a player with 20 unique champions in 60 games.",
         ),
         (
-            "Low Deaths",
-            "Average deaths per game. It is inverted after normalization, so fewer deaths create a higher score.",
+            "Role Games",
+            "A team-role sample-size component using square root scaling. It remains in team-role score because drafted teams need proven role experience.",
         ),
         (
             "Role Share",
@@ -4961,7 +4975,7 @@ def render_scoring_formula_explainer(
           <div class="formula-copy">
             <p><b>MVP score</b> = 100 x ({escape(weighted_formula(MVP_WEIGHTS))}).</p>
             <p><b>Team role score</b> = 100 x ({escape(weighted_formula(ROLE_SCORE_WEIGHTS))}).</p>
-            <p>Adjusted WR uses {MIN_PLAYER_GAMES} games for overall MVP reliability and {ROLE_RELIABILITY_GAMES} games for role-score reliability. Champion Pool uses unique-pick rate, calculated as unique champions divided by games.</p>
+            <p>Overall MVP no longer gives direct points for games played. Games are used as reliability for Net Wins, Adjusted WR, and Champion Pool. Team role score still includes Role Games because drafted teams need role experience. Role reliability reaches full strength at {ROLE_RELIABILITY_GAMES} games.</p>
           </div>
         </section>
       </div>
@@ -5146,12 +5160,15 @@ def build_dashboard(
         ("Player", "name", str, "text"),
         ("MVP Score", "mvp_score", score, "number"),
         ("Games", "games", integer, "number"),
+        ("W", "wins", integer, "number"),
+        ("L", "losses", integer, "number"),
+        ("Net Wins", "net_wins", integer, "number"),
         ("Winrate", "winrate", lambda value: pct(float(value)), "number"),
         ("Adj WR", "adjusted_winrate", lambda value: pct(float(value)), "number"),
         ("KDA", "kda_ratio", lambda value: two_decimal(float(value)), "number"),
+        ("Avg TD", "avg_takedowns", lambda value: one_decimal(float(value)), "number"),
         ("Unique Champs", "unique_champions", integer, "number"),
         ("Unique Pick %", "champion_pool_rate", lambda value: pct(float(value)), "number"),
-        ("Avg Deaths", "avg_deaths", lambda value: one_decimal(float(value)), "number"),
     ]
     champion_columns: list[Column] = [
         ("Champion", "champion", str, "text"),
@@ -7373,7 +7390,7 @@ def build_dashboard(
       <div class="section-title">
         <div>
           <h2>MVP & Drafted Teams</h2>
-          <p class="note">MVP formula: {escape(weight_summary(MVP_WEIGHTS))}. Champion Pool uses unique-pick rate with sample reliability. Team role score: {escape(weight_summary(ROLE_SCORE_WEIGHTS))}. Role Champion Pool also uses role-specific unique-pick rate. Drafted teams use one TOP, JUNGLE, MID, BOT, and SUPP, without reusing players.</p>
+          <p class="note">MVP formula: {escape(weight_summary(MVP_WEIGHTS))}. Games no longer score directly; they only make Net Wins, Adjusted WR, and Champion Pool more reliable. Team role score: {escape(weight_summary(ROLE_SCORE_WEIGHTS))}. Role Champion Pool uses role-specific unique-pick rate. Drafted teams use one TOP, JUNGLE, MID, BOT, and SUPP, without reusing players.</p>
         </div>
       </div>
       <div class="mvp-team-grid">
