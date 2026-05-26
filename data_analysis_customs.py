@@ -2503,8 +2503,6 @@ def team_combo_rows(
 ) -> list[dict[str, object]]:
     grouped: dict[tuple[int, str], set[str]] = defaultdict(set)
     for appearance in appearances:
-        if is_spotlight_excluded_player(appearance.name):
-            continue
         grouped[(appearance.match_id, appearance.side)].add(appearance.name)
 
     stats: dict[tuple[str, ...], dict[str, int]] = defaultdict(lambda: {"games": 0, "wins": 0})
