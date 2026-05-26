@@ -566,6 +566,7 @@ def aggregate(
         kills = int(group["kills"])
         deaths = int(group["deaths"])
         assists = int(group["assists"])
+        unique_champions = len(group["champions"])
         row.update(
             {
                 "games": games,
@@ -580,7 +581,8 @@ def aggregate(
                 "avg_assists": safe_div(assists, games),
                 "avg_takedowns": safe_div(kills + assists, games),
                 "kda_ratio": safe_div(kills + assists, max(1, deaths)),
-                "unique_champions": len(group["champions"]),
+                "unique_champions": unique_champions,
+                "champion_pool_rate": safe_div(unique_champions, games),
                 "unique_roles": len(group["roles"]),
                 "most_played_champion": top_counter(group["champions"], 3),
                 "top_roles": top_counter(group["roles"], 3),
@@ -596,9 +598,6 @@ def mvp_score_rows(player_rows: Sequence[dict[str, object]]) -> list[dict[str, o
     kda_low, kda_high = metric_bounds(player_rows, "kda_ratio")
     death_low, death_high = metric_bounds(player_rows, "avg_deaths")
     max_games = max((int(row.get("games", 0)) for row in player_rows), default=1)
-    max_champions = max(
-        (int(row.get("unique_champions", 0)) for row in player_rows), default=1
-    )
     rows = []
     for player in player_rows:
         games = int(player.get("games", 0))
@@ -608,7 +607,7 @@ def mvp_score_rows(player_rows: Sequence[dict[str, object]]) -> list[dict[str, o
         kda_score = normalized_metric(float(player.get("kda_ratio", 0)), kda_low, kda_high)
         games_score = (safe_div(games, max_games)) ** 0.5
         champion_pool_score = (
-            safe_div(int(player.get("unique_champions", 0)), max_champions)
+            float(player.get("champion_pool_rate", 0)) * reliability
         ) ** 0.5
         low_death_score = normalized_metric(
             float(player.get("avg_deaths", 0)), death_low, death_high, invert=True
@@ -655,9 +654,6 @@ def player_role_score_rows(
     max_role_games = max(
         (int(row.get("games", 0)) for row in player_role_rows), default=1
     )
-    max_role_champions = max(
-        (int(row.get("unique_champions", 0)) for row in player_role_rows), default=1
-    )
     rows = []
     for role_row in player_role_rows:
         role = str(role_row.get("role", ""))
@@ -675,7 +671,7 @@ def player_role_score_rows(
         )
         role_games_score = (safe_div(games, max_role_games)) ** 0.5
         role_pool_score = (
-            safe_div(int(role_row.get("unique_champions", 0)), max_role_champions)
+            float(role_row.get("champion_pool_rate", 0)) * reliability
         ) ** 0.5
         role_share = safe_div(games, player_games)
         overall_mvp_score = safe_div(
@@ -1077,12 +1073,15 @@ def role_champion_pool_rows(appearances: Sequence[Appearance]) -> list[dict[str,
 
     rows = []
     for role, values in stats.items():
+        games = int(values["games"])
         champions = values["champions"]
+        unique_champions = len(champions)
         rows.append(
             {
                 "role": role,
-                "games": int(values["games"]),
-                "unique_champions": len(champions),
+                "games": games,
+                "unique_champions": unique_champions,
+                "champion_pool_rate": safe_div(unique_champions, games),
                 "champion_counts": champions,
                 "champions": full_counter(champions),
             }
@@ -1107,6 +1106,7 @@ def player_role_champion_pool_rows(
         games = int(values["games"])
         wins = int(values["wins"])
         champions = values["champions"]
+        unique_champions = len(champions)
         rows.append(
             {
                 "name": name,
@@ -1114,7 +1114,8 @@ def player_role_champion_pool_rows(
                 "games": games,
                 "wins": wins,
                 "winrate": safe_div(wins, games),
-                "unique_champions": len(champions),
+                "unique_champions": unique_champions,
+                "champion_pool_rate": safe_div(unique_champions, games),
                 "champions": full_counter(champions),
             }
         )
@@ -1285,7 +1286,9 @@ def build_awards(
             "title": "Champion Ocean",
             "winner": str(most_champs.get("name", "-")),
             "stat": f"{most_champs.get('unique_champions', 0)} champions",
-            "detail": "Most unique champion picks by one player.",
+            "detail": (
+                f"{pct(float(most_champs.get('champion_pool_rate', 0)))} unique-pick rate."
+            ),
             "theme": "blue",
             "badge": "POOL",
         },
@@ -2059,7 +2062,16 @@ def render_player_champion_pools(
     for row in player_champion_rows:
         rows_by_player[str(row["name"])].append(row)
 
-    player_order = sorted(player_rows, key=lambda row: (-int(row["games"]), str(row["name"])))
+    player_order = sorted(
+        player_rows,
+        key=lambda row: (
+            -int(int(row.get("games", 0)) >= MIN_PLAYER_GAMES),
+            -float(row.get("champion_pool_rate", 0)),
+            -int(row.get("unique_champions", 0)),
+            -int(row.get("games", 0)),
+            str(row.get("name", "")),
+        ),
+    )
     panels = []
     for index, player in enumerate(player_order, start=1):
         player_name = str(player["name"])
@@ -2068,14 +2080,20 @@ def render_player_champion_pools(
             key=lambda row: (-int(row["games"]), -float(row["winrate"]), str(row["champion"])),
         )
         active_class = " active" if index == 1 else ""
-        pool_label = f"{player_name} - {player['games']} games, {player['unique_champions']} champions"
+        pool_rate = float(player.get("champion_pool_rate", 0))
+        games_text = "game" if int(player["games"]) == 1 else "games"
+        champion_text = "champion" if int(player["unique_champions"]) == 1 else "champions"
+        pool_label = (
+            f"{player_name} - {player['games']} {games_text}, "
+            f"{player['unique_champions']} {champion_text}, {pct(pool_rate)} unique-pick rate"
+        )
         search_text = " ".join([player_name, *(str(row["champion"]) for row in champion_rows)])
         panels.append(
             f"""
             <article class="player-pool-card{active_class}" data-player-pool-id="{index}" data-player-pool-label="{html_attr(pool_label)}" data-card-text="{html_attr(search_text)}">
               <div class="player-pool-heading">
                 <h3>{escape(player_name)}</h3>
-                <small>{player['games']} games, {player['unique_champions']} champions</small>
+                <small>{player['games']} {games_text}, {player['unique_champions']} {champion_text}, {pct(pool_rate)} unique-pick rate</small>
               </div>
               <div class="champ-pool-chart">
                 {champion_pool_horizontal_svg(player_name, champion_rows)}
@@ -4093,6 +4111,20 @@ def render_player_showcase_page(
             start=1,
         )
     }
+    pool_rate_rank = {
+        str(row.get("name", "")): index
+        for index, row in enumerate(
+            sorted(
+                [row for row in player_rows if int(row.get("games", 0)) >= MIN_PLAYER_GAMES],
+                key=lambda row: (
+                    -float(row.get("champion_pool_rate", 0)),
+                    -int(row.get("unique_champions", 0)),
+                    str(row.get("name", "")),
+                ),
+            ),
+            start=1,
+        )
+    }
     field_avg_deaths = safe_div(
         sum(float(row.get("avg_deaths", 0)) for row in player_rows), len(player_rows)
     )
@@ -4111,6 +4143,12 @@ def render_player_showcase_page(
         player_games = int(player.get("games", 0))
         wins = int(player.get("wins", 0))
         winrate = float(player.get("winrate", 0))
+        pool_rate = float(player.get("champion_pool_rate", 0))
+        pool_rank_detail = (
+            f"#{pool_rate_rank.get(name, 0)} by rate"
+            if name in pool_rate_rank
+            else f"below {MIN_PLAYER_GAMES}-game rate ranking"
+        )
         mvp = mvp_by_name.get(name, {})
         mvp_score = float(mvp.get("mvp_score", 0))
         mvp_rank = int(mvp.get("mvp_rank", index + 1))
@@ -4258,7 +4296,11 @@ def render_player_showcase_page(
                 render_showcase_award(
                     "Champion Pool",
                     f"{int(player.get('unique_champions', 0))} champs",
-                    f"#{unique_champ_rank.get(name, 0)} in the group by variety",
+                    (
+                        f"{pct(pool_rate)} unique-pick rate; "
+                        f"{pool_rank_detail}, "
+                        f"#{unique_champ_rank.get(name, 0)} by count"
+                    ),
                 ),
                 render_showcase_award("Lab Pick", practice_champion, practice_detail),
             ]
@@ -4533,6 +4575,7 @@ def render_role_champion_browser(role_rows: Sequence[dict[str, object]]) -> str:
               <div class="role-pool-summary">
                 <strong>{escape(role)}</strong>
                 <span>{row['unique_champions']} unique champions</span>
+                <span>{pct(float(row.get('champion_pool_rate', 0)))} unique-pick rate</span>
                 <small>{row.get('matches', '-')} matches</small>
               </div>
               <div class="role-champion-list">{''.join(champion_rows)}</div>
@@ -4711,6 +4754,7 @@ def build_dashboard(
         ("D", "avg_deaths", lambda value: one_decimal(float(value)), "number"),
         ("A", "avg_assists", lambda value: one_decimal(float(value)), "number"),
         ("Unique Champs", "unique_champions", integer, "number"),
+        ("Unique Pick %", "champion_pool_rate", lambda value: pct(float(value)), "number"),
         ("Roles Played", "unique_roles", integer, "number"),
         ("TOP", "role_top", str, "text"),
         ("JUNGLE", "role_jungle", str, "text"),
@@ -4728,6 +4772,7 @@ def build_dashboard(
         ("Adj WR", "adjusted_winrate", lambda value: pct(float(value)), "number"),
         ("KDA", "kda_ratio", lambda value: two_decimal(float(value)), "number"),
         ("Unique Champs", "unique_champions", integer, "number"),
+        ("Unique Pick %", "champion_pool_rate", lambda value: pct(float(value)), "number"),
         ("Avg Deaths", "avg_deaths", lambda value: one_decimal(float(value)), "number"),
     ]
     champion_columns: list[Column] = [
@@ -4768,6 +4813,7 @@ def build_dashboard(
     role_champion_pool_columns: list[Column] = [
         ("Role", "role", str, "text"),
         ("Unique Champs", "unique_champions", integer, "number"),
+        ("Unique Pick %", "champion_pool_rate", lambda value: pct(float(value)), "number"),
         ("Games", "games", integer, "number"),
         ("Champions", "champions", str, "text"),
     ]
@@ -4775,6 +4821,7 @@ def build_dashboard(
         ("Player", "name", str, "text"),
         ("Role", "role", str, "text"),
         ("Unique Champs", "unique_champions", integer, "number"),
+        ("Unique Pick %", "champion_pool_rate", lambda value: pct(float(value)), "number"),
         ("Games", "games", integer, "number"),
         ("W", "wins", integer, "number"),
         ("Winrate", "winrate", lambda value: pct(float(value)), "number"),
@@ -6079,7 +6126,7 @@ def build_dashboard(
       word-break: normal;
     }}
     #player-summary {{
-      min-width: 1180px;
+      min-width: 1280px;
     }}
     thead th {{
       position: sticky;
@@ -6491,7 +6538,7 @@ def build_dashboard(
       <div class="section-title">
         <div>
           <h2>Player Champion Pools</h2>
-          <p class="note">Browse one player at a time. Horizontal is best for reading champion names; vertical is useful for quick shape comparison.</p>
+          <p class="note">Browse one player at a time. Unique-pick rate is unique champions divided by games, so champion pool depth is not just raw volume.</p>
         </div>
       </div>
       <div class="player-pool-browser">
@@ -6519,7 +6566,7 @@ def build_dashboard(
       <div class="section-title">
         <div>
           <h2>Role Champion Pools</h2>
-          <p class="note">Champion diversity by role, plus each player's unique champion pool within each role. Use the role buttons to inspect one compact champion list at a time.</p>
+          <p class="note">Champion diversity by role, plus each player's unique champion pool within each role. Unique-pick rate compares variety against games played.</p>
         </div>
       </div>
       <div class="chart-grid single">
@@ -6833,7 +6880,7 @@ def build_dashboard(
       <div class="section-title">
         <div>
           <h2>MVP & Drafted Teams</h2>
-          <p class="note">MVP formula: {escape(weight_summary(MVP_WEIGHTS))}. Team role score: {escape(weight_summary(ROLE_SCORE_WEIGHTS))}. Drafted teams use one TOP, JUNGLE, MID, BOT, and SUPP, without reusing players.</p>
+          <p class="note">MVP formula: {escape(weight_summary(MVP_WEIGHTS))}. Champion Pool uses unique-pick rate with sample reliability. Team role score: {escape(weight_summary(ROLE_SCORE_WEIGHTS))}. Role Champion Pool also uses role-specific unique-pick rate. Drafted teams use one TOP, JUNGLE, MID, BOT, and SUPP, without reusing players.</p>
         </div>
       </div>
       <div class="mvp-team-grid">
