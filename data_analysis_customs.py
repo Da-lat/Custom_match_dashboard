@@ -58,7 +58,8 @@ ROLE_SCORE_WEIGHTS = {
     "Role Fit": 0.25,
     "Overall MVP": 0.30,
 }
-SPOTLIGHT_EXCLUDED_PLAYERS = {"rich"}
+SPOTLIGHT_EXCLUDED_PLAYERS: set[str] = set()
+ANONYMOUS_PLAYER_PREFIXES = ("anonymous", "anon")
 MOST_CONTESTED_EXCLUDED_CHAMPIONS = {"qiyana"}
 TEAM_TIERS = ("S", "A", "B", "C", "D", "F")
 CHAMPION_ROSTER_VERSION = "16.10.1"
@@ -1270,11 +1271,7 @@ def qualify(rows: Iterable[dict[str, object]], minimum_games: int) -> list[dict[
     return [row for row in rows if int(row.get("games", 0)) >= minimum_games]
 
 
-def is_spotlight_excluded_player(name: object) -> bool:
-    return str(name).strip().casefold() in SPOTLIGHT_EXCLUDED_PLAYERS
-
-
-def text_mentions_spotlight_excluded_player(value: object) -> bool:
+def spotlight_exclusion_tokens(value: object) -> list[str]:
     tokens = []
     current = []
     for character in str(value).casefold():
@@ -1285,7 +1282,23 @@ def text_mentions_spotlight_excluded_player(value: object) -> bool:
             current = []
     if current:
         tokens.append("".join(current))
-    return any(token in SPOTLIGHT_EXCLUDED_PLAYERS for token in tokens)
+    return tokens
+
+
+def is_anonymous_player_token(token: str) -> bool:
+    return any(token.startswith(prefix) for prefix in ANONYMOUS_PLAYER_PREFIXES)
+
+
+def is_spotlight_excluded_player(name: object) -> bool:
+    tokens = spotlight_exclusion_tokens(name)
+    return any(
+        token in SPOTLIGHT_EXCLUDED_PLAYERS or is_anonymous_player_token(token)
+        for token in tokens
+    )
+
+
+def text_mentions_spotlight_excluded_player(value: object) -> bool:
+    return is_spotlight_excluded_player(value)
 
 
 def award_mentions_spotlight_excluded_player(award: dict[str, object]) -> bool:
