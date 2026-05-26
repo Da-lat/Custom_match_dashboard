@@ -25,6 +25,7 @@ DEFAULT_OUTPUT = "index.html"
 DEFAULT_MATCHES_API_URL = "http://193.123.187.108/v1/matches"
 MATCHES_API_KEY_ENV = "MATCHES_API_KEY"
 MIN_PLAYER_GAMES = 10
+WINRATE_CHART_MIN_GAMES = 5
 MIN_CHAMPION_GAMES = 5
 MIN_COMBO_GAMES = 3
 TARGET_BAN_MIN_GAMES = 3
@@ -57,6 +58,7 @@ ROLE_SCORE_WEIGHTS = {
     "Role Fit": 0.10,
     "Overall MVP": 0.05,
 }
+SPOTLIGHT_EXCLUDED_PLAYERS = {"rich"}
 TEAM_TIERS = ("S", "A", "B", "C", "D", "F")
 CHAMPION_ROSTER_VERSION = "16.10.1"
 CHAMPION_ROSTER_SOURCE_URL = (
@@ -650,7 +652,9 @@ def aggregate(
 
 
 def mvp_score_rows(player_rows: Sequence[dict[str, object]]) -> list[dict[str, object]]:
-    eligible_rows = qualify(player_rows, MIN_PLAYER_GAMES)
+    eligible_rows = qualify(
+        without_spotlight_excluded_players(player_rows), MIN_PLAYER_GAMES
+    )
     net_win_low, net_win_high = metric_bounds(eligible_rows, "net_wins")
     kda_low, kda_high = metric_bounds(eligible_rows, "kda_ratio")
     kp_low, kp_high = metric_bounds(eligible_rows, "kill_participation")
@@ -1254,6 +1258,41 @@ def qualify(rows: Iterable[dict[str, object]], minimum_games: int) -> list[dict[
     return [row for row in rows if int(row.get("games", 0)) >= minimum_games]
 
 
+def is_spotlight_excluded_player(name: object) -> bool:
+    return str(name).strip().casefold() in SPOTLIGHT_EXCLUDED_PLAYERS
+
+
+def text_mentions_spotlight_excluded_player(value: object) -> bool:
+    tokens = []
+    current = []
+    for character in str(value).casefold():
+        if character.isalnum():
+            current.append(character)
+        elif current:
+            tokens.append("".join(current))
+            current = []
+    if current:
+        tokens.append("".join(current))
+    return any(token in SPOTLIGHT_EXCLUDED_PLAYERS for token in tokens)
+
+
+def award_mentions_spotlight_excluded_player(award: dict[str, object]) -> bool:
+    return any(
+        text_mentions_spotlight_excluded_player(award.get(key, ""))
+        for key in ("winner", "stat", "detail")
+    )
+
+
+def without_spotlight_excluded_players(
+    rows: Iterable[dict[str, object]],
+) -> list[dict[str, object]]:
+    return [
+        row
+        for row in rows
+        if not is_spotlight_excluded_player(row.get("name", ""))
+    ]
+
+
 def appearance_context(appearance: Appearance) -> str:
     return (
         f"{appearance.name} on {appearance.champion} ({appearance.role}) - "
@@ -1270,15 +1309,27 @@ def build_awards(
     player_champion_role_rows: Sequence[dict[str, object]],
     matches: Sequence[dict[str, object]],
 ) -> list[dict[str, object]]:
-    player_pool = qualify(player_rows, MIN_PLAYER_GAMES) or list(player_rows)
-    champion_pool = qualify(champion_rows, MIN_CHAMPION_GAMES) or list(champion_rows)
-    combo_pool = qualify(player_champion_role_rows, MIN_COMBO_GAMES) or list(
+    award_player_rows = without_spotlight_excluded_players(player_rows)
+    award_player_role_rows = without_spotlight_excluded_players(player_role_rows)
+    award_player_champion_rows = without_spotlight_excluded_players(player_champion_rows)
+    award_player_champion_role_rows = without_spotlight_excluded_players(
         player_champion_role_rows
     )
-    player_champion_pool = qualify(player_champion_rows, MIN_COMBO_GAMES) or list(
-        player_champion_rows
+    award_appearances = [
+        row for row in appearances if not is_spotlight_excluded_player(row.name)
+    ] or list(appearances)
+
+    player_pool = qualify(award_player_rows, MIN_PLAYER_GAMES) or list(award_player_rows)
+    champion_pool = qualify(champion_rows, MIN_CHAMPION_GAMES) or list(champion_rows)
+    combo_pool = qualify(award_player_champion_role_rows, MIN_COMBO_GAMES) or list(
+        award_player_champion_role_rows
     )
-    role_pool = qualify(player_role_rows, MIN_COMBO_GAMES) or list(player_role_rows)
+    player_champion_pool = qualify(award_player_champion_rows, MIN_COMBO_GAMES) or list(
+        award_player_champion_rows
+    )
+    role_pool = qualify(award_player_role_rows, MIN_COMBO_GAMES) or list(
+        award_player_role_rows
+    )
 
     best_winrate = find_first(
         sorted(player_pool, key=lambda row: (-float(row["winrate"]), -int(row["games"])))
@@ -1289,10 +1340,10 @@ def build_awards(
     best_avg_kills = find_first(
         sorted(player_pool, key=lambda row: (-float(row["avg_kills"]), -int(row["games"])))
     )
-    most_games = find_first(sorted(player_rows, key=lambda row: -int(row["games"])))
+    most_games = find_first(sorted(award_player_rows, key=lambda row: -int(row["games"])))
     most_champs = find_first(
         sorted(
-            player_rows,
+            award_player_rows,
             key=lambda row: (-int(row["unique_champions"]), -int(row["games"])),
         )
     )
@@ -1327,12 +1378,14 @@ def build_awards(
         sorted(role_pool, key=lambda row: (-float(row["winrate"]), -int(row["games"])))
     )
 
-    highest_kills = max(appearances, key=lambda row: (row.kills, row.assists, -row.deaths))
-    highest_deaths = max(appearances, key=lambda row: (row.deaths, row.kills))
-    highest_assists = max(appearances, key=lambda row: (row.assists, row.kills))
-    zero_death_rows = [row for row in appearances if row.deaths == 0]
+    highest_kills = max(
+        award_appearances, key=lambda row: (row.kills, row.assists, -row.deaths)
+    )
+    highest_deaths = max(award_appearances, key=lambda row: (row.deaths, row.kills))
+    highest_assists = max(award_appearances, key=lambda row: (row.assists, row.kills))
+    zero_death_rows = [row for row in award_appearances if row.deaths == 0]
     perfect_game = max(
-        zero_death_rows or appearances,
+        zero_death_rows or award_appearances,
         key=lambda row: (row.takedowns, row.kills, row.assists),
     )
     bloodiest_game = max(matches, key=lambda row: (int(row["kills"]), int(row["assists"])))
@@ -1492,7 +1545,11 @@ def build_awards(
             "match_id": cleanest_win.get("match_id"),
         },
     ]
-    return awards
+    return [
+        award
+        for award in awards
+        if not award_mentions_spotlight_excluded_player(award)
+    ]
 
 
 def html_attr(value: object) -> str:
@@ -2082,6 +2139,7 @@ def render_match_history(appearances: Sequence[Appearance]) -> str:
                 *(row.name for row in rows),
                 *(row.player for row in rows),
                 *(row.champion for row in rows),
+                *(row.role for row in rows),
             ]
         )
         active_class = " active" if match_id == max(grouped) else ""
@@ -4813,7 +4871,9 @@ def render_scoring_formula_explainer(
     if role_example is None and example_roles:
         role_example = max(example_roles, key=lambda row: float(row.get("role_score", 0)))
 
-    eligible_player_rows = qualify(player_rows, MIN_PLAYER_GAMES)
+    eligible_player_rows = qualify(
+        without_spotlight_excluded_players(player_rows), MIN_PLAYER_GAMES
+    )
     net_win_low, net_win_high = metric_bounds(eligible_player_rows, "net_wins")
     kda_low, kda_high = metric_bounds(eligible_player_rows, "kda_ratio")
     kp_low, kp_high = metric_bounds(eligible_player_rows, "kill_participation")
@@ -5229,12 +5289,22 @@ def build_dashboard(
         ]
     )
 
+    winrate_chart_player_rows = qualify(
+        without_spotlight_excluded_players(player_rows), WINRATE_CHART_MIN_GAMES
+    )
     top_player_chart_rows = sorted(
-        qualify(player_rows, MIN_PLAYER_GAMES),
+        winrate_chart_player_rows,
         key=lambda row: (-float(row["winrate"]), -int(row["games"])),
     )
+    top_player_chart_names = {
+        str(row.get("name", "")).casefold() for row in top_player_chart_rows[:10]
+    }
     bottom_player_chart_rows = sorted(
-        qualify(player_rows, MIN_PLAYER_GAMES),
+        [
+            row
+            for row in winrate_chart_player_rows
+            if str(row.get("name", "")).casefold() not in top_player_chart_names
+        ],
         key=lambda row: (float(row["winrate"]), -int(row["games"])),
     )
     top_kda_chart_rows = sorted(
@@ -5261,7 +5331,6 @@ def build_dashboard(
         ("Games", "games", integer, "number"),
         ("W", "wins", integer, "number"),
         ("L", "losses", integer, "number"),
-        ("Net W", "net_wins", signed_integer, "number"),
         ("Winrate", "winrate", lambda value: pct(float(value)), "number"),
         ("KDA", "kda_ratio", lambda value: two_decimal(float(value)), "number"),
         ("KP", "kill_participation", lambda value: pct(float(value)), "number"),
@@ -5269,7 +5338,6 @@ def build_dashboard(
         ("D", "avg_deaths", lambda value: one_decimal(float(value)), "number"),
         ("A", "avg_assists", lambda value: one_decimal(float(value)), "number"),
         ("Unique Champs", "unique_champions", integer, "number"),
-        ("Unique Pick %", "champion_pool_rate", lambda value: pct(float(value)), "number"),
         ("Roles Played", "unique_roles", integer, "number"),
         ("TOP", "role_top", str, "text"),
         ("JUNGLE", "role_jungle", str, "text"),
@@ -5307,7 +5375,6 @@ def build_dashboard(
         ("Role", "role", str, "text"),
         ("Games", "games", integer, "number"),
         ("W", "wins", integer, "number"),
-        ("Net W", "net_wins", signed_integer, "number"),
         ("Winrate", "winrate", lambda value: pct(float(value)), "number"),
         ("KDA", "kda_ratio", lambda value: two_decimal(float(value)), "number"),
         ("KP", "kill_participation", lambda value: pct(float(value)), "number"),
@@ -5321,7 +5388,6 @@ def build_dashboard(
         ("Fit", "role_fit", str, "text"),
         ("Games", "games", integer, "number"),
         ("W", "wins", integer, "number"),
-        ("Net W", "net_wins", signed_integer, "number"),
         ("Winrate", "winrate", lambda value: pct(float(value)), "number"),
         ("KDA", "kda_ratio", lambda value: two_decimal(float(value)), "number"),
         ("KP", "kill_participation", lambda value: pct(float(value)), "number"),
@@ -5333,7 +5399,6 @@ def build_dashboard(
     role_champion_pool_columns: list[Column] = [
         ("Role", "role", str, "text"),
         ("Unique Champs", "unique_champions", integer, "number"),
-        ("Unique Pick %", "champion_pool_rate", lambda value: pct(float(value)), "number"),
         ("Games", "games", integer, "number"),
         ("Champions", "champions", str, "text"),
     ]
@@ -5341,7 +5406,6 @@ def build_dashboard(
         ("Player", "name", str, "text"),
         ("Role", "role", str, "text"),
         ("Unique Champs", "unique_champions", integer, "number"),
-        ("Unique Pick %", "champion_pool_rate", lambda value: pct(float(value)), "number"),
         ("Games", "games", integer, "number"),
         ("W", "wins", integer, "number"),
         ("Winrate", "winrate", lambda value: pct(float(value)), "number"),
@@ -6402,6 +6466,13 @@ def build_dashboard(
     .match-card.active {{
       display: block;
     }}
+    .search-highlight {{
+      background: rgba(240, 201, 106, 0.38);
+      color: var(--ink);
+      border-radius: 3px;
+      padding: 0 2px;
+      box-shadow: 0 0 0 1px rgba(240, 201, 106, 0.26);
+    }}
     .match-card-heading, .player-pool-heading {{
       display: flex;
       justify-content: space-between;
@@ -7099,8 +7170,8 @@ def build_dashboard(
         <div class="award-grid">{render_awards(awards)}</div>
       </section>
       <div class="chart-grid">
-        {render_bar_chart("Top Player Win Rate", top_player_chart_rows, "name", "winrate", pct, limit=10, max_value=1.0, footer_key="games", footer_formatter=lambda value: f"{integer(value)} games")}
-        {render_bar_chart("Bottom Player Win Rate", bottom_player_chart_rows, "name", "winrate", pct, limit=10, max_value=1.0, footer_key="games", footer_formatter=lambda value: f"{integer(value)} games")}
+        {render_bar_chart(f"Top Player Win Rate ({WINRATE_CHART_MIN_GAMES}+ Games)", top_player_chart_rows, "name", "winrate", pct, limit=10, max_value=1.0, footer_key="games", footer_formatter=lambda value: f"{integer(value)} games")}
+        {render_bar_chart(f"Bottom Player Win Rate ({WINRATE_CHART_MIN_GAMES}+ Games)", bottom_player_chart_rows, "name", "winrate", pct, limit=10, max_value=1.0, footer_key="games", footer_formatter=lambda value: f"{integer(value)} games")}
         {render_bar_chart("Player KDA", top_kda_chart_rows, "name", "kda_ratio", two_decimal, limit=10, footer_key="games", footer_formatter=lambda value: f"{integer(value)} games")}
         {render_bar_chart("Most Played Champions", most_played_champion_rows, "champion", "games", integer, limit=10, footer_key="winrate", footer_formatter=lambda value: f"{pct(float(value))} WR")}
         {render_bar_chart("Top Champion Win Rate", top_champion_winrate_rows, "champion", "winrate", pct, limit=10, max_value=1.0, footer_key="games", footer_formatter=lambda value: f"{integer(value)} games")}
@@ -7269,6 +7340,80 @@ def build_dashboard(
     if (matchCards.length && matchPicker) {{
       let filteredMatchCards = [...matchCards];
 
+      function escapeRegExp(value) {{
+        const specials = new Set([92, 94, 36, 42, 43, 63, 46, 40, 41, 124, 123, 125, 91, 93]);
+        return Array.from(value)
+          .map(char => specials.has(char.charCodeAt(0)) ? `\\\\${{char}}` : char)
+          .join("");
+      }}
+
+      function clearMatchHighlights(card) {{
+        card.querySelectorAll("mark.search-highlight").forEach(mark => {{
+          const parent = mark.parentNode;
+          if (!parent) return;
+          parent.replaceChild(document.createTextNode(mark.textContent), mark);
+          parent.normalize();
+        }});
+      }}
+
+      function matchHighlightTerms() {{
+        const rawTerm = matchSearch ? matchSearch.value.trim() : "";
+        return Array.from(new Set(
+          rawTerm
+            .split(/\\s+/)
+            .map(value => value.trim())
+            .filter(value => value.length > 1 || /^\\d+$/.test(value))
+        )).sort((a, b) => b.length - a.length);
+      }}
+
+      function highlightMatchCard(card) {{
+        const terms = matchHighlightTerms();
+        if (!terms.length) return;
+        const termPattern = new RegExp(`(${{terms.map(escapeRegExp).join("|")}})`, "gi");
+        const lowerTerms = terms.map(value => value.toLowerCase());
+        const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT, {{
+          acceptNode(node) {{
+            const parent = node.parentElement;
+            if (!parent || parent.closest("script, style, mark")) {{
+              return NodeFilter.FILTER_REJECT;
+            }}
+            termPattern.lastIndex = 0;
+            return node.nodeValue && termPattern.test(node.nodeValue)
+              ? NodeFilter.FILTER_ACCEPT
+              : NodeFilter.FILTER_REJECT;
+          }}
+        }});
+        const nodes = [];
+        let node = walker.nextNode();
+        while (node) {{
+          nodes.push(node);
+          node = walker.nextNode();
+        }}
+        nodes.forEach(textNode => {{
+          const fragment = document.createDocumentFragment();
+          textNode.nodeValue.split(termPattern).forEach(part => {{
+            if (!part) return;
+            if (lowerTerms.includes(part.toLowerCase())) {{
+              const mark = document.createElement("mark");
+              mark.className = "search-highlight";
+              mark.textContent = part;
+              fragment.appendChild(mark);
+            }} else {{
+              fragment.appendChild(document.createTextNode(part));
+            }}
+          }});
+          textNode.parentNode.replaceChild(fragment, textNode);
+        }});
+      }}
+
+      function updateMatchHighlights() {{
+        matchCards.forEach(clearMatchHighlights);
+        const active = document.querySelector(".match-card.active");
+        if (active) {{
+          highlightMatchCard(active);
+        }}
+      }}
+
       function selectedMatchId() {{
         const active = document.querySelector(".match-card.active");
         return active ? active.dataset.matchId : matchCards[matchCards.length - 1].dataset.matchId;
@@ -7279,6 +7424,7 @@ def build_dashboard(
           card.classList.toggle("active", card.dataset.matchId === String(matchId));
         }});
         matchPicker.value = String(matchId);
+        updateMatchHighlights();
         if (updateHash) {{
           history.replaceState(null, "", `#match-${{matchId}}`);
         }}
@@ -7307,6 +7453,7 @@ def build_dashboard(
 
         if (!filteredMatchCards.length) {{
           matchCards.forEach(card => card.classList.remove("active"));
+          updateMatchHighlights();
           return;
         }}
 
