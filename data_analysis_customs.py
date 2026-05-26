@@ -29,7 +29,7 @@ MIN_CHAMPION_GAMES = 5
 MIN_COMBO_GAMES = 3
 TARGET_BAN_MIN_GAMES = 3
 TARGET_BAN_RELIABILITY_GAMES = 5
-PRACTICE_PICK_MIN_GAMES = 3
+PRACTICE_PICK_MIN_GAMES = 2
 PRACTICE_PICK_MAX_WINRATE = 0.45
 PRACTICE_PICK_BASELINE_GAP = 0.05
 PRACTICE_PICK_RELIABILITY_GAMES = 6
@@ -4110,12 +4110,22 @@ def render_player_showcase_page(
                 key=lambda row: (-float(row.get("practice_score", 0)), -int(row.get("games", 0))),
             )
         )
+        zero_win_pick = find_first(
+            sorted(
+                [
+                    row
+                    for row in champion_rows
+                    if int(row.get("games", 0)) >= 1
+                    and int(row.get("wins", 0)) == 0
+                    and float(row.get("winrate", 0)) == 0
+                ],
+                key=lambda row: (-int(row.get("games", 0)), str(row.get("champion", ""))),
+            )
+        )
         best_match = max(records, key=lambda row: (row.takedowns, row.kills, row.win, -row.deaths))
         kill_record = max(records, key=lambda row: (row.kills, row.assists, -row.deaths))
         assist_record = max(records, key=lambda row: (row.assists, row.kills, -row.deaths))
         hardest_game = max(records, key=lambda row: (row.deaths, not row.win, row.takedowns))
-        clean_rows = sorted(records, key=lambda row: (row.deaths, -row.takedowns, -row.win))
-        cleanest_game = clean_rows[0]
         streaks = player_streaks(records)
         recent = records[-8:]
         recent_wins = sum(row.win for row in recent)
@@ -4159,12 +4169,23 @@ def render_player_showcase_page(
                     ),
                 )
             )
+        elif zero_win_pick:
+            zero_games = int(zero_win_pick.get("games", 0))
+            zero_wins = int(zero_win_pick.get("wins", 0))
+            zero_losses = zero_games - zero_wins
+            practice_champion = str(zero_win_pick.get("champion", "-"))
+            practice_detail = (
+                f"{zero_wins}-{zero_losses}, {zero_games} "
+                f"{'game' if zero_games == 1 else 'games'}, 0.0% WR. "
+                "Small sample, but worth another lab run."
+            )
         else:
             practice_champion = "No clear project"
             practice_detail = (
                 f"No {PRACTICE_PICK_MIN_GAMES}+ game pick is below "
                 f"{pct(PRACTICE_PICK_MAX_WINRATE)} WR and at least "
-                f"{pct(PRACTICE_PICK_BASELINE_GAP)} below player baseline."
+                f"{pct(PRACTICE_PICK_BASELINE_GAP)} below player baseline, "
+                "and no 0% one-game pick exists yet."
             )
 
         power_value = str(power_pick.get("champion", signature_champion))
