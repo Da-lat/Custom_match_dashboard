@@ -3245,8 +3245,7 @@ def render_ban_planner_script(
 
 def render_refresh_control(generated_at: str) -> str:
     return f"""
-    <div class="header-actions">
-      <div class="generated">Generated {escape(generated_at)}</div>
+    <div class="header-actions" data-generated-at="{html_attr(generated_at)}">
       <button class="refresh-data-button" type="button" data-refresh-data>Refresh Data</button>
       <small class="refresh-data-status" data-refresh-data-status></small>
     </div>
@@ -3257,27 +3256,52 @@ def render_refresh_script() -> str:
     return """
     document.querySelectorAll("[data-refresh-data]").forEach(button => {
       const status = button.parentElement?.querySelector("[data-refresh-data-status]");
+      const generatedAt = button.parentElement?.dataset.generatedAt || "";
+      const setStatus = (state, text) => {
+        if (!status) return;
+        status.dataset.state = state || "";
+        status.textContent = text;
+      };
+      const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+      const latestGeneratedAt = async () => {
+        const response = await fetch(`${window.location.pathname}?refresh-check=${Date.now()}`, {
+          cache: "no-store",
+        });
+        const html = await response.text();
+        const match = html.match(/data-generated-at="([^"]+)"/);
+        return match ? match[1] : "";
+      };
+      const waitForFreshDeploy = async () => {
+        const attempts = 60;
+        for (let index = 0; index < attempts; index += 1) {
+          await sleep(30000);
+          const latest = await latestGeneratedAt();
+          if (latest && latest !== generatedAt) {
+            setStatus("ok", "New data is live. Reloading...");
+            await sleep(1200);
+            window.location.reload();
+            return;
+          }
+          setStatus("", `Refresh queued. Checking for new data... ${index + 1}/${attempts}`);
+        }
+        setStatus(
+          "",
+          "Refresh queued, but this page has not updated yet. Try reloading in a few minutes."
+        );
+      };
       button.addEventListener("click", async () => {
         button.disabled = true;
-        if (status) {
-          status.dataset.state = "";
-          status.textContent = "Queueing refresh...";
-        }
+        setStatus("", "Queueing refresh...");
         try {
           const response = await fetch("/.netlify/functions/refresh-data", { method: "POST" });
           const data = await response.json().catch(() => ({}));
           if (!response.ok) {
             throw new Error(data.error || `Refresh failed with ${response.status}`);
           }
-          if (status) {
-            status.dataset.state = "ok";
-            status.textContent = data.message || "Refresh queued. Reload after the deploy finishes.";
-          }
+          setStatus("ok", data.message || "Refresh queued. Watching for new data...");
+          await waitForFreshDeploy();
         } catch (error) {
-          if (status) {
-            status.dataset.state = "error";
-            status.textContent = error?.message || "Refresh unavailable. Check the Netlify Function logs.";
-          }
+          setStatus("error", error?.message || "Refresh unavailable. Check the Netlify Function logs.");
         } finally {
           button.disabled = false;
         }
@@ -4636,7 +4660,7 @@ def build_dashboard(
       display: grid;
       justify-items: end;
       gap: 8px;
-      min-width: 180px;
+      min-width: 220px;
     }}
     .refresh-data-button {{
       min-height: 34px;
@@ -4662,7 +4686,10 @@ def build_dashboard(
       font-weight: 800;
       line-height: 1.3;
       text-align: right;
-      max-width: 260px;
+      max-width: 320px;
+    }}
+    .refresh-data-status[data-state="ok"] {{
+      color: #a9f0ca;
     }}
     .refresh-data-status[data-state="error"] {{
       color: #ffb3bd;
@@ -6337,7 +6364,7 @@ def build_dashboard(
         <h1>LoL Teams & Bans</h1>
         <p>Drafted team tiers, MVP scores, and the target-ban planner for the same {len(matches)} match dataset.</p>
       </div>
-      <div class="generated">Generated {escape(generated_at)}</div>
+      {render_refresh_control(generated_at)}
     </div>
   </header>
   <nav>
