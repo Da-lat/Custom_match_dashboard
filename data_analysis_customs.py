@@ -251,6 +251,10 @@ def showcases_page_path(output_path: Path) -> Path:
     return output_path.with_name(f"{output_path.stem}_showcases{output_path.suffix}")
 
 
+def head_to_head_page_path(output_path: Path) -> Path:
+    return output_path.with_name(f"{output_path.stem}_head_to_head{output_path.suffix}")
+
+
 @dataclass(frozen=True)
 class Appearance:
     match_id: int
@@ -2559,6 +2563,127 @@ def team_combo_rows(
     )
 
 
+def head_to_head_rows(
+    appearances: Sequence[Appearance], minimum_games: int = 3
+) -> list[dict[str, object]]:
+    grouped: dict[int, list[Appearance]] = defaultdict(list)
+    for appearance in appearances:
+        if is_spotlight_excluded_player(appearance.name):
+            continue
+        grouped[appearance.match_id].append(appearance)
+
+    stats: dict[tuple[str, str, str], dict[str, object]] = {}
+    for rows in grouped.values():
+        rows_by_role: dict[str, dict[str, list[Appearance]]] = {
+            role: {"win": [], "lose": []} for role in ROLE_ORDER
+        }
+        for row in rows:
+            if row.role not in ROLE_ORDER:
+                continue
+            rows_by_role[row.role][row.side].append(row)
+
+        for role, sides in rows_by_role.items():
+            for win_row in sides["win"]:
+                for lose_row in sides["lose"]:
+                    names = tuple(sorted([win_row.name, lose_row.name]))
+                    key = (role, names[0], names[1])
+                    if key not in stats:
+                        stats[key] = {
+                            "role": role,
+                            "players": names,
+                            "games": 0,
+                            "wins": Counter(),
+                            "kills": Counter(),
+                            "deaths": Counter(),
+                            "assists": Counter(),
+                            "champions": defaultdict(Counter),
+                            "match_ids": [],
+                        }
+                    entry = stats[key]
+                    entry["games"] = int(entry["games"]) + 1
+                    entry["wins"][win_row.name] += 1
+                    entry["match_ids"].append(win_row.match_id)
+                    for player_row in (win_row, lose_row):
+                        name = player_row.name
+                        entry["kills"][name] += player_row.kills
+                        entry["deaths"][name] += player_row.deaths
+                        entry["assists"][name] += player_row.assists
+                        entry["champions"][name][player_row.champion] += 1
+
+    rows = []
+    for entry in stats.values():
+        games = int(entry["games"])
+        if games < minimum_games:
+            continue
+        player_a, player_b = entry["players"]
+        a_wins = int(entry["wins"][player_a])
+        b_wins = int(entry["wins"][player_b])
+        if (b_wins, player_a) > (a_wins, player_b):
+            leader, opponent = player_b, player_a
+            wins, losses = b_wins, a_wins
+        else:
+            leader, opponent = player_a, player_b
+            wins, losses = a_wins, b_wins
+
+        leader_kills = int(entry["kills"][leader])
+        leader_deaths = int(entry["deaths"][leader])
+        leader_assists = int(entry["assists"][leader])
+        opponent_kills = int(entry["kills"][opponent])
+        opponent_deaths = int(entry["deaths"][opponent])
+        opponent_assists = int(entry["assists"][opponent])
+        winrate = safe_div(wins, games)
+        opponent_winrate = safe_div(losses, games)
+        leader_champions = top_counter(entry["champions"][leader])
+        opponent_champions = top_counter(entry["champions"][opponent])
+        rows.append(
+            {
+                "role": str(entry["role"]),
+                "player": leader,
+                "opponent": opponent,
+                "matchup": f"{leader} vs {opponent}",
+                "chart_label": (
+                    f"{leader} over {opponent}"
+                    if wins != losses
+                    else f"{leader} vs {opponent}"
+                ),
+                "games": games,
+                "wins": wins,
+                "losses": losses,
+                "record": f"{wins}-{losses}",
+                "winrate": winrate,
+                "opponent_winrate": opponent_winrate,
+                "dominance": abs(winrate - 0.5),
+                "player_kda": safe_div(leader_kills + leader_assists, max(1, leader_deaths)),
+                "opponent_kda": safe_div(
+                    opponent_kills + opponent_assists, max(1, opponent_deaths)
+                ),
+                "player_line": (
+                    f"{one_decimal(safe_div(leader_kills, games))} / "
+                    f"{one_decimal(safe_div(leader_deaths, games))} / "
+                    f"{one_decimal(safe_div(leader_assists, games))}"
+                ),
+                "opponent_line": (
+                    f"{one_decimal(safe_div(opponent_kills, games))} / "
+                    f"{one_decimal(safe_div(opponent_deaths, games))} / "
+                    f"{one_decimal(safe_div(opponent_assists, games))}"
+                ),
+                "player_champions": leader_champions,
+                "opponent_champions": opponent_champions,
+                "match_ids": ", ".join(str(match_id) for match_id in entry["match_ids"]),
+            }
+        )
+    return sorted(
+        rows,
+        key=lambda row: (
+            -int(row["games"]),
+            -float(row["dominance"]),
+            -float(row["winrate"]),
+            str(row["role"]),
+            str(row["matchup"]),
+        ),
+    )
+
+
 def worst_combo_rows(rows: Sequence[dict[str, object]]) -> list[dict[str, object]]:
     return sorted(
         rows,
@@ -2635,6 +2760,495 @@ def render_combo_comparison(
       </div>
     </section>
     """
+
+
+def render_head_to_head_css() -> str:
+    return """
+    .h2h-filter-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+    .h2h-filter-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .h2h-filter-row + .h2h-filter-row {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--line);
+    }
+    .h2h-filter-row strong {
+      min-width: 58px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+    }
+    .h2h-filter-button {
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #101924;
+      color: var(--ink);
+      cursor: pointer;
+      font-weight: 850;
+      padding: 8px 10px;
+    }
+    .h2h-filter-button.active {
+      background: rgba(79, 196, 139, 0.16);
+      border-color: #3fa477;
+      color: #8ee1b8;
+    }
+    .h2h-count {
+      margin-left: auto;
+      color: var(--muted);
+      font-weight: 800;
+    }
+    .h2h-highlight-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .h2h-highlight-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+      min-height: 142px;
+    }
+    .h2h-highlight-card span {
+      color: var(--muted);
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+    .h2h-highlight-card strong {
+      display: block;
+      font-size: 1.1rem;
+      margin-top: 8px;
+    }
+    .h2h-highlight-card b {
+      color: var(--gold);
+      display: block;
+      font-size: 1.35rem;
+      margin-top: 8px;
+    }
+    .h2h-highlight-card small {
+      color: var(--muted);
+      display: block;
+      line-height: 1.35;
+      margin-top: 8px;
+    }
+    .h2h-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
+    }
+    .h2h-chart {
+      display: grid;
+      gap: 10px;
+    }
+    .h2h-chart-row {
+      display: grid;
+      grid-template-columns: minmax(210px, 1.1fr) minmax(220px, 2fr) 86px;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+    }
+    .h2h-chart-label strong,
+    .h2h-chart-label small {
+      display: block;
+    }
+    .h2h-chart-label small {
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .h2h-track {
+      height: 12px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #223044;
+    }
+    .h2h-fill {
+      height: 100%;
+      min-width: 3%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #4fc48b, #f0c96a);
+    }
+    .h2h-chart-row b {
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+    .h2h-empty {
+      display: none;
+    }
+    .h2h-table-player {
+      min-width: 120px;
+    }
+    @media (max-width: 1040px) {
+      .h2h-highlight-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 720px) {
+      .h2h-highlight-grid {
+        grid-template-columns: 1fr;
+      }
+      .h2h-chart-row {
+        grid-template-columns: minmax(0, 1fr) 72px;
+      }
+      .h2h-track {
+        grid-column: 1 / -1;
+        grid-row: 2;
+      }
+      .h2h-filter-row strong,
+      .h2h-count {
+        width: 100%;
+        margin-left: 0;
+      }
+    }
+    """
+
+
+def render_head_to_head_script() -> str:
+    return """
+    const h2hState = { role: "all", player: "all" };
+    const h2hItems = Array.from(document.querySelectorAll("[data-h2h-item]"));
+    const h2hCount = document.querySelector("[data-h2h-count]");
+    const h2hEmpty = document.querySelector("[data-h2h-empty]");
+
+    function h2hMatches(item) {
+      const roleMatches = h2hState.role === "all" || item.dataset.h2hRole === h2hState.role;
+      const players = (item.dataset.h2hPlayers || "").split("|||");
+      const playerMatches = h2hState.player === "all" || players.includes(h2hState.player);
+      return roleMatches && playerMatches;
+    }
+
+    function updateH2hFilters() {
+      let visible = 0;
+      h2hItems.forEach(item => {
+        const matches = h2hMatches(item);
+        item.style.display = matches ? "" : "none";
+        if (matches && item.matches("[data-h2h-table-row]")) visible += 1;
+      });
+      document.querySelectorAll("[data-h2h-role-filter]").forEach(button => {
+        button.classList.toggle("active", button.dataset.h2hRoleFilter === h2hState.role);
+      });
+      document.querySelectorAll("[data-h2h-player-filter]").forEach(button => {
+        button.classList.toggle("active", button.dataset.h2hPlayerFilter === h2hState.player);
+      });
+      if (h2hCount) h2hCount.textContent = `${visible} matchups`;
+      if (h2hEmpty) h2hEmpty.style.display = visible ? "none" : "block";
+    }
+
+    document.querySelectorAll("[data-h2h-role-filter]").forEach(button => {
+      button.addEventListener("click", () => {
+        const value = button.dataset.h2hRoleFilter;
+        h2hState.role = h2hState.role === value && value !== "all" ? "all" : value;
+        updateH2hFilters();
+      });
+    });
+
+    document.querySelectorAll("[data-h2h-player-filter]").forEach(button => {
+      button.addEventListener("click", () => {
+        const value = button.dataset.h2hPlayerFilter;
+        h2hState.player = h2hState.player === value && value !== "all" ? "all" : value;
+        updateH2hFilters();
+      });
+    });
+
+    function compareH2hCells(a, b, type, direction) {
+      const av = a?.dataset.sort || a?.textContent || "";
+      const bv = b?.dataset.sort || b?.textContent || "";
+      let result;
+      if (type === "number") {
+        const aNumber = Number(av);
+        const bNumber = Number(bv);
+        result = Number.isFinite(aNumber) && Number.isFinite(bNumber)
+          ? aNumber - bNumber
+          : av.localeCompare(bv, undefined, { numeric: true, sensitivity: "base" });
+      } else {
+        result = av.localeCompare(bv, undefined, { numeric: true, sensitivity: "base" });
+      }
+      return direction === "asc" ? result : -result;
+    }
+
+    document.querySelectorAll(".h2h-sortable th").forEach(th => {
+      th.addEventListener("click", () => {
+        const table = th.closest("table");
+        const tbody = table.querySelector("tbody");
+        const index = Array.from(th.parentElement.children).indexOf(th);
+        const currentDirection = th.classList.contains("sorted-asc") ? "asc" : "desc";
+        const nextDirection = currentDirection === "asc" ? "desc" : "asc";
+        table.querySelectorAll("th").forEach(header => header.classList.remove("sorted-asc", "sorted-desc"));
+        th.classList.add(nextDirection === "asc" ? "sorted-asc" : "sorted-desc");
+        Array.from(tbody.querySelectorAll("tr"))
+          .sort((left, right) => compareH2hCells(left.children[index], right.children[index], th.dataset.type, nextDirection))
+          .forEach(row => tbody.appendChild(row));
+        updateH2hFilters();
+      });
+    });
+
+    updateH2hFilters();
+    """
+
+
+def h2h_item_attrs(row: dict[str, object]) -> str:
+    players = f"{row.get('player', '')}|||{row.get('opponent', '')}"
+    return (
+        f'data-h2h-item data-h2h-role="{html_attr(row.get("role", ""))}" '
+        f'data-h2h-players="{html_attr(players)}"'
+    )
+
+
+def render_head_to_head_highlight(
+    title: str, row: dict[str, object], detail: str
+) -> str:
+    return f"""
+    <article class="h2h-highlight-card" {h2h_item_attrs(row)}>
+      <span>{escape(title)}</span>
+      <strong>{escape(str(row.get("chart_label", "-")))}</strong>
+      <b>{escape(pct(float(row.get("winrate", 0))))}</b>
+      <small>{escape(detail)}</small>
+    </article>
+    """
+
+
+def render_head_to_head_table(rows: Sequence[dict[str, object]]) -> str:
+    body = []
+    for row in rows:
+        winrate = float(row.get("winrate", 0))
+        body.append(
+            f"""
+            <tr {h2h_item_attrs(row)} data-h2h-table-row>
+              <td data-sort="{html_attr(row.get('role', ''))}"><span class="role-pill">{escape(str(row.get('role', '')))}</span></td>
+              <td class="h2h-table-player name-cell" data-sort="{html_attr(row.get('player', ''))}">{escape(str(row.get('player', '')))}</td>
+              <td class="h2h-table-player name-cell" data-sort="{html_attr(row.get('opponent', ''))}">{escape(str(row.get('opponent', '')))}</td>
+              <td class="number-cell" data-sort="{int(row.get('games', 0))}">{integer(row.get('games', 0))}</td>
+              <td class="number-cell" data-sort="{int(row.get('wins', 0))}">{escape(str(row.get('record', '')))}</td>
+              {heat_table_cell(pct(winrate), winrate, winrate)}
+              <td class="number-cell" data-sort="{float(row.get('player_kda', 0))}">{two_decimal(float(row.get('player_kda', 0)))}</td>
+              <td class="number-cell" data-sort="{float(row.get('opponent_kda', 0))}">{two_decimal(float(row.get('opponent_kda', 0)))}</td>
+              <td data-sort="{html_attr(row.get('player_champions', ''))}">{escape(str(row.get('player_champions', '-')))}</td>
+              <td data-sort="{html_attr(row.get('opponent_champions', ''))}">{escape(str(row.get('opponent_champions', '-')))}</td>
+            </tr>
+            """
+        )
+    return f"""
+    <section class="table-panel">
+      <div class="section-heading">
+        <h3>All Head To Head Matchups</h3>
+        <small>Same-role opponent pairs with at least 3 games</small>
+      </div>
+      <div class="table-wrap">
+        <table class="h2h-sortable sortable-table">
+          <thead>
+            <tr>
+              <th data-type="text">Role</th>
+              <th data-type="text">Player</th>
+              <th data-type="text">Opponent</th>
+              <th data-type="number">Games</th>
+              <th data-type="number">W-L</th>
+              <th data-type="number">Winrate</th>
+              <th data-type="number">Player KDA</th>
+              <th data-type="number">Opponent KDA</th>
+              <th data-type="text">Player Champions</th>
+              <th data-type="text">Opponent Champions</th>
+            </tr>
+          </thead>
+          <tbody>{''.join(body)}</tbody>
+        </table>
+      </div>
+    </section>
+    """
+
+
+def render_head_to_head_page(
+    *,
+    shared_style: str,
+    rows: Sequence[dict[str, object]],
+    generated_at: str,
+    main_page_name: str,
+    teams_page_name: str,
+    showcases_page_name: str,
+) -> str:
+    player_counts: Counter[str] = Counter()
+    for row in rows:
+        player_counts[str(row.get("player", ""))] += int(row.get("games", 0))
+        player_counts[str(row.get("opponent", ""))] += int(row.get("games", 0))
+
+    role_buttons = [
+        '<button type="button" class="h2h-filter-button active" data-h2h-role-filter="all">All Roles</button>'
+    ]
+    role_buttons.extend(
+        f'<button type="button" class="h2h-filter-button" data-h2h-role-filter="{html_attr(role)}">{escape(role)}</button>'
+        for role in ROLE_ORDER
+    )
+    player_buttons = [
+        '<button type="button" class="h2h-filter-button active" data-h2h-player-filter="all">All Players</button>'
+    ]
+    player_buttons.extend(
+        f'<button type="button" class="h2h-filter-button" data-h2h-player-filter="{html_attr(name)}">{escape(name)}</button>'
+        for name, _count in sorted(
+            player_counts.items(), key=lambda item: (-item[1], item[0])
+        )
+    )
+
+    by_dominance = sorted(
+        rows,
+        key=lambda row: (
+            -float(row.get("dominance", 0)),
+            -int(row.get("games", 0)),
+            -float(row.get("winrate", 0)),
+        ),
+    )
+    busiest = find_first(sorted(rows, key=lambda row: (-int(row.get("games", 0)), -float(row.get("dominance", 0)))))
+    strongest = find_first(by_dominance)
+    closest = find_first(
+        sorted(rows, key=lambda row: (float(row.get("dominance", 0)), -int(row.get("games", 0))))
+    )
+    kda_edge = find_first(
+        sorted(
+            rows,
+            key=lambda row: (
+                -(
+                    float(row.get("player_kda", 0))
+                    - float(row.get("opponent_kda", 0))
+                ),
+                -int(row.get("games", 0)),
+            ),
+        )
+    )
+    highlight_rows = [
+        (
+            "Most Repeated Duel",
+            busiest,
+            f"{busiest.get('role', '-')} lane, {busiest.get('record', '-')} over {busiest.get('games', 0)} games.",
+        ),
+        (
+            "Most One-Sided",
+            strongest,
+            f"{strongest.get('role', '-')} lane, {strongest.get('record', '-')} record.",
+        ),
+        (
+            "Closest Rivalry",
+            closest,
+            f"{closest.get('role', '-')} lane, {closest.get('record', '-')} record.",
+        ),
+        (
+            "Biggest KDA Edge",
+            kda_edge,
+            f"{two_decimal(float(kda_edge.get('player_kda', 0)))} KDA vs {two_decimal(float(kda_edge.get('opponent_kda', 0)))}.",
+        ),
+    ]
+    highlights = "".join(
+        render_head_to_head_highlight(title, row, detail)
+        for title, row, detail in highlight_rows
+        if row
+    )
+
+    chart_rows = sorted(
+        rows,
+        key=lambda row: (
+            -float(row.get("dominance", 0)),
+            -int(row.get("games", 0)),
+            str(row.get("matchup", "")),
+        ),
+    )
+    chart_html = []
+    for row in chart_rows:
+        winrate = float(row.get("winrate", 0))
+        chart_html.append(
+            f"""
+            <div class="h2h-chart-row" {h2h_item_attrs(row)}>
+              <div class="h2h-chart-label">
+                <strong>{escape(str(row.get("chart_label", "-")))}</strong>
+                <small>{escape(str(row.get("role", "-")))} · {escape(str(row.get("record", "-")))} over {integer(row.get("games", 0))} games</small>
+              </div>
+              <div class="h2h-track"><div class="h2h-fill" style="width: {max(3.0, winrate * 100):.2f}%"></div></div>
+              <b>{escape(pct(winrate))}</b>
+            </div>
+            """
+        )
+
+    empty_html = (
+        '<div class="empty-state">No same-role head-to-head matchups have reached 3 games yet.</div>'
+        if not rows
+        else ""
+    )
+
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LoL Head To Head</title>
+  <style>{shared_style}{render_head_to_head_css()}</style>
+</head>
+<body>
+  <header>
+    <div class="topline">
+      <div>
+        <h1>LoL Head To Head</h1>
+        <p>Same-role rivalries with at least 3 games played against each other.</p>
+      </div>
+      {render_refresh_control(generated_at)}
+    </div>
+  </header>
+  <nav>
+    <a href="{html_attr(main_page_name)}#overview">Overview</a>
+    <a href="{html_attr(main_page_name)}#awards">Awards</a>
+    <a href="{html_attr(main_page_name)}#match-history">Matches</a>
+    <a href="{html_attr(main_page_name)}#players">Players</a>
+    <a href="{html_attr(main_page_name)}#champion-pools">Champion Pools</a>
+    <a href="{html_attr(main_page_name)}#champions">Champions</a>
+    <a href="{html_attr(main_page_name)}#role-pools">Role Pools</a>
+    <a href="{html_attr(main_page_name)}#combos">Combos</a>
+    <a href="#head-to-head">Head to Head</a>
+    <a href="{html_attr(teams_page_name)}#teams">Teams</a>
+    <a href="{html_attr(teams_page_name)}#target-bans">Bans</a>
+    <a href="{html_attr(showcases_page_name)}">Showcases</a>
+    <a href="{html_attr(main_page_name)}#deep-dive">Deep Dive</a>
+  </nav>
+  <main>
+    <section id="head-to-head" class="section">
+      <div class="section-title">
+        <div>
+          <h2>Head To Head</h2>
+          <p class="note">Each row compares two players who faced each other in the same role. The displayed winrate belongs to the player listed first.</p>
+        </div>
+      </div>
+      <section class="h2h-filter-panel">
+        <div class="h2h-filter-row">
+          <strong>Role</strong>
+          {"".join(role_buttons)}
+          <span class="h2h-count" data-h2h-count>{len(rows)} matchups</span>
+        </div>
+        <div class="h2h-filter-row">
+          <strong>Player</strong>
+          {"".join(player_buttons)}
+        </div>
+      </section>
+      {empty_html}
+      <div class="h2h-highlight-grid">{highlights}</div>
+      <section class="chart-panel">
+        <h3>Strongest Head To Head Edges</h3>
+        <div class="h2h-chart">{"".join(chart_html)}</div>
+        <div class="empty-state h2h-empty" data-h2h-empty>No matchups match the selected filters.</div>
+      </section>
+      {render_head_to_head_table(rows)}
+    </section>
+  </main>
+  <script>{render_head_to_head_script()}{render_refresh_script()}</script>
+</body>
+</html>
+"""
 
 
 def weight_summary(weights: dict[str, float]) -> str:
@@ -4400,6 +5014,7 @@ def render_player_showcase_page(
     generated_at: str,
     main_page_name: str,
     teams_page_name: str,
+    head_to_head_page_name: str,
 ) -> str:
     showcase_player_rows = without_spotlight_excluded_players(player_rows)
     showcase_player_names = {str(row.get("name", "")) for row in showcase_player_rows}
@@ -4855,6 +5470,7 @@ def render_player_showcase_page(
     <a href="{html_attr(main_page_name)}#champions">Champions</a>
     <a href="{html_attr(main_page_name)}#role-pools">Role Pools</a>
     <a href="{html_attr(main_page_name)}#combos">Combos</a>
+    <a href="{html_attr(head_to_head_page_name)}#head-to-head">Head to Head</a>
     <a href="{html_attr(teams_page_name)}#teams">Teams</a>
     <a href="{html_attr(teams_page_name)}#target-bans">Bans</a>
     <a href="#{html_attr(first_slug)}">Showcases</a>
@@ -5325,6 +5941,7 @@ def build_dashboard(
     trio_rows = team_combo_rows(appearances, 3, TEAM_COMBO_MIN_GAMES[3])
     four_rows = team_combo_rows(appearances, 4, TEAM_COMBO_MIN_GAMES[4])
     five_rows = team_combo_rows(appearances, 5, TEAM_COMBO_MIN_GAMES[5])
+    h2h_rows = head_to_head_rows(appearances)
     add_player_role_breakdowns(player_rows, player_role_rows)
     display_player_rows = without_spotlight_excluded_players(player_rows)
     display_player_role_rows = without_spotlight_excluded_players(player_role_rows)
@@ -5366,9 +5983,11 @@ def build_dashboard(
     generated_at = format_refresh_timestamp(datetime.now(LOCAL_TZ))
     teams_output_path = teams_page_path(output_path)
     showcase_output_path = showcases_page_path(output_path)
+    head_to_head_output_path = head_to_head_page_path(output_path)
     main_page_name = output_path.name
     teams_page_name = teams_output_path.name
     showcases_page_name = showcase_output_path.name
+    head_to_head_page_name = head_to_head_output_path.name
 
     metric_cards = "".join(
         [
@@ -7295,6 +7914,7 @@ def build_dashboard(
     <a href="#champions">Champions</a>
     <a href="#role-pools">Role Pools</a>
     <a href="#combos">Combos</a>
+    <a href="{html_attr(head_to_head_page_name)}#head-to-head">Head to Head</a>
     <a href="{html_attr(teams_page_name)}#teams">Teams</a>
     <a href="{html_attr(teams_page_name)}#target-bans">Bans</a>
     <a href="{html_attr(showcases_page_name)}">Showcases</a>
@@ -7799,6 +8419,7 @@ def build_dashboard(
     <a href="{html_attr(main_page_name)}#champions">Champions</a>
     <a href="{html_attr(main_page_name)}#role-pools">Role Pools</a>
     <a href="{html_attr(main_page_name)}#combos">Combos</a>
+    <a href="{html_attr(head_to_head_page_name)}#head-to-head">Head to Head</a>
     <a href="#teams">Teams</a>
     <a href="#target-bans">Bans</a>
     <a href="{html_attr(showcases_page_name)}">Showcases</a>
@@ -7845,12 +8466,23 @@ def build_dashboard(
         generated_at=generated_at,
         main_page_name=main_page_name,
         teams_page_name=teams_page_name,
+        head_to_head_page_name=head_to_head_page_name,
+    )
+
+    head_to_head_html = render_head_to_head_page(
+        shared_style=shared_style,
+        rows=h2h_rows,
+        generated_at=generated_at,
+        main_page_name=main_page_name,
+        teams_page_name=teams_page_name,
+        showcases_page_name=showcases_page_name,
     )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(html, encoding="utf-8")
     teams_output_path.write_text(teams_html, encoding="utf-8")
     showcase_output_path.write_text(showcase_html, encoding="utf-8")
+    head_to_head_output_path.write_text(head_to_head_html, encoding="utf-8")
 
 
 def serve_dashboard(output_path: Path, host: str, port: int) -> None:
@@ -7896,6 +8528,7 @@ def main() -> None:
     print(f"Wrote {output_path.resolve()}")
     print(f"Wrote {teams_page_path(output_path).resolve()}")
     print(f"Wrote {showcases_page_path(output_path).resolve()}")
+    print(f"Wrote {head_to_head_page_path(output_path).resolve()}")
     if args.serve:
         serve_dashboard(output_path, args.host, args.port)
 
