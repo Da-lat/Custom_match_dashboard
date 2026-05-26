@@ -41,18 +41,19 @@ TEAM_COMBO_MIN_GAMES = {
     5: 2,
 }
 MVP_WEIGHTS = {
-    "Winrate": 0.40,
+    "Net Wins": 0.40,
     "KDA": 0.15,
     "Kill Participation": 0.15,
     "Champion Pool": 0.20,
     "Takedown Impact": 0.10,
 }
 ROLE_SCORE_WEIGHTS = {
-    "Role Winrate": 0.35,
+    "Role Net Wins": 0.30,
     "Role KDA": 0.15,
     "Role Kill Participation": 0.15,
-    "Role Champion Pool": 0.20,
+    "Role Champion Pool": 0.15,
     "Role Takedown Impact": 0.10,
+    "Role Fit": 0.10,
     "Overall MVP": 0.05,
 }
 TEAM_TIERS = ("S", "A", "B", "C", "D", "F")
@@ -446,6 +447,12 @@ def integer(value: float | int) -> str:
     return f"{int(value)}"
 
 
+def signed_integer(value: float | int) -> str:
+    number = int(value)
+    sign = "+" if number >= 0 else ""
+    return f"{sign}{number}"
+
+
 def score(value: float | int) -> str:
     return f"{float(value):.1f}"
 
@@ -491,6 +498,28 @@ def role_sort(role: str) -> int:
         return ROLE_ORDER.index(role)
     except ValueError:
         return len(ROLE_ORDER)
+
+
+def role_fit_label(rank: int) -> str:
+    if rank == 1:
+        return "Primary"
+    if rank == 2:
+        return "Secondary"
+    return {
+        3: "Third choice",
+        4: "Fourth choice",
+        5: "Fifth choice",
+    }.get(rank, f"Role #{rank}")
+
+
+def role_fit_score(rank: int) -> float:
+    return {
+        1: 1.0,
+        2: 0.78,
+        3: 0.56,
+        4: 0.34,
+        5: 0.16,
+    }.get(rank, 0.1)
 
 
 def champion_key(name: str) -> str:
@@ -617,6 +646,7 @@ def aggregate(
 
 def mvp_score_rows(player_rows: Sequence[dict[str, object]]) -> list[dict[str, object]]:
     eligible_rows = qualify(player_rows, MIN_PLAYER_GAMES)
+    net_win_low, net_win_high = metric_bounds(eligible_rows, "net_wins")
     kda_low, kda_high = metric_bounds(eligible_rows, "kda_ratio")
     kp_low, kp_high = metric_bounds(eligible_rows, "kill_participation")
     takedown_low, takedown_high = metric_bounds(eligible_rows, "avg_takedowns")
@@ -625,6 +655,9 @@ def mvp_score_rows(player_rows: Sequence[dict[str, object]]) -> list[dict[str, o
         winrate = float(player.get("winrate", 0))
         reliability = 1.0
         winrate_score = clamp(winrate)
+        net_win_score = normalized_metric(
+            float(player.get("net_wins", 0)), net_win_low, net_win_high
+        )
         kda_score = normalized_metric(float(player.get("kda_ratio", 0)), kda_low, kda_high)
         kill_participation_score = normalized_metric(
             float(player.get("kill_participation", 0)), kp_low, kp_high
@@ -634,7 +667,7 @@ def mvp_score_rows(player_rows: Sequence[dict[str, object]]) -> list[dict[str, o
             float(player.get("avg_takedowns", 0)), takedown_low, takedown_high
         )
         total_score = 100 * (
-            MVP_WEIGHTS["Winrate"] * winrate_score
+            MVP_WEIGHTS["Net Wins"] * net_win_score
             + MVP_WEIGHTS["KDA"] * kda_score
             + MVP_WEIGHTS["Kill Participation"] * kill_participation_score
             + MVP_WEIGHTS["Champion Pool"] * champion_pool_score
@@ -646,6 +679,7 @@ def mvp_score_rows(player_rows: Sequence[dict[str, object]]) -> list[dict[str, o
                 "mvp_score": total_score,
                 "adjusted_winrate": winrate_score,
                 "winrate_score": winrate_score,
+                "net_win_score": net_win_score,
                 "reliability": reliability,
                 "kda_score": kda_score,
                 "kill_participation_score": kill_participation_score,
@@ -657,6 +691,7 @@ def mvp_score_rows(player_rows: Sequence[dict[str, object]]) -> list[dict[str, o
     rows.sort(
         key=lambda row: (
             -float(row["mvp_score"]),
+            -int(row["net_wins"]),
             -int(row["games"]),
             str(row["name"]),
         )
@@ -672,6 +707,26 @@ def player_role_score_rows(
     mvp_rows: Sequence[dict[str, object]],
 ) -> list[dict[str, object]]:
     mvp_by_name = {str(row["name"]): row for row in mvp_rows}
+    role_rows_by_player: dict[str, list[dict[str, object]]] = defaultdict(list)
+    for row in player_role_rows:
+        role = str(row.get("role", ""))
+        if role in ROLE_ORDER:
+            role_rows_by_player[str(row.get("name", ""))].append(row)
+    role_rank_by_player_role: dict[tuple[str, str], int] = {}
+    for name, rows in role_rows_by_player.items():
+        ranked_rows = sorted(
+            rows,
+            key=lambda row: (
+                -int(row.get("games", 0)),
+                -int(row.get("net_wins", 0)),
+                -int(row.get("wins", 0)),
+                role_sort(str(row.get("role", ""))),
+            ),
+        )
+        for rank, row in enumerate(ranked_rows, start=1):
+            role_rank_by_player_role[(name, str(row.get("role", "")))] = rank
+
+    net_win_low, net_win_high = metric_bounds(player_role_rows, "net_wins")
     kda_low, kda_high = metric_bounds(player_role_rows, "kda_ratio")
     kp_low, kp_high = metric_bounds(player_role_rows, "kill_participation")
     takedown_low, takedown_high = metric_bounds(player_role_rows, "avg_takedowns")
@@ -685,6 +740,9 @@ def player_role_score_rows(
         winrate = float(role_row.get("winrate", 0))
         reliability = clamp(games / ROLE_RELIABILITY_GAMES)
         adjusted_winrate = 0.5 + ((winrate - 0.5) * reliability)
+        role_net_win_score = normalized_metric(
+            float(role_row.get("net_wins", 0)), net_win_low, net_win_high
+        )
         role_kda_raw_score = normalized_metric(
             float(role_row.get("kda_ratio", 0)), kda_low, kda_high
         )
@@ -700,15 +758,18 @@ def player_role_score_rows(
         role_pool_score = (
             float(role_row.get("champion_pool_rate", 0)) * reliability
         ) ** 0.5
+        role_rank = role_rank_by_player_role.get((name, role), len(ROLE_ORDER))
+        role_fit_component = role_fit_score(role_rank)
         overall_mvp_score = safe_div(
             float(mvp_by_name.get(name, {}).get("mvp_score", 0)), 100
         )
         role_score = 100 * (
-            ROLE_SCORE_WEIGHTS["Role Winrate"] * clamp(adjusted_winrate)
+            ROLE_SCORE_WEIGHTS["Role Net Wins"] * role_net_win_score
             + ROLE_SCORE_WEIGHTS["Role KDA"] * role_kda_score
             + ROLE_SCORE_WEIGHTS["Role Kill Participation"] * role_kp_score
             + ROLE_SCORE_WEIGHTS["Role Champion Pool"] * role_pool_score
             + ROLE_SCORE_WEIGHTS["Role Takedown Impact"] * role_takedown_score
+            + ROLE_SCORE_WEIGHTS["Role Fit"] * role_fit_component
             + ROLE_SCORE_WEIGHTS["Overall MVP"] * overall_mvp_score
         )
         row = dict(role_row)
@@ -716,11 +777,15 @@ def player_role_score_rows(
             {
                 "role_score": role_score,
                 "adjusted_winrate": adjusted_winrate,
+                "role_net_win_score": role_net_win_score,
                 "reliability": reliability,
                 "role_kda_score": role_kda_score,
                 "role_kp_score": role_kp_score,
                 "role_takedown_score": role_takedown_score,
                 "role_pool_score": role_pool_score,
+                "role_fit": role_fit_label(role_rank),
+                "role_rank": role_rank,
+                "role_fit_score": role_fit_component,
                 "overall_mvp_score": overall_mvp_score,
             }
         )
@@ -729,6 +794,7 @@ def player_role_score_rows(
         rows,
         key=lambda row: (
             role_sort(str(row["role"])),
+            int(row["role_rank"]),
             -float(row["role_score"]),
             -int(row["games"]),
             str(row["name"]),
@@ -744,7 +810,12 @@ def build_tiered_teams(
     candidates_by_role = {
         role: sorted(
             [row for row in role_score_rows if str(row["role"]) == role],
-            key=lambda row: (-float(row["role_score"]), -int(row["games"]), str(row["name"])),
+            key=lambda row: (
+                int(row.get("role_rank", len(ROLE_ORDER))),
+                -float(row["role_score"]),
+                -int(row["games"]),
+                str(row["name"]),
+            ),
         )
         for role in ROLE_ORDER
     }
@@ -801,7 +872,11 @@ def build_tiered_teams(
                 role_node = role_start + role_index
                 role_score = float(row["role_score"])
                 role_games = int(row["games"])
-                cost = -round((role_score * 1000) + role_games)
+                role_rank = int(row.get("role_rank", len(ROLE_ORDER)))
+                fit_priority = max(0, len(ROLE_ORDER) + 1 - role_rank)
+                cost = -round(
+                    (fit_priority * 1_000_000) + (role_score * 1000) + role_games
+                )
                 add_edge(player_node, role_node, 1, cost, (role, name, row))
 
         required_flow = team_count * len(ROLE_ORDER)
@@ -874,6 +949,7 @@ def build_tiered_teams(
     for rows in by_role.values():
         rows.sort(
             key=lambda row: (
+                int(row.get("role_rank", len(ROLE_ORDER))),
                 -float(row["role_score"]),
                 -int(row["games"]),
                 str(row["name"]),
@@ -892,6 +968,9 @@ def build_tiered_teams(
                     "score": float(row["role_score"]),
                     "games": int(row["games"]),
                     "winrate": float(row["winrate"]),
+                    "net_wins": int(row["net_wins"]),
+                    "fit": str(row.get("role_fit", "")),
+                    "role_rank": int(row.get("role_rank", len(ROLE_ORDER))),
                     "champions": str(row.get("most_played_champion", "-")),
                 }
             )
@@ -2435,7 +2514,7 @@ def render_tiered_teams(
                 <div class="team-role-row">
                   <b>{escape(str(row["role"]))}</b>
                   <span>{escape(str(row["name"]))}</span>
-                  <small>{integer(row["games"])}g, {pct(float(row["winrate"]))} WR, {escape(str(row["champions"]))}</small>
+                  <small>{escape(str(row.get("fit", "")))}, {signed_integer(row["net_wins"])} net, {integer(row["games"])}g, {escape(str(row["champions"]))}</small>
                   <strong>{score(float(row["score"]))}</strong>
                 </div>
                 """
@@ -4736,9 +4815,11 @@ def render_scoring_formula_explainer(
         role_example = max(example_roles, key=lambda row: float(row.get("role_score", 0)))
 
     eligible_player_rows = qualify(player_rows, MIN_PLAYER_GAMES)
+    net_win_low, net_win_high = metric_bounds(eligible_player_rows, "net_wins")
     kda_low, kda_high = metric_bounds(eligible_player_rows, "kda_ratio")
     kp_low, kp_high = metric_bounds(eligible_player_rows, "kill_participation")
     takedown_low, takedown_high = metric_bounds(eligible_player_rows, "avg_takedowns")
+    role_net_win_low, role_net_win_high = metric_bounds(player_role_rows, "net_wins")
     role_kda_low, role_kda_high = metric_bounds(player_role_rows, "kda_ratio")
     role_kp_low, role_kp_high = metric_bounds(player_role_rows, "kill_participation")
     role_takedown_low, role_takedown_high = metric_bounds(
@@ -4801,7 +4882,7 @@ def render_scoring_formula_explainer(
         </section>
         """
 
-    mvp_winrate_score = float(player_example.get("winrate_score", player_example.get("winrate", 0)))
+    mvp_net_win_score = float(player_example.get("net_win_score", 0))
     mvp_kda_score = float(player_example.get("kda_score", 0))
     mvp_kp_score = float(player_example.get("kill_participation_score", 0))
     mvp_pool_score = float(player_example.get("champion_pool_score", 0))
@@ -4809,6 +4890,7 @@ def render_scoring_formula_explainer(
     player_games = int(player_example.get("games", 0))
     player_wins = int(player_example.get("wins", 0))
     player_losses = int(player_example.get("losses", 0))
+    player_net_wins = int(player_example.get("net_wins", 0))
     player_kills = int(player_example.get("kills", 0))
     player_deaths = int(player_example.get("deaths", 0))
     player_assists = int(player_example.get("assists", 0))
@@ -4818,12 +4900,12 @@ def render_scoring_formula_explainer(
 
     mvp_example_rows = [
         (
-            "Winrate",
-            f"Raw winrate after meeting the {MIN_PLAYER_GAMES}-game MVP-board minimum. Games do not add points after eligibility.",
-            f"{player_wins}-{player_losses}, {player_games} games",
-            pct(mvp_winrate_score),
-            pct(MVP_WEIGHTS["Winrate"]),
-            weighted_points(mvp_winrate_score, MVP_WEIGHTS["Winrate"]),
+            "Net Wins",
+            f"Wins minus losses after meeting the {MIN_PLAYER_GAMES}-game MVP-board minimum. This rewards players who keep adding wins over a larger sample.",
+            f"{player_wins}-{player_losses}, net {signed_integer(player_net_wins)}; range {signed_integer(net_win_low)} to {signed_integer(net_win_high)}",
+            pct(mvp_net_win_score),
+            pct(MVP_WEIGHTS["Net Wins"]),
+            weighted_points(mvp_net_win_score, MVP_WEIGHTS["Net Wins"]),
         ),
         (
             "KDA",
@@ -4861,8 +4943,8 @@ def render_scoring_formula_explainer(
 
     definition_rows = [
         (
-            "Winrate",
-            f"Raw winrate for players with at least {MIN_PLAYER_GAMES} games. Below that threshold, a player does not appear on the MVP board.",
+            "Net Wins",
+            f"Wins minus losses for players with at least {MIN_PLAYER_GAMES} games. It rewards strong records over a bigger sample without making raw winrate carry the score.",
         ),
         (
             "KDA / Role KDA",
@@ -4882,7 +4964,11 @@ def render_scoring_formula_explainer(
         ),
         (
             "Role Reliability",
-            f"Role games do not score directly. They only pull role-only metrics toward neutral until that role reaches {ROLE_RELIABILITY_GAMES} games.",
+            f"Role games do not score directly. They pull role-only KDA, KP, champion pool, and takedown metrics toward neutral until that role reaches {ROLE_RELIABILITY_GAMES} games.",
+        ),
+        (
+            "Role Fit",
+            "Each player's roles are ranked by games played. Their most-played role is Primary, then the team builder steps down that list only when needed to complete teams.",
         ),
         (
             "Overall MVP",
@@ -4898,15 +4984,17 @@ def render_scoring_formula_explainer(
     if role_example:
         role = str(role_example.get("role", "Role"))
         role_reliability = float(role_example.get("reliability", 0))
-        role_adjusted_wr = clamp(float(role_example.get("adjusted_winrate", 0)))
+        role_net_win_score = float(role_example.get("role_net_win_score", 0))
         role_kda_score = float(role_example.get("role_kda_score", 0))
         role_kp_score = float(role_example.get("role_kp_score", 0))
         role_takedown_score = float(role_example.get("role_takedown_score", 0))
         role_pool_score = float(role_example.get("role_pool_score", 0))
+        role_fit_component = float(role_example.get("role_fit_score", 0))
         overall_mvp_score = float(role_example.get("overall_mvp_score", 0))
         role_games = int(role_example.get("games", 0))
         role_wins = int(role_example.get("wins", 0))
         role_losses = int(role_example.get("losses", 0))
+        role_net_wins = int(role_example.get("net_wins", 0))
         role_kills = int(role_example.get("kills", 0))
         role_deaths = int(role_example.get("deaths", 0))
         role_assists = int(role_example.get("assists", 0))
@@ -4915,13 +5003,13 @@ def render_scoring_formula_explainer(
         role_kp = float(role_example.get("kill_participation", 0))
         role_example_rows = [
             (
-                "Role Winrate",
-                f"Role reliability = min(role games / {ROLE_RELIABILITY_GAMES}, 1). Adjusted WR = 50% + ((role WR - 50%) x reliability).",
-                f"{role_wins}-{role_losses}, {pct(float(role_example.get('winrate', 0)))} {role} WR; reliability {pct(role_reliability)}",
-                pct(role_adjusted_wr),
-                pct(ROLE_SCORE_WEIGHTS["Role Winrate"]),
+                "Role Net Wins",
+                "Wins minus losses in this role, normalized against every player-role record.",
+                f"{role_wins}-{role_losses}, net {signed_integer(role_net_wins)} {role}; range {signed_integer(role_net_win_low)} to {signed_integer(role_net_win_high)}",
+                pct(role_net_win_score),
+                pct(ROLE_SCORE_WEIGHTS["Role Net Wins"]),
                 weighted_points(
-                    role_adjusted_wr, ROLE_SCORE_WEIGHTS["Role Winrate"]
+                    role_net_win_score, ROLE_SCORE_WEIGHTS["Role Net Wins"]
                 ),
             ),
             (
@@ -4961,6 +5049,14 @@ def render_scoring_formula_explainer(
                 weighted_points(
                     role_takedown_score, ROLE_SCORE_WEIGHTS["Role Takedown Impact"]
                 ),
+            ),
+            (
+                "Role Fit",
+                "A player's most-played role is Primary, then the score steps down through their role list by games played.",
+                f"{role} is {escape(str(role_example.get('role_fit', '')))} for {example_name} (role rank {int(role_example.get('role_rank', 0))})",
+                pct(role_fit_component),
+                pct(ROLE_SCORE_WEIGHTS["Role Fit"]),
+                weighted_points(role_fit_component, ROLE_SCORE_WEIGHTS["Role Fit"]),
             ),
             (
                 "Overall MVP",
@@ -5007,7 +5103,7 @@ def render_scoring_formula_explainer(
           <div class="formula-copy">
             <p><b>MVP score</b> = 100 x ({escape(weighted_formula(MVP_WEIGHTS))}).</p>
             <p><b>Team role score</b> = 100 x ({escape(weighted_formula(ROLE_SCORE_WEIGHTS))}).</p>
-            <p>Overall MVP only includes players with at least {MIN_PLAYER_GAMES} games. Once eligible, extra games do not add points. Role Games and Role Share do not score directly; role games only affect role-metric reliability. Role reliability reaches full strength at {ROLE_RELIABILITY_GAMES} games.</p>
+            <p>Overall MVP only includes players with at least {MIN_PLAYER_GAMES} games. After that, games only help by becoming positive net wins; games are not a standalone component. Role Games and Role Share do not score directly; role games only affect role-metric reliability. Role reliability reaches full strength at {ROLE_RELIABILITY_GAMES} games.</p>
           </div>
         </section>
       </div>
@@ -5172,6 +5268,7 @@ def build_dashboard(
         ("Games", "games", integer, "number"),
         ("W", "wins", integer, "number"),
         ("L", "losses", integer, "number"),
+        ("Net W", "net_wins", signed_integer, "number"),
         ("Winrate", "winrate", lambda value: pct(float(value)), "number"),
         ("KDA", "kda_ratio", lambda value: two_decimal(float(value)), "number"),
         ("KP", "kill_participation", lambda value: pct(float(value)), "number"),
@@ -5193,7 +5290,7 @@ def build_dashboard(
         ("Player", "name", str, "text"),
         ("MVP Score", "mvp_score", score, "number"),
         ("Games", "games", integer, "number"),
-        ("Winrate", "winrate", lambda value: pct(float(value)), "number"),
+        ("Net W", "net_wins", signed_integer, "number"),
         ("KDA", "kda_ratio", lambda value: two_decimal(float(value)), "number"),
         ("KP", "kill_participation", lambda value: pct(float(value)), "number"),
         ("Avg TD", "avg_takedowns", lambda value: one_decimal(float(value)), "number"),
@@ -5218,6 +5315,7 @@ def build_dashboard(
         ("Role", "role", str, "text"),
         ("Games", "games", integer, "number"),
         ("W", "wins", integer, "number"),
+        ("Net W", "net_wins", signed_integer, "number"),
         ("Winrate", "winrate", lambda value: pct(float(value)), "number"),
         ("KDA", "kda_ratio", lambda value: two_decimal(float(value)), "number"),
         ("KP", "kill_participation", lambda value: pct(float(value)), "number"),
@@ -5228,8 +5326,10 @@ def build_dashboard(
     player_role_columns: list[Column] = [
         ("Player", "name", str, "text"),
         ("Role", "role", str, "text"),
+        ("Fit", "role_fit", str, "text"),
         ("Games", "games", integer, "number"),
         ("W", "wins", integer, "number"),
+        ("Net W", "net_wins", signed_integer, "number"),
         ("Winrate", "winrate", lambda value: pct(float(value)), "number"),
         ("KDA", "kda_ratio", lambda value: two_decimal(float(value)), "number"),
         ("KP", "kill_participation", lambda value: pct(float(value)), "number"),
@@ -7041,7 +7141,7 @@ def build_dashboard(
       <div class="section-title"><h2>Players</h2></div>
       {render_player_role_heatmap(player_rows, player_role_rows)}
       {render_table("player-summary", "Player Summary", player_rows, player_columns)}
-      {render_table("player-role", "Player Performance By Role", player_role_rows, player_role_columns)}
+      {render_table("player-role", "Player Performance By Role", role_score_rows, player_role_columns)}
     </section>
 
     <section id="champion-pools" class="section">
@@ -7424,7 +7524,7 @@ def build_dashboard(
       <div class="section-title">
         <div>
           <h2>MVP & Drafted Teams</h2>
-          <p class="note">MVP formula: {escape(weight_summary(MVP_WEIGHTS))}. MVP board requires at least {MIN_PLAYER_GAMES} games; games do not score after that cutoff. Team role score: {escape(weight_summary(ROLE_SCORE_WEIGHTS))}. Role Games and Role Share do not score directly; role games only affect role-metric reliability. Role Champion Pool uses role-specific unique-pick rate. Drafted teams use one TOP, JUNGLE, MID, BOT, and SUPP, without reusing players.</p>
+          <p class="note">MVP formula: {escape(weight_summary(MVP_WEIGHTS))}. MVP board requires at least {MIN_PLAYER_GAMES} games; after that, games only help by becoming positive net wins. Team role score: {escape(weight_summary(ROLE_SCORE_WEIGHTS))}. Each player's most-played role is Primary, then teams step down their role list only when needed. Role Games and Role Share do not score directly; role games only affect role-metric reliability. Drafted teams use one TOP, JUNGLE, MID, BOT, and SUPP, without reusing players.</p>
         </div>
       </div>
       <div class="mvp-team-grid">
