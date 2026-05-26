@@ -41,11 +41,10 @@ TEAM_COMBO_MIN_GAMES = {
     5: 2,
 }
 MVP_WEIGHTS = {
-    "Net Wins": 0.30,
-    "Adjusted WR": 0.25,
-    "KDA": 0.25,
-    "Champion Pool": 0.15,
-    "Takedown Impact": 0.05,
+    "Winrate": 0.40,
+    "KDA": 0.30,
+    "Champion Pool": 0.20,
+    "Takedown Impact": 0.10,
 }
 ROLE_SCORE_WEIGHTS = {
     "Adjusted WR": 0.30,
@@ -596,33 +595,21 @@ def aggregate(
 
 
 def mvp_score_rows(player_rows: Sequence[dict[str, object]]) -> list[dict[str, object]]:
-    kda_low, kda_high = metric_bounds(player_rows, "kda_ratio")
-    net_wins_low, net_wins_high = metric_bounds(player_rows, "net_wins")
-    takedown_low, takedown_high = metric_bounds(player_rows, "avg_takedowns")
+    eligible_rows = qualify(player_rows, MIN_PLAYER_GAMES)
+    kda_low, kda_high = metric_bounds(eligible_rows, "kda_ratio")
+    takedown_low, takedown_high = metric_bounds(eligible_rows, "avg_takedowns")
     rows = []
-    for player in player_rows:
-        games = int(player.get("games", 0))
+    for player in eligible_rows:
         winrate = float(player.get("winrate", 0))
-        reliability = clamp(games / MIN_PLAYER_GAMES)
-        adjusted_winrate = 0.5 + ((winrate - 0.5) * reliability)
-        net_wins_raw_score = (
-            0.5
-            if net_wins_high == net_wins_low
-            else normalized_metric(
-                float(player.get("net_wins", 0)), net_wins_low, net_wins_high
-            )
-        )
-        net_wins_score = 0.5 + ((net_wins_raw_score - 0.5) * reliability)
+        reliability = 1.0
+        winrate_score = clamp(winrate)
         kda_score = normalized_metric(float(player.get("kda_ratio", 0)), kda_low, kda_high)
-        champion_pool_score = (
-            float(player.get("champion_pool_rate", 0)) * reliability
-        ) ** 0.5
+        champion_pool_score = float(player.get("champion_pool_rate", 0)) ** 0.5
         takedown_score = normalized_metric(
             float(player.get("avg_takedowns", 0)), takedown_low, takedown_high
         )
         total_score = 100 * (
-            MVP_WEIGHTS["Net Wins"] * net_wins_score
-            + MVP_WEIGHTS["Adjusted WR"] * clamp(adjusted_winrate)
+            MVP_WEIGHTS["Winrate"] * winrate_score
             + MVP_WEIGHTS["KDA"] * kda_score
             + MVP_WEIGHTS["Champion Pool"] * champion_pool_score
             + MVP_WEIGHTS["Takedown Impact"] * takedown_score
@@ -631,10 +618,9 @@ def mvp_score_rows(player_rows: Sequence[dict[str, object]]) -> list[dict[str, o
         row.update(
             {
                 "mvp_score": total_score,
-                "adjusted_winrate": adjusted_winrate,
+                "adjusted_winrate": winrate_score,
+                "winrate_score": winrate_score,
                 "reliability": reliability,
-                "net_wins_score": net_wins_score,
-                "net_wins_raw_score": net_wins_raw_score,
                 "kda_score": kda_score,
                 "champion_pool_score": champion_pool_score,
                 "takedown_score": takedown_score,
@@ -924,7 +910,8 @@ def target_ban_score_rows(
                 0.5 + ((player_winrate - 0.5) * player_reliability),
             )
         )
-        mvp_rating = clamp(float(mvp.get("mvp_score", player_adjusted_winrate * 100)) / 100)
+        display_mvp_score = float(mvp.get("mvp_score", player_adjusted_winrate * 100))
+        mvp_rating = clamp(display_mvp_score / 100)
         player_threat = clamp(0.62 * mvp_rating + 0.38 * player_adjusted_winrate)
         lift = adjusted_winrate - player_winrate
         lift_score = clamp((lift + 0.08) / 0.28)
@@ -937,6 +924,11 @@ def target_ban_score_rows(
             + 0.05 * lift_score
         )
         confidence = "High" if games >= 5 else "Medium" if games >= 3 else "Low"
+        mvp_detail = (
+            f"{score(display_mvp_score)} MVP"
+            if mvp
+            else f"below {MIN_PLAYER_GAMES}-game MVP board"
+        )
         scored_row = dict(row)
         scored_row.update(
             {
@@ -946,13 +938,13 @@ def target_ban_score_rows(
                 "player_winrate": player_winrate,
                 "player_adjusted_winrate": player_adjusted_winrate,
                 "player_threat": player_threat,
-                "mvp_score": float(mvp.get("mvp_score", 0)),
+                "mvp_score": display_mvp_score if mvp else 0,
                 "lift": lift,
                 "confidence": confidence,
                 "target_detail": (
                     f"{wins}-{games - wins}, {games} games, {pct(winrate)} WR, "
                     f"{two_decimal(float(row.get('kda_ratio', 0)))} KDA, "
-                    f"{score(float(mvp.get('mvp_score', 0)))} MVP"
+                    f"{mvp_detail}"
                 ),
             }
         )
@@ -4230,8 +4222,15 @@ def render_player_showcase_page(
             else f"below {MIN_PLAYER_GAMES}-game rate ranking"
         )
         mvp = mvp_by_name.get(name, {})
+        mvp_eligible = bool(mvp)
         mvp_score = float(mvp.get("mvp_score", 0))
-        mvp_rank = int(mvp.get("mvp_rank", index + 1))
+        mvp_rank = int(mvp.get("mvp_rank", 0))
+        mvp_rank_label = f"#{mvp_rank} MVP Rank" if mvp_eligible else "MVP Rank: minimum 10 games"
+        mvp_stat_detail = (
+            f"Rank #{mvp_rank} on the 10+ game MVP board"
+            if mvp_eligible
+            else f"Needs {max(0, MIN_PLAYER_GAMES - player_games)} more games for MVP board"
+        )
         role_rows = sorted(
             [row for row in player_role_rows if str(row.get("name", "")) == name],
             key=lambda row: role_sort(str(row.get("role", ""))),
@@ -4313,7 +4312,8 @@ def render_player_showcase_page(
 
         summary = (
             f"{name} has logged {player_games} games at {pct(winrate)} winrate, "
-            f"ranking #{mvp_rank} on MVP score. The identity so far is {main_role} first, "
+            f"{'ranking #' + str(mvp_rank) + ' on MVP score' if mvp_eligible else 'below the MVP-board game minimum'}. "
+            f"The identity so far is {main_role} first, "
             f"with {signature_champion} as the most repeated pick."
         )
         if practice_pick:
@@ -4464,7 +4464,7 @@ def render_player_showcase_page(
               <div class="showcase-hero">
                 <img class="showcase-watermark" src="{html_attr(champion_icon_url(signature_champion))}" alt="">
                 <div class="showcase-title">
-                  <div class="showcase-kicker">Player Showcase / #{mvp_rank} MVP Rank</div>
+                  <div class="showcase-kicker">Player Showcase / {escape(mvp_rank_label)}</div>
                   <h2>{escape(name)}</h2>
                   <p class="showcase-summary">{escape(summary)}</p>
                 </div>
@@ -4472,7 +4472,7 @@ def render_player_showcase_page(
                   {render_showcase_stat("Games", integer(player_games), f"#{games_rank.get(name, 0)} by volume", None)}
                   {render_showcase_stat("Winrate", pct(winrate), f"{wins}-{player_games - wins} record", winrate)}
                   {render_showcase_stat("KDA", player_kda, player_average_line, None)}
-                  {render_showcase_stat("MVP Score", score(mvp_score), f"Rank #{mvp_rank} in this dataset", safe_div(mvp_score, 100))}
+                  {render_showcase_stat("MVP Score", score(mvp_score) if mvp_eligible else "N/A", mvp_stat_detail, safe_div(mvp_score, 100) if mvp_eligible else None)}
                   <article class="showcase-feature">
                     <img src="{html_attr(champion_icon_url(signature_champion))}" alt="{html_attr(signature_champion)}">
                     <div>
@@ -4705,9 +4705,9 @@ def render_scoring_formula_explainer(
     if role_example is None and example_roles:
         role_example = max(example_roles, key=lambda row: float(row.get("role_score", 0)))
 
-    kda_low, kda_high = metric_bounds(player_rows, "kda_ratio")
-    net_wins_low, net_wins_high = metric_bounds(player_rows, "net_wins")
-    takedown_low, takedown_high = metric_bounds(player_rows, "avg_takedowns")
+    eligible_player_rows = qualify(player_rows, MIN_PLAYER_GAMES)
+    kda_low, kda_high = metric_bounds(eligible_player_rows, "kda_ratio")
+    takedown_low, takedown_high = metric_bounds(eligible_player_rows, "avg_takedowns")
     role_kda_low, role_kda_high = metric_bounds(player_role_rows, "kda_ratio")
     max_role_games = max(
         (int(row.get("games", 0)) for row in player_role_rows), default=1
@@ -4769,16 +4769,13 @@ def render_scoring_formula_explainer(
         </section>
         """
 
-    mvp_reliability = float(player_example.get("reliability", 0))
-    mvp_net_wins_score = float(player_example.get("net_wins_score", 0))
+    mvp_winrate_score = float(player_example.get("winrate_score", player_example.get("winrate", 0)))
     mvp_kda_score = float(player_example.get("kda_score", 0))
     mvp_pool_score = float(player_example.get("champion_pool_score", 0))
     mvp_takedown_score = float(player_example.get("takedown_score", 0))
-    mvp_adjusted_wr = clamp(float(player_example.get("adjusted_winrate", 0)))
     player_games = int(player_example.get("games", 0))
     player_wins = int(player_example.get("wins", 0))
     player_losses = int(player_example.get("losses", 0))
-    player_net_wins = int(player_example.get("net_wins", player_wins - player_losses))
     player_kills = int(player_example.get("kills", 0))
     player_deaths = int(player_example.get("deaths", 0))
     player_assists = int(player_example.get("assists", 0))
@@ -4787,20 +4784,12 @@ def render_scoring_formula_explainer(
 
     mvp_example_rows = [
         (
-            "Net Wins",
-            f"Net wins = wins - losses. It is normalized against the current player range, then pulled toward 50% when reliability is below {MIN_PLAYER_GAMES} games.",
-            f"{player_wins} wins - {player_losses} losses = {player_net_wins}; range {integer(net_wins_low)} to {integer(net_wins_high)}; reliability {pct(mvp_reliability)}",
-            pct(mvp_net_wins_score),
-            pct(MVP_WEIGHTS["Net Wins"]),
-            weighted_points(mvp_net_wins_score, MVP_WEIGHTS["Net Wins"]),
-        ),
-        (
-            "Adjusted WR",
-            f"Reliability = min(games / {MIN_PLAYER_GAMES}, 1). Adjusted WR = 50% + ((raw WR - 50%) x reliability).",
-            f"{player_wins}-{player_losses}, {pct(float(player_example.get('winrate', 0)))} WR; reliability {pct(mvp_reliability)}",
-            pct(mvp_adjusted_wr),
-            pct(MVP_WEIGHTS["Adjusted WR"]),
-            weighted_points(mvp_adjusted_wr, MVP_WEIGHTS["Adjusted WR"]),
+            "Winrate",
+            f"Raw winrate after meeting the {MIN_PLAYER_GAMES}-game MVP-board minimum. Games do not add points after eligibility.",
+            f"{player_wins}-{player_losses}, {player_games} games",
+            pct(mvp_winrate_score),
+            pct(MVP_WEIGHTS["Winrate"]),
+            weighted_points(mvp_winrate_score, MVP_WEIGHTS["Winrate"]),
         ),
         (
             "KDA",
@@ -4812,8 +4801,8 @@ def render_scoring_formula_explainer(
         ),
         (
             "Champion Pool",
-            "Unique-pick rate with reliability: sqrt((unique champions / games) x reliability).",
-            f"{player_unique_champs} unique champions / {player_games} games = {pct(player_pool_rate)}; reliability {pct(mvp_reliability)}",
+            "Unique-pick rate with a square-root curve: sqrt(unique champions / games).",
+            f"{player_unique_champs} unique champions / {player_games} games = {pct(player_pool_rate)}",
             pct(mvp_pool_score),
             pct(MVP_WEIGHTS["Champion Pool"]),
             weighted_points(mvp_pool_score, MVP_WEIGHTS["Champion Pool"]),
@@ -4830,12 +4819,8 @@ def render_scoring_formula_explainer(
 
     definition_rows = [
         (
-            "Net Wins",
-            "Wins minus losses. This rewards players who have moved teams toward wins over time, but low samples are pulled toward neutral through reliability.",
-        ),
-        (
-            "Adjusted WR",
-            "A sample-adjusted winrate. Under the reliability threshold, a player's raw winrate is pulled toward 50% so one hot or cold night does not dominate.",
+            "Winrate",
+            f"Raw winrate for players with at least {MIN_PLAYER_GAMES} games. Below that threshold, a player does not appear on the MVP board.",
         ),
         (
             "KDA / Role KDA",
@@ -4975,7 +4960,7 @@ def render_scoring_formula_explainer(
           <div class="formula-copy">
             <p><b>MVP score</b> = 100 x ({escape(weighted_formula(MVP_WEIGHTS))}).</p>
             <p><b>Team role score</b> = 100 x ({escape(weighted_formula(ROLE_SCORE_WEIGHTS))}).</p>
-            <p>Overall MVP no longer gives direct points for games played. Games are used as reliability for Net Wins, Adjusted WR, and Champion Pool. Team role score still includes Role Games because drafted teams need role experience. Role reliability reaches full strength at {ROLE_RELIABILITY_GAMES} games.</p>
+            <p>Overall MVP only includes players with at least {MIN_PLAYER_GAMES} games. Once eligible, extra games do not add points. Team role score still includes Role Games because drafted teams need proven role experience. Role reliability reaches full strength at {ROLE_RELIABILITY_GAMES} games.</p>
           </div>
         </section>
       </div>
@@ -5160,11 +5145,7 @@ def build_dashboard(
         ("Player", "name", str, "text"),
         ("MVP Score", "mvp_score", score, "number"),
         ("Games", "games", integer, "number"),
-        ("W", "wins", integer, "number"),
-        ("L", "losses", integer, "number"),
-        ("Net Wins", "net_wins", integer, "number"),
         ("Winrate", "winrate", lambda value: pct(float(value)), "number"),
-        ("Adj WR", "adjusted_winrate", lambda value: pct(float(value)), "number"),
         ("KDA", "kda_ratio", lambda value: two_decimal(float(value)), "number"),
         ("Avg TD", "avg_takedowns", lambda value: one_decimal(float(value)), "number"),
         ("Unique Champs", "unique_champions", integer, "number"),
@@ -7390,7 +7371,7 @@ def build_dashboard(
       <div class="section-title">
         <div>
           <h2>MVP & Drafted Teams</h2>
-          <p class="note">MVP formula: {escape(weight_summary(MVP_WEIGHTS))}. Games no longer score directly; they only make Net Wins, Adjusted WR, and Champion Pool more reliable. Team role score: {escape(weight_summary(ROLE_SCORE_WEIGHTS))}. Role Champion Pool uses role-specific unique-pick rate. Drafted teams use one TOP, JUNGLE, MID, BOT, and SUPP, without reusing players.</p>
+          <p class="note">MVP formula: {escape(weight_summary(MVP_WEIGHTS))}. MVP board requires at least {MIN_PLAYER_GAMES} games; games do not score after that cutoff. Team role score: {escape(weight_summary(ROLE_SCORE_WEIGHTS))}. Role Champion Pool uses role-specific unique-pick rate. Drafted teams use one TOP, JUNGLE, MID, BOT, and SUPP, without reusing players.</p>
         </div>
       </div>
       <div class="mvp-team-grid">
