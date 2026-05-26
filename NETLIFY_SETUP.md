@@ -37,6 +37,8 @@ If the button reports that `NETLIFY_BUILD_HOOK_URL` is not set, create a build
 hook in Netlify under Site configuration -> Build & deploy -> Build hooks, then
 paste that hook URL into the `NETLIFY_BUILD_HOOK_URL` environment variable and
 redeploy. The value should look like `https://api.netlify.com/build_hooks/...`.
+The value should be the URL only, without quotes and without the
+`NETLIFY_BUILD_HOOK_URL=` prefix.
 
 If the button reports `Netlify build hook returned 400` or `404`, re-copy the
 build hook URL from the Build hooks screen. A common cause is pasting the site
