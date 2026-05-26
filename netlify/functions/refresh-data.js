@@ -1,5 +1,22 @@
 exports.handler = async function handler(event) {
   const headers = { "content-type": "application/json" };
+  const rawBuildHookUrl = process.env.NETLIFY_BUILD_HOOK_URL || "";
+  const buildHookUrl = rawBuildHookUrl.trim();
+
+  function hookSummary() {
+    if (!buildHookUrl) return null;
+    try {
+      const url = new URL(buildHookUrl);
+      const hookId = url.pathname.split("/").filter(Boolean).pop() || "";
+      return {
+        origin: url.origin,
+        pathPrefix: url.pathname.replace(hookId, hookId ? "..." : ""),
+        hookIdSuffix: hookId.slice(-6),
+      };
+    } catch (error) {
+      return { invalid: true };
+    }
+  }
 
   if (event.httpMethod === "GET") {
     return {
@@ -7,7 +24,8 @@ exports.handler = async function handler(event) {
       headers,
       body: JSON.stringify({
         ok: true,
-        buildHookConfigured: Boolean(process.env.NETLIFY_BUILD_HOOK_URL),
+        buildHookConfigured: Boolean(buildHookUrl),
+        buildHook: hookSummary(),
       }),
     };
   }
@@ -20,7 +38,6 @@ exports.handler = async function handler(event) {
     };
   }
 
-  const buildHookUrl = process.env.NETLIFY_BUILD_HOOK_URL;
   if (!buildHookUrl) {
     return {
       statusCode: 500,
@@ -28,6 +45,35 @@ exports.handler = async function handler(event) {
       body: JSON.stringify({
         error:
           "Refresh is deployed, but NETLIFY_BUILD_HOOK_URL is not set in Netlify environment variables.",
+      }),
+    };
+  }
+
+  let parsedBuildHookUrl;
+  try {
+    parsedBuildHookUrl = new URL(buildHookUrl);
+  } catch (error) {
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        error:
+          "NETLIFY_BUILD_HOOK_URL is not a valid URL. Paste the full https://api.netlify.com/build_hooks/... value.",
+      }),
+    };
+  }
+
+  if (
+    parsedBuildHookUrl.origin !== "https://api.netlify.com" ||
+    !parsedBuildHookUrl.pathname.startsWith("/build_hooks/")
+  ) {
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        error:
+          "NETLIFY_BUILD_HOOK_URL must be the full https://api.netlify.com/build_hooks/... URL from Netlify Build hooks.",
+        buildHook: hookSummary(),
       }),
     };
   }
@@ -47,6 +93,7 @@ exports.handler = async function handler(event) {
           error: `Netlify build hook returned ${response.status}.${
             responseText ? ` ${responseText.slice(0, 220)}` : ""
           }`,
+          buildHook: hookSummary(),
         }),
       };
     }
