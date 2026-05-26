@@ -1384,6 +1384,14 @@ def html_attr(value: object) -> str:
     return escape(str(value), quote=True)
 
 
+def svg_id_token(value: object) -> str:
+    token = "".join(
+        character.lower() if character.isascii() and character.isalnum() else "-"
+        for character in str(value)
+    ).strip("-")
+    return token or "item"
+
+
 def table_cell(
     value: object,
     sort_value: object | None = None,
@@ -1979,41 +1987,66 @@ def render_match_history(appearances: Sequence[Appearance]) -> str:
 def champion_pool_horizontal_svg(
     player_name: str, champion_rows: Sequence[dict[str, object]]
 ) -> str:
-    row_height = 27
-    top = 26
-    left = 146
-    right = 96
+    row_height = 32
+    top = 30
+    icon_size = 24
+    icon_x = 18
+    left = 58
+    right = 130
     width = 920
     chart_width = width - left - right
-    height = top + 20 + max(1, len(champion_rows)) * row_height
+    height = top + 18 + max(1, len(champion_rows)) * row_height
     max_games = max((int(row["games"]) for row in champion_rows), default=1)
+    bar_accents = ("#62a8ff", "#4fc48b", "#f0c96a", "#b596ff", "#ff6f81")
     parts = [
         f'<svg class="champ-pool-svg horizontal-chart" viewBox="0 0 {width} {height}" role="img" aria-label="{html_attr(player_name)} champion pool horizontal bar chart">'
     ]
     parts.append(
-        f'<text x="{left}" y="18" class="pool-axis-label">Champion games played</text>'
+        f'<text x="{left}" y="19" class="pool-axis-label">Champion games played</text>'
+    )
+    parts.append(
+        f'<text x="{left + chart_width + 16}" y="19" class="pool-axis-label">Games</text>'
+    )
+    parts.append(
+        f'<text x="{width - 8}" y="19" class="pool-axis-label pool-axis-label-right">WR</text>'
     )
     for index, row in enumerate(champion_rows):
         games = int(row["games"])
         winrate = float(row["winrate"])
         y = top + index * row_height
-        bar_width = max(3, games / max_games * chart_width)
+        bar_y = y + 9
+        icon_y = y + 2
+        bar_width = max(4, games / max_games * chart_width)
         label = str(row["champion"])
+        game_text = "game" if games == 1 else "games"
+        accent = bar_accents[index % len(bar_accents)]
+        clip_id = f"pool-icon-{svg_id_token(player_name)}-{index}"
+        icon_url = champion_icon_url(label)
         parts.append(
-            f'<text x="{left - 10}" y="{y + 16}" class="pool-label horizontal-label">{escape(label)}</text>'
+            f'<g class="pool-row"><title>{escape(label)} - {games} {game_text}, {pct(winrate)} winrate</title>'
         )
         parts.append(
-            f'<rect x="{left}" y="{y + 8}" width="{chart_width}" height="10" rx="5" class="pool-track"/>'
+            f'<defs><clipPath id="{html_attr(clip_id)}"><rect x="{icon_x}" y="{icon_y}" width="{icon_size}" height="{icon_size}" rx="5"/></clipPath></defs>'
         )
         parts.append(
-            f'<rect x="{left}" y="{y + 8}" width="{bar_width:.1f}" height="10" rx="5" class="pool-bar"/>'
+            f'<rect x="{icon_x - 1}" y="{icon_y - 1}" width="{icon_size + 2}" height="{icon_size + 2}" rx="6" class="pool-icon-frame"/>'
         )
         parts.append(
-            f'<text x="{left + chart_width + 12}" y="{y + 16}" class="pool-value">{games}g</text>'
+            f'<image href="{html_attr(icon_url)}" x="{icon_x}" y="{icon_y}" width="{icon_size}" height="{icon_size}" preserveAspectRatio="xMidYMid slice" clip-path="url(#{html_attr(clip_id)})"/>'
         )
         parts.append(
-            f'<text x="{width - 8}" y="{y + 16}" class="pool-winrate">{pct(winrate)}</text>'
+            f'<rect x="{left}" y="{bar_y}" width="{chart_width}" height="12" rx="6" class="pool-track"/>'
         )
+        parts.append(
+            f'<rect x="{left}" y="{bar_y}" width="{bar_width:.1f}" height="12" rx="6" class="pool-bar" style="fill: {accent};"/>'
+        )
+        parts.append(
+            f'<text x="{left + chart_width + 18}" y="{bar_y + 10}" class="pool-value">{games}g</text>'
+        )
+        parts.append(
+            f'<text x="{width - 8}" y="{bar_y + 10}" class="pool-winrate">{pct(winrate)}</text>'
+        )
+        parts.append("</g>")
     parts.append("</svg>")
     return "".join(parts)
 
@@ -2022,16 +2055,18 @@ def champion_pool_vertical_svg(
     player_name: str, champion_rows: Sequence[dict[str, object]]
 ) -> str:
     bar_width = 24
-    gap = 13
+    gap = 14
+    icon_size = 26
     left = 52
     top = 30
     chart_height = 214
-    label_height = 104
+    label_height = 46
     right = 34
     width = max(760, left + right + len(champion_rows) * (bar_width + gap))
     height = top + chart_height + label_height
     axis_y = top + chart_height
     max_games = max((int(row["games"]) for row in champion_rows), default=1)
+    bar_accents = ("#62a8ff", "#4fc48b", "#f0c96a", "#b596ff", "#ff6f81")
     parts = [
         f'<svg class="champ-pool-svg vertical-chart" viewBox="0 0 {width} {height}" role="img" aria-label="{html_attr(player_name)} champion pool vertical bar chart">'
     ]
@@ -2045,15 +2080,31 @@ def champion_pool_vertical_svg(
         x = left + index * (bar_width + gap)
         y = axis_y - bar_height
         label = str(row["champion"])
+        game_text = "game" if games == 1 else "games"
+        accent = bar_accents[index % len(bar_accents)]
+        icon_x = x + (bar_width - icon_size) / 2
+        icon_y = axis_y + 10
+        clip_id = f"pool-vertical-icon-{svg_id_token(player_name)}-{index}"
+        icon_url = champion_icon_url(label)
         parts.append(
-            f'<rect x="{x}" y="{y:.1f}" width="{bar_width}" height="{bar_height:.1f}" rx="4" class="pool-bar"/>'
+            f'<g class="pool-row"><title>{escape(label)} - {games} {game_text}, {pct(winrate)} winrate</title>'
+        )
+        parts.append(
+            f'<rect x="{x}" y="{y:.1f}" width="{bar_width}" height="{bar_height:.1f}" rx="4" class="pool-bar" style="fill: {accent};"/>'
         )
         parts.append(
             f'<text x="{x + bar_width / 2}" y="{y - 8:.1f}" class="pool-value centered">{games}</text>'
         )
         parts.append(
-            f'<text x="{x + bar_width / 2}" y="{axis_y + 18}" class="pool-label vertical-label" transform="rotate(45 {x + bar_width / 2} {axis_y + 18})">{escape(label)} ({pct(winrate)})</text>'
+            f'<defs><clipPath id="{html_attr(clip_id)}"><rect x="{icon_x:.1f}" y="{icon_y}" width="{icon_size}" height="{icon_size}" rx="5"/></clipPath></defs>'
         )
+        parts.append(
+            f'<rect x="{icon_x - 1:.1f}" y="{icon_y - 1}" width="{icon_size + 2}" height="{icon_size + 2}" rx="6" class="pool-icon-frame"/>'
+        )
+        parts.append(
+            f'<image href="{html_attr(icon_url)}" x="{icon_x:.1f}" y="{icon_y}" width="{icon_size}" height="{icon_size}" preserveAspectRatio="xMidYMid slice" clip-path="url(#{html_attr(clip_id)})"/>'
+        )
+        parts.append("</g>")
     parts.append("</svg>")
     return "".join(parts)
 
@@ -6382,11 +6433,23 @@ def build_dashboard(
     }}
     .pool-bar {{
       fill: #62a8ff;
+      filter: drop-shadow(0 1px 3px rgba(23, 33, 43, 0.16));
+    }}
+    .pool-icon-frame {{
+      fill: #ffffff;
+      stroke: #c9d6e5;
+      stroke-width: 1;
+    }}
+    .pool-row image {{
+      image-rendering: auto;
     }}
     .pool-axis-label {{
       fill: var(--muted);
       font-size: 12px;
       font-weight: 800;
+    }}
+    .pool-axis-label-right {{
+      text-anchor: end;
     }}
     .pool-label {{
       fill: #17212b;
@@ -6728,6 +6791,10 @@ def build_dashboard(
     }}
     .pool-track {{
       fill: #243142;
+    }}
+    .pool-icon-frame {{
+      fill: #172231;
+      stroke: #344255;
     }}
     .pool-label,
     .pool-value,
