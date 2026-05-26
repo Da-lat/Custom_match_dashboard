@@ -31,6 +31,7 @@ TARGET_BAN_MIN_GAMES = 3
 TARGET_BAN_RELIABILITY_GAMES = 5
 PRACTICE_PICK_MIN_GAMES = 3
 PRACTICE_PICK_MAX_WINRATE = 0.45
+PRACTICE_PICK_BASELINE_GAP = 0.05
 PRACTICE_PICK_RELIABILITY_GAMES = 6
 ROLE_RELIABILITY_GAMES = 8
 TEAM_COMBO_MIN_GAMES = {
@@ -963,13 +964,21 @@ def practice_pick_score_rows(
     player_champion_rows: Sequence[dict[str, object]],
     player_rows: Sequence[dict[str, object]],
 ) -> list[dict[str, object]]:
-    eligible_rows = [
-        row
-        for row in player_champion_rows
-        if int(row.get("games", 0)) >= PRACTICE_PICK_MIN_GAMES
-        and float(row.get("winrate", 0)) < PRACTICE_PICK_MAX_WINRATE
-    ]
     player_by_name = {str(row["name"]): row for row in player_rows}
+    eligible_rows = []
+    for row in player_champion_rows:
+        games = int(row.get("games", 0))
+        winrate = float(row.get("winrate", 0))
+        name = str(row.get("name", ""))
+        player = player_by_name.get(name, {})
+        player_winrate = float(player.get("winrate", 0.5))
+        if games < PRACTICE_PICK_MIN_GAMES:
+            continue
+        if winrate >= PRACTICE_PICK_MAX_WINRATE:
+            continue
+        if winrate > player_winrate - PRACTICE_PICK_BASELINE_GAP:
+            continue
+        eligible_rows.append(row)
     max_games = max((int(row.get("games", 0)) for row in eligible_rows), default=1)
     max_losses = max(
         (int(row.get("games", 0)) - int(row.get("wins", 0)) for row in eligible_rows),
@@ -991,8 +1000,8 @@ def practice_pick_score_rows(
         name = str(row.get("name", ""))
         player = player_by_name.get(name, {})
         player_winrate = float(player.get("winrate", 0.5))
-        lift = adjusted_winrate - player_winrate
-        under_baseline_score = clamp((player_winrate - adjusted_winrate) / 0.35)
+        lift = winrate - player_winrate
+        under_baseline_score = clamp((player_winrate - winrate) / 0.35)
         practice_score = 100 * (
             0.60 * low_winrate_score
             + 0.24 * loss_volume_score
@@ -2753,7 +2762,7 @@ def render_practice_pick_cards(
         )
     if not cards:
         cards.append(
-            f'<div class="empty-state">No under-{pct(PRACTICE_PICK_MAX_WINRATE)} player/champion combos with at least {PRACTICE_PICK_MIN_GAMES} games yet.</div>'
+            f'<div class="empty-state">No {PRACTICE_PICK_MIN_GAMES}+ game player/champion combos are below {pct(PRACTICE_PICK_MAX_WINRATE)} WR and at least {pct(PRACTICE_PICK_BASELINE_GAP)} below player baseline yet.</div>'
         )
     return f'<div class="ban-target-grid practice-target-grid">{"".join(cards)}</div>'
 
@@ -2884,7 +2893,7 @@ def render_target_ban_section(
           <div class="section-heading">
             <div>
               <h3>Practice Picks</h3>
-              <small>Under-{pct(PRACTICE_PICK_MAX_WINRATE)} player/champion combos with at least {PRACTICE_PICK_MIN_GAMES} games; sample size still helps, but near-break-even picks stay lower priority</small>
+              <small>Lab picks: {PRACTICE_PICK_MIN_GAMES}+ game player/champion combos below {pct(PRACTICE_PICK_MAX_WINRATE)} WR and at least {pct(PRACTICE_PICK_BASELINE_GAP)} below that player's baseline</small>
             </div>
           </div>
           {render_practice_pick_cards(practice_pick_rows)}
@@ -4141,13 +4150,22 @@ def render_player_showcase_page(
         )
         if practice_pick:
             practice_champion = str(practice_pick.get("champion", "-"))
-            practice_detail = (
-                f"{pct(float(practice_pick.get('winrate', 0)))} WR over "
-                f"{int(practice_pick.get('games', 0))} games"
+            practice_detail = str(
+                practice_pick.get(
+                    "practice_detail",
+                    (
+                        f"{pct(float(practice_pick.get('winrate', 0)))} WR over "
+                        f"{int(practice_pick.get('games', 0))} games"
+                    ),
+                )
             )
         else:
-            practice_champion = cleanest_game.champion
-            practice_detail = f"Cleanest game: {showcase_kda(cleanest_game)} on {cleanest_game.date_label}"
+            practice_champion = "No clear project"
+            practice_detail = (
+                f"No {PRACTICE_PICK_MIN_GAMES}+ game pick is below "
+                f"{pct(PRACTICE_PICK_MAX_WINRATE)} WR and at least "
+                f"{pct(PRACTICE_PICK_BASELINE_GAP)} below player baseline."
+            )
 
         power_value = str(power_pick.get("champion", signature_champion))
         power_detail = (
