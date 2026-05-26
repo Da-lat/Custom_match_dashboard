@@ -1261,6 +1261,7 @@ def build_awards(
             "detail": appearance_context(highest_kills),
             "theme": "red",
             "champion": highest_kills.champion,
+            "match_id": highest_kills.match_id,
         },
         {
             "title": "Single Game Death Record",
@@ -1269,6 +1270,7 @@ def build_awards(
             "detail": appearance_context(highest_deaths),
             "theme": "red",
             "champion": highest_deaths.champion,
+            "match_id": highest_deaths.match_id,
         },
         {
             "title": "Assist Record",
@@ -1277,6 +1279,7 @@ def build_awards(
             "detail": appearance_context(highest_assists),
             "theme": "green",
             "champion": highest_assists.champion,
+            "match_id": highest_assists.match_id,
         },
         {
             "title": "Most Played",
@@ -1359,6 +1362,7 @@ def build_awards(
             "detail": appearance_context(perfect_game),
             "theme": "green",
             "champion": perfect_game.champion,
+            "match_id": perfect_game.match_id,
         },
         {
             "title": "Bloodiest Game",
@@ -1367,6 +1371,7 @@ def build_awards(
             "detail": f"{bloodiest_game.get('date_label')} - winners: {bloodiest_game.get('winner_names')}",
             "theme": "red",
             "badge": "VS",
+            "match_id": bloodiest_game.get("match_id"),
         },
         {
             "title": "Cleanest Team Win",
@@ -1375,6 +1380,7 @@ def build_awards(
             "detail": f"{cleanest_win.get('date_label')} - winners: {cleanest_win.get('winner_names')}",
             "theme": "green",
             "badge": "WIN",
+            "match_id": cleanest_win.get("match_id"),
         },
     ]
     return awards
@@ -1642,10 +1648,11 @@ def render_awards(awards: Sequence[dict[str, object]]) -> str:
         "SUPP": "shield",
     }
     cards = []
-    for index, award in enumerate(awards, start=1):
+    for award in awards:
         champion = str(award.get("champion", "")).strip()
         badge = str(award.get("badge", "")).strip() or str(award.get("title", "-"))[:3]
         theme = str(award.get("theme", "blue")).strip() or "blue"
+        match_id = str(award.get("match_id", "")).strip()
         if champion and champion != "-":
             visual = (
                 f'<div class="award-icon champion-award-icon">'
@@ -1659,10 +1666,19 @@ def render_awards(awards: Sequence[dict[str, object]]) -> str:
                 f'{render_award_symbol(icon_name)}'
                 f'</div>'
             )
+        if match_id:
+            open_tag = (
+                f'<a class="award-card award-theme-{html_attr(theme)}" '
+                f'href="#match-{html_attr(match_id)}" data-award-match-id="{html_attr(match_id)}" '
+                f'aria-label="Open Match {html_attr(match_id)} for {html_attr(award["title"])}">'
+            )
+            close_tag = "</a>"
+        else:
+            open_tag = f'<article class="award-card award-theme-{html_attr(theme)}">'
+            close_tag = "</article>"
         cards.append(
             f"""
-            <article class="award-card award-theme-{html_attr(theme)}">
-              <div class="award-rank">{index:02d}</div>
+            {open_tag}
               {visual}
               <div class="award-copy">
                 <span>{escape(str(award["title"]))}</span>
@@ -1670,7 +1686,7 @@ def render_awards(awards: Sequence[dict[str, object]]) -> str:
                 <b>{escape(str(award["stat"]))}</b>
                 <small>{escape(str(award["detail"]))}</small>
               </div>
-            </article>
+            {close_tag}
             """
         )
     return "\n".join(cards)
@@ -5887,6 +5903,8 @@ def build_dashboard(
       background:
         linear-gradient(135deg, rgba(240, 201, 106, 0.12), rgba(17, 25, 35, 0) 42%),
         var(--panel);
+      color: inherit;
+      text-decoration: none;
       transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
     }}
     .award-card::before {{
@@ -5901,15 +5919,8 @@ def build_dashboard(
       border-color: rgba(240, 201, 106, 0.48);
       box-shadow: 0 18px 40px rgba(0, 0, 0, 0.42);
     }}
-    .award-rank {{
-      position: absolute;
-      right: 12px;
-      top: 10px;
-      color: rgba(232, 238, 246, 0.16);
-      font-size: 2rem;
-      font-weight: 900;
-      line-height: 1;
-      letter-spacing: 0;
+    a.award-card {{
+      cursor: pointer;
     }}
     .award-icon {{
       width: 64px;
@@ -6964,9 +6975,9 @@ def build_dashboard(
         </div>
       </div>
       <div class="match-browser">
-        <button type="button" data-match-prev>Previous</button>
+        <button type="button" data-match-prev aria-label="Previous match" title="Previous match">&larr;</button>
         <select id="match-picker" aria-label="Select match"></select>
-        <button type="button" data-match-next>Next</button>
+        <button type="button" data-match-next aria-label="Next match" title="Next match">&rarr;</button>
         <input class="card-search" type="search" placeholder="Search matches" data-match-search>
         <span class="match-count" data-match-count></span>
       </div>
@@ -7130,6 +7141,11 @@ def build_dashboard(
         }}
       }}
 
+      function matchIdFromHash() {{
+        const hashMatch = window.location.hash.match(/^#match-(\\d+)$/);
+        return hashMatch ? hashMatch[1] : "";
+      }}
+
       function rebuildMatchPicker(preferredMatchId = selectedMatchId()) {{
         const term = matchSearch ? matchSearch.value.toLowerCase().trim() : "";
         filteredMatchCards = matchCards.filter(card => card.dataset.cardText.toLowerCase().includes(term));
@@ -7155,6 +7171,20 @@ def build_dashboard(
         showMatch((preferred || filteredMatchCards[0]).dataset.matchId);
       }}
 
+      function activateLinkedMatch(matchId, scrollToHistory = false) {{
+        const target = matchCards.find(card => card.dataset.matchId === String(matchId));
+        if (!target) return false;
+        if (matchSearch) {{
+          matchSearch.value = "";
+        }}
+        rebuildMatchPicker(matchId);
+        showMatch(matchId);
+        if (scrollToHistory) {{
+          document.getElementById("match-history")?.scrollIntoView({{ behavior: "smooth", block: "start" }});
+        }}
+        return true;
+      }}
+
       function stepMatch(offset) {{
         if (!filteredMatchCards.length) return;
         const currentId = selectedMatchId();
@@ -7174,8 +7204,23 @@ def build_dashboard(
         nextMatchButton.addEventListener("click", () => stepMatch(1));
       }}
 
-      const hashMatch = window.location.hash.match(/^#match-(\\d+)$/);
-      const initialMatchId = hashMatch ? hashMatch[1] : matchCards[matchCards.length - 1].dataset.matchId;
+      document.querySelectorAll("[data-award-match-id]").forEach(link => {{
+        link.addEventListener("click", event => {{
+          const matchId = link.dataset.awardMatchId;
+          if (!activateLinkedMatch(matchId, true)) return;
+          event.preventDefault();
+          history.replaceState(null, "", `#match-${{matchId}}`);
+        }});
+      }});
+
+      window.addEventListener("hashchange", () => {{
+        const hashMatchId = matchIdFromHash();
+        if (hashMatchId) {{
+          activateLinkedMatch(hashMatchId, true);
+        }}
+      }});
+
+      const initialMatchId = matchIdFromHash() || matchCards[matchCards.length - 1].dataset.matchId;
       rebuildMatchPicker(initialMatchId);
     }}
 
