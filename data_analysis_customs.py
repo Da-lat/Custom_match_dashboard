@@ -1878,14 +1878,15 @@ def team_table(title: str, rows: Sequence[Appearance], css_class: str) -> str:
     ordered_rows = sorted(rows, key=lambda row: role_sort(row.role))
     body = []
     for row in ordered_rows:
+        champion = row.champion
         body.append(
             f"""
             <tr>
               <td><span class="role-pill">{escape(row.role)}</span></td>
-              <td><strong>{escape(row.name)}</strong><small>{escape(row.player)}</small></td>
-              <td>{escape(row.champion)}</td>
-              <td>{row.kills}/{row.deaths}/{row.assists}</td>
-              <td>{two_decimal(row.kda_ratio)}</td>
+              <td class="match-player-cell"><strong>{escape(row.name)}</strong><small>{escape(row.player)}</small></td>
+              <td><span class="match-champion-cell"><img src="{html_attr(champion_icon_url(champion))}" alt="{html_attr(champion)}"><span>{escape(champion)}</span></span></td>
+              <td class="match-score-cell">{row.kills}/{row.deaths}/{row.assists}</td>
+              <td class="match-kda-cell">{two_decimal(row.kda_ratio)}</td>
             </tr>
             """
         )
@@ -1896,6 +1897,13 @@ def team_table(title: str, rows: Sequence[Appearance], css_class: str) -> str:
         <strong>{sum(row.kills for row in rows)} kills</strong>
       </div>
       <table>
+        <colgroup>
+          <col class="match-role-col">
+          <col class="match-player-col">
+          <col class="match-champion-col">
+          <col class="match-score-col">
+          <col class="match-kda-col">
+        </colgroup>
         <thead>
           <tr><th>Role</th><th>Player</th><th>Champion</th><th>K/D/A</th><th>KDA</th></tr>
         </thead>
@@ -5710,16 +5718,76 @@ def build_dashboard(
     }}
     .match-team table {{
       font-size: 0.86rem;
+      min-width: 0;
+      table-layout: fixed;
+    }}
+    .match-role-col {{
+      width: 78px;
+    }}
+    .match-player-col {{
+      width: 31%;
+    }}
+    .match-champion-col {{
+      width: 31%;
+    }}
+    .match-score-col {{
+      width: 76px;
+    }}
+    .match-kda-col {{
+      width: 54px;
     }}
     .match-team thead th {{
       position: static;
+      padding: 8px 10px;
     }}
-    .match-team td strong {{
+    .match-team td {{
+      padding: 9px 10px;
+      vertical-align: middle;
+    }}
+    .match-player-cell strong {{
       display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }}
-    .match-team td small {{
+    .match-player-cell small {{
       display: block;
       margin-top: 2px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }}
+    .match-champion-cell {{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }}
+    .match-champion-cell img {{
+      width: 30px;
+      height: 30px;
+      flex: 0 0 30px;
+      object-fit: cover;
+      border-radius: 7px;
+      border: 1px solid rgba(232, 238, 246, 0.16);
+      background: #0d141d;
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.16);
+    }}
+    .match-champion-cell span {{
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 800;
+    }}
+    .match-score-cell,
+    .match-kda-cell {{
+      white-space: nowrap;
+      overflow-wrap: normal;
+      word-break: normal;
+      text-align: right;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
     }}
     .role-pill {{
       display: inline-flex;
