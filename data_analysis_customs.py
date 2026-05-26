@@ -50,13 +50,13 @@ MVP_WEIGHTS = {
     "Games": 0.05,
 }
 ROLE_SCORE_WEIGHTS = {
-    "Role Net Wins": 0.25,
-    "Role KDA": 0.13,
-    "Role Kill Participation": 0.17,
-    "Role Champion Pool": 0.10,
+    "Role Net Wins": 0.15,
+    "Role KDA": 0.10,
+    "Role Kill Participation": 0.10,
+    "Role Champion Pool": 0.05,
     "Role Games": 0.05,
     "Role Fit": 0.25,
-    "Overall MVP": 0.05,
+    "Overall MVP": 0.30,
 }
 SPOTLIGHT_EXCLUDED_PLAYERS = {"rich"}
 MOST_CONTESTED_EXCLUDED_CHAMPIONS = {"qiyana"}
@@ -5108,7 +5108,7 @@ def render_scoring_formula_explainer(
         ),
         (
             "Overall MVP",
-            "The player's overall MVP score divided by 100. It is only 5% of role score, so role performance still matters most.",
+            "The player's overall MVP score divided by 100. It is the largest team role-score component, so stronger players are prioritized before role-only stats break ties.",
         ),
     ]
     definition_html = "\n".join(
@@ -5194,7 +5194,7 @@ def render_scoring_formula_explainer(
             ),
             (
                 "Overall MVP",
-                "A small tie-breaker from the overall player score.",
+                "The largest role-score component, using the player's overall MVP score.",
                 f"{example_name} MVP score {score(float(player_example.get('mvp_score', 0)))} / 100",
                 pct(overall_mvp_score),
                 pct(ROLE_SCORE_WEIGHTS["Overall MVP"]),
