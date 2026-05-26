@@ -2972,6 +2972,7 @@ def render_head_to_head_script() -> str:
     return """
     const h2hState = { role: "all", player: "all" };
     const h2hItems = Array.from(document.querySelectorAll("[data-h2h-item]"));
+    const h2hHeatmapRows = Array.from(document.querySelectorAll("[data-h2h-heatmap-row]"));
     const h2hCount = document.querySelector("[data-h2h-count]");
     const h2hEmpty = document.querySelector("[data-h2h-empty]");
 
@@ -2988,6 +2989,11 @@ def render_head_to_head_script() -> str:
         const matches = h2hMatches(item);
         item.style.display = matches ? "" : "none";
         if (matches && item.matches("[data-h2h-table-row]")) visible += 1;
+      });
+      h2hHeatmapRows.forEach(row => {
+        const roleMatches = h2hState.role === "all" || row.dataset.h2hRole === h2hState.role;
+        const playerMatches = h2hState.player === "all" || row.dataset.h2hHeatmapPlayer === h2hState.player;
+        row.style.display = roleMatches && playerMatches ? "" : "none";
       });
       document.querySelectorAll("[data-h2h-role-filter]").forEach(button => {
         button.classList.toggle("active", button.dataset.h2hRoleFilter === h2hState.role);
@@ -3119,7 +3125,7 @@ def render_head_to_head_heatmaps(rows: Sequence[dict[str, object]]) -> str:
                 )
             body.append(
                 f"""
-                <tr>
+                <tr data-h2h-heatmap-row data-h2h-role="{html_attr(role)}" data-h2h-heatmap-player="{html_attr(player)}">
                   <th>{escape(player)}<small>{integer(player_games[player])} games</small></th>
                   {''.join(cells)}
                 </tr>
