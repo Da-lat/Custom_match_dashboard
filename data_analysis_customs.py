@@ -6283,20 +6283,29 @@ def build_dashboard(
       top: 0;
       right: 0;
       z-index: 9999;
-      width: 5px;
-      height: 5px;
+      width: 14px;
+      height: 14px;
       display: block;
-      overflow: hidden;
-      background: rgba(240, 201, 106, 0.08);
-      border-radius: 0 0 0 2px;
+      background: transparent;
       text-indent: -999px;
     }}
-    .hidden-page-link:hover,
-    .hidden-page-link:focus-visible {{
-      width: 12px;
-      height: 12px;
+    .hidden-page-link::after {{
+      content: "";
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 2px;
+      height: 2px;
+      background: rgba(240, 201, 106, 0.22);
+      border-radius: 0 0 0 1px;
+    }}
+    .hidden-page-link:hover::after,
+    .hidden-page-link:focus-visible::after {{
       background: rgba(240, 201, 106, 0.8);
-      outline: 1px solid rgba(240, 201, 106, 0.95);
+      box-shadow: 0 0 0 2px rgba(240, 201, 106, 0.18);
+    }}
+    .hidden-page-link:focus-visible {{
+      outline: 1px solid rgba(240, 201, 106, 0.8);
     }}
     main {{
       max-width: 1320px;
