@@ -713,9 +713,10 @@ def player_role_score_rows(
     player_role_rows: Sequence[dict[str, object]],
     mvp_rows: Sequence[dict[str, object]],
 ) -> list[dict[str, object]]:
+    eligible_role_rows = without_spotlight_excluded_players(player_role_rows)
     mvp_by_name = {str(row["name"]): row for row in mvp_rows}
     role_rows_by_player: dict[str, list[dict[str, object]]] = defaultdict(list)
-    for row in player_role_rows:
+    for row in eligible_role_rows:
         role = str(row.get("role", ""))
         if role in ROLE_ORDER:
             role_rows_by_player[str(row.get("name", ""))].append(row)
@@ -733,11 +734,11 @@ def player_role_score_rows(
         for rank, row in enumerate(ranked_rows, start=1):
             role_rank_by_player_role[(name, str(row.get("role", "")))] = rank
 
-    net_win_low, net_win_high = metric_bounds(player_role_rows, "net_wins")
-    kda_low, kda_high = metric_bounds(player_role_rows, "kda_ratio")
-    kp_low, kp_high = metric_bounds(player_role_rows, "kill_participation")
+    net_win_low, net_win_high = metric_bounds(eligible_role_rows, "net_wins")
+    kda_low, kda_high = metric_bounds(eligible_role_rows, "kda_ratio")
+    kp_low, kp_high = metric_bounds(eligible_role_rows, "kill_participation")
     rows = []
-    for role_row in player_role_rows:
+    for role_row in eligible_role_rows:
         role = str(role_row.get("role", ""))
         if role not in ROLE_ORDER:
             continue
@@ -809,7 +810,9 @@ def build_tiered_teams(
     player_rows: Sequence[dict[str, object]],
     role_score_rows: Sequence[dict[str, object]],
 ) -> tuple[list[dict[str, object]], list[str]]:
-    all_players = {str(row["name"]) for row in player_rows}
+    all_players = {
+        str(row["name"]) for row in without_spotlight_excluded_players(player_rows)
+    }
     candidates_by_role = {
         role: sorted(
             [row for row in role_score_rows if str(row["role"]) == role],
@@ -2077,41 +2080,92 @@ def add_player_role_breakdowns(
             )
 
 
-def team_table(title: str, rows: Sequence[Appearance], css_class: str) -> str:
-    ordered_rows = sorted(rows, key=lambda row: role_sort(row.role))
+def match_player_cell(row: Appearance, *, mirrored: bool = False) -> str:
+    side_class = " mirrored" if mirrored else ""
+    return (
+        f'<span class="match-player-cell{side_class}">'
+        f'<strong>{escape(row.name)}</strong><small>{escape(row.player)}</small>'
+        f'</span>'
+    )
+
+
+def match_champion_cell(row: Appearance, *, mirrored: bool = False) -> str:
+    champion = row.champion
+    side_class = " mirrored" if mirrored else ""
+    return (
+        f'<span class="match-champion-cell{side_class}">'
+        f'<img src="{html_attr(champion_icon_url(champion))}" alt="{html_attr(champion)}">'
+        f'<span>{escape(champion)}</span>'
+        f'</span>'
+    )
+
+
+def render_match_scoreboard(
+    win_rows: Sequence[Appearance], lose_rows: Sequence[Appearance]
+) -> str:
+    win_by_role = {row.role: row for row in win_rows}
+    lose_by_role = {row.role: row for row in lose_rows}
     body = []
-    for row in ordered_rows:
-        champion = row.champion
+    for role in ROLE_ORDER:
+        win_row = win_by_role.get(role)
+        lose_row = lose_by_role.get(role)
+        if not win_row or not lose_row:
+            continue
         body.append(
             f"""
             <tr>
-              <td><span class="role-pill">{escape(row.role)}</span></td>
-              <td class="match-player-cell"><strong>{escape(row.name)}</strong><small>{escape(row.player)}</small></td>
-              <td><span class="match-champion-cell"><img src="{html_attr(champion_icon_url(champion))}" alt="{html_attr(champion)}"><span>{escape(champion)}</span></span></td>
-              <td class="match-score-cell">{row.kills}/{row.deaths}/{row.assists}</td>
-              <td class="match-kda-cell">{two_decimal(row.kda_ratio)}</td>
+              <td><span class="role-pill">{escape(win_row.role)}</span></td>
+              <td>{match_player_cell(win_row)}</td>
+              <td class="match-score-cell">{win_row.kills}/{win_row.deaths}/{win_row.assists}</td>
+              <td class="match-kda-cell">{two_decimal(win_row.kda_ratio)}</td>
+              <td>{match_champion_cell(win_row)}</td>
+              <td class="match-versus-cell">vs</td>
+              <td>{match_champion_cell(lose_row, mirrored=True)}</td>
+              <td class="match-kda-cell">{two_decimal(lose_row.kda_ratio)}</td>
+              <td class="match-score-cell">{lose_row.kills}/{lose_row.deaths}/{lose_row.assists}</td>
+              <td>{match_player_cell(lose_row, mirrored=True)}</td>
+              <td><span class="role-pill">{escape(lose_row.role)}</span></td>
             </tr>
             """
         )
     return f"""
-    <div class="match-team {css_class}">
-      <div class="team-heading">
-        <h4>{escape(title)}</h4>
-        <strong>{sum(row.kills for row in rows)} kills</strong>
+    <div class="match-scoreboard">
+      <div class="match-scoreboard-heading">
+        <div class="winning-team">
+          <h4>Winning Team</h4>
+          <strong>{sum(row.kills for row in win_rows)} kills</strong>
+        </div>
+        <span>Head to Head</span>
+        <div class="losing-team">
+          <h4>Losing Team</h4>
+          <strong>{sum(row.kills for row in lose_rows)} kills</strong>
+        </div>
       </div>
-      <table>
-        <colgroup>
-          <col class="match-role-col">
-          <col class="match-player-col">
-          <col class="match-champion-col">
-          <col class="match-score-col">
-          <col class="match-kda-col">
-        </colgroup>
-        <thead>
-          <tr><th>Role</th><th>Player</th><th>Champion</th><th>K/D/A</th><th>KDA</th></tr>
-        </thead>
-        <tbody>{''.join(body)}</tbody>
-      </table>
+      <div class="match-scoreboard-wrap">
+        <table class="match-scoreboard-table">
+          <colgroup>
+            <col class="match-role-col">
+            <col class="match-player-col">
+            <col class="match-score-col">
+            <col class="match-kda-col">
+            <col class="match-champion-col">
+            <col class="match-versus-col">
+            <col class="match-champion-col">
+            <col class="match-kda-col">
+            <col class="match-score-col">
+            <col class="match-player-col">
+            <col class="match-role-col">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Role</th><th>Player</th><th>K/D/A</th><th>KDA</th><th>Champion</th>
+              <th></th>
+              <th>Champion</th><th>KDA</th><th>K/D/A</th><th>Player</th><th>Role</th>
+            </tr>
+          </thead>
+          <tbody>{''.join(body)}</tbody>
+        </table>
+      </div>
     </div>
     """
 
@@ -2154,10 +2208,7 @@ def render_match_history(appearances: Sequence[Appearance]) -> str:
                   <span class="loss-score">Loss {lose_kills}</span>
                 </div>
               </div>
-              <div class="match-teams">
-                {team_table("Winning Team", win_rows, "winning-team")}
-                {team_table("Losing Team", lose_rows, "losing-team")}
-              </div>
+              {render_match_scoreboard(win_rows, lose_rows)}
             </article>
             """
         )
@@ -4316,15 +4367,26 @@ def render_player_showcase_page(
     main_page_name: str,
     teams_page_name: str,
 ) -> str:
-    player_by_name = {str(row.get("name", "")): row for row in player_rows}
-    mvp_by_name = {str(row.get("name", "")): row for row in mvp_rows}
+    showcase_player_rows = without_spotlight_excluded_players(player_rows)
+    showcase_player_names = {str(row.get("name", "")) for row in showcase_player_rows}
+    player_by_name = {str(row.get("name", "")): row for row in showcase_player_rows}
+    mvp_by_name = {
+        str(row.get("name", "")): row
+        for row in mvp_rows
+        if str(row.get("name", "")) in showcase_player_names
+    }
     records_by_name: dict[str, list[Appearance]] = defaultdict(list)
     for appearance in appearances:
-        records_by_name[appearance.name].append(appearance)
+        if appearance.name in showcase_player_names:
+            records_by_name[appearance.name].append(appearance)
     for records in records_by_name.values():
         records.sort(key=lambda row: (row.timestamp, row.match_id))
 
-    ordered_names = [str(row.get("name", "")) for row in mvp_rows if str(row.get("name", ""))]
+    ordered_names = [
+        str(row.get("name", ""))
+        for row in mvp_rows
+        if str(row.get("name", "")) in showcase_player_names
+    ]
     for name in sorted(player_by_name):
         if name not in ordered_names:
             ordered_names.append(name)
@@ -4332,7 +4394,7 @@ def render_player_showcase_page(
     games_rank = {
         str(row.get("name", "")): index
         for index, row in enumerate(
-            sorted(player_rows, key=lambda row: (-int(row.get("games", 0)), str(row.get("name", "")))),
+            sorted(showcase_player_rows, key=lambda row: (-int(row.get("games", 0)), str(row.get("name", "")))),
             start=1,
         )
     }
@@ -4340,7 +4402,7 @@ def render_player_showcase_page(
         str(row.get("name", "")): index
         for index, row in enumerate(
             sorted(
-                player_rows,
+                showcase_player_rows,
                 key=lambda row: (-int(row.get("unique_champions", 0)), -int(row.get("games", 0)), str(row.get("name", ""))),
             ),
             start=1,
@@ -4350,7 +4412,7 @@ def render_player_showcase_page(
         str(row.get("name", "")): index
         for index, row in enumerate(
             sorted(
-                [row for row in player_rows if int(row.get("games", 0)) >= MIN_PLAYER_GAMES],
+                [row for row in showcase_player_rows if int(row.get("games", 0)) >= MIN_PLAYER_GAMES],
                 key=lambda row: (
                     -float(row.get("champion_pool_rate", 0)),
                     -int(row.get("unique_champions", 0)),
@@ -4361,7 +4423,8 @@ def render_player_showcase_page(
         )
     }
     field_avg_deaths = safe_div(
-        sum(float(row.get("avg_deaths", 0)) for row in player_rows), len(player_rows)
+        sum(float(row.get("avg_deaths", 0)) for row in showcase_player_rows),
+        len(showcase_player_rows),
     )
 
     options = []
@@ -6502,53 +6565,67 @@ def build_dashboard(
       background: #f8e3e6;
       color: #9d2837;
     }}
-    .match-teams {{
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0;
-    }}
-    .match-team {{
+    .match-scoreboard {{
       min-width: 0;
-      overflow-x: hidden;
     }}
-    .match-team + .match-team {{
-      border-left: 1px solid var(--line);
+    .match-scoreboard-heading {{
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      align-items: stretch;
+      border-bottom: 1px solid var(--line);
     }}
-    .team-heading {{
+    .match-scoreboard-heading > div {{
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 10px;
+      min-width: 0;
       padding: 12px 16px;
-      border-bottom: 1px solid var(--line);
     }}
-    .team-heading h4 {{
+    .match-scoreboard-heading > span {{
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 14px;
+      border-left: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }}
+    .match-scoreboard-heading h4 {{
       margin: 0;
       font-size: 0.9rem;
-      text-transform: uppercase;
       letter-spacing: 0;
+      text-transform: uppercase;
     }}
-    .winning-team .team-heading {{
+    .match-scoreboard-heading .winning-team {{
       background: #eef8f3;
       color: #166547;
     }}
-    .losing-team .team-heading {{
+    .match-scoreboard-heading .losing-team {{
       background: #fff0f2;
       color: #9d2837;
     }}
-    .match-team table {{
-      font-size: 0.86rem;
-      min-width: 0;
+    .match-scoreboard-wrap {{
+      overflow-x: auto;
+    }}
+    .match-scoreboard-table {{
+      min-width: 1120px;
       table-layout: fixed;
+      font-size: 0.86rem;
     }}
     .match-role-col {{
-      width: 78px;
+      width: 66px;
     }}
     .match-player-col {{
-      width: 31%;
+      width: 145px;
     }}
     .match-champion-col {{
-      width: 31%;
+      width: 145px;
     }}
     .match-score-col {{
       width: 76px;
@@ -6556,13 +6633,20 @@ def build_dashboard(
     .match-kda-col {{
       width: 54px;
     }}
-    .match-team thead th {{
+    .match-versus-col {{
+      width: 42px;
+    }}
+    .match-scoreboard-table thead th {{
       position: static;
       padding: 8px 10px;
     }}
-    .match-team td {{
+    .match-scoreboard-table td {{
       padding: 9px 10px;
       vertical-align: middle;
+    }}
+    .match-scoreboard-table th:nth-child(n+7),
+    .match-scoreboard-table td:nth-child(n+7) {{
+      text-align: right;
     }}
     .match-player-cell strong {{
       display: block;
@@ -6576,6 +6660,9 @@ def build_dashboard(
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }}
+    .match-player-cell.mirrored {{
+      text-align: right;
     }}
     .match-champion-cell {{
       display: flex;
@@ -6599,6 +6686,20 @@ def build_dashboard(
       text-overflow: ellipsis;
       white-space: nowrap;
       font-weight: 800;
+    }}
+    .match-champion-cell.mirrored {{
+      justify-content: flex-end;
+    }}
+    .match-champion-cell.mirrored img {{
+      order: 2;
+    }}
+    .match-versus-cell {{
+      color: var(--gold);
+      font-size: 0.72rem;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      text-align: center;
+      text-transform: uppercase;
     }}
     .match-score-cell,
     .match-kda-cell {{
@@ -6999,12 +7100,12 @@ def build_dashboard(
       background: #131d29;
     }}
     .win-score,
-    .winning-team .team-heading {{
+    .match-scoreboard-heading .winning-team {{
       background: rgba(79, 196, 139, 0.16);
       color: #8ee1b8;
     }}
     .loss-score,
-    .losing-team .team-heading {{
+    .match-scoreboard-heading .losing-team {{
       background: rgba(255, 111, 129, 0.14);
       color: #ff9aa7;
     }}
@@ -7097,8 +7198,8 @@ def build_dashboard(
       .match-browser select, .match-browser .card-search, .match-count {{ grid-column: 1 / -1; }}
       .player-pool-browser {{ grid-template-columns: 1fr 1fr; }}
       .player-pool-browser select, .player-pool-browser .card-search, .pool-count {{ grid-column: 1 / -1; }}
-      .match-teams {{ grid-template-columns: 1fr; }}
-      .match-team + .match-team {{ border-left: 0; border-top: 1px solid var(--line); }}
+      .match-scoreboard-heading {{ grid-template-columns: 1fr; }}
+      .match-scoreboard-heading > span {{ min-height: 34px; border-left: 0; border-right: 0; }}
       .bar-row {{ grid-template-columns: 34px minmax(0, 1fr) auto; gap: 8px; }}
       .bar-row::before {{ grid-column: 1; grid-row: 1; }}
       .bar-label {{ grid-column: 2; grid-row: 1; }}
