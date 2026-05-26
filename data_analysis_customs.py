@@ -3276,7 +3276,7 @@ def render_refresh_script() -> str:
         } catch (error) {
           if (status) {
             status.dataset.state = "error";
-            status.textContent = "Refresh unavailable outside Netlify.";
+            status.textContent = error?.message || "Refresh unavailable. Check the Netlify Function logs.";
           }
         } finally {
           button.disabled = false;

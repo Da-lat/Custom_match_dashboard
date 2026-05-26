@@ -1,8 +1,21 @@
 exports.handler = async function handler(event) {
+  const headers = { "content-type": "application/json" };
+
+  if (event.httpMethod === "GET") {
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        ok: true,
+        buildHookConfigured: Boolean(process.env.NETLIFY_BUILD_HOOK_URL),
+      }),
+    };
+  }
+
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
-      headers: { "content-type": "application/json" },
+      headers,
       body: JSON.stringify({ error: "Use POST to queue a dashboard refresh." }),
     };
   }
@@ -11,9 +24,10 @@ exports.handler = async function handler(event) {
   if (!buildHookUrl) {
     return {
       statusCode: 500,
-      headers: { "content-type": "application/json" },
+      headers,
       body: JSON.stringify({
-        error: "NETLIFY_BUILD_HOOK_URL is not configured.",
+        error:
+          "Refresh is deployed, but NETLIFY_BUILD_HOOK_URL is not set in Netlify environment variables.",
       }),
     };
   }
@@ -23,7 +37,7 @@ exports.handler = async function handler(event) {
     if (!response.ok) {
       return {
         statusCode: 502,
-        headers: { "content-type": "application/json" },
+        headers,
         body: JSON.stringify({
           error: `Netlify build hook returned ${response.status}.`,
         }),
@@ -32,7 +46,7 @@ exports.handler = async function handler(event) {
 
     return {
       statusCode: 202,
-      headers: { "content-type": "application/json" },
+      headers,
       body: JSON.stringify({
         message: "Refresh queued. Reload after the Netlify deploy finishes.",
       }),
@@ -40,7 +54,7 @@ exports.handler = async function handler(event) {
   } catch (error) {
     return {
       statusCode: 500,
-      headers: { "content-type": "application/json" },
+      headers,
       body: JSON.stringify({ error: "Unable to queue Netlify refresh." }),
     };
   }
