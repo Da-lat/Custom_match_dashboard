@@ -1519,6 +1519,83 @@ def render_popular_champions_strip(rows: Sequence[dict[str, object]], *, limit: 
     """
 
 
+def render_award_symbol(icon_name: str) -> str:
+    symbols = {
+        "crown": """
+          <svg class="award-symbol-svg" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+            <path d="M12 25l10 9 10-17 10 17 10-9-4 25H16z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+            <path d="M18 50h28" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+        """,
+        "diamond": """
+          <svg class="award-symbol-svg" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+            <path d="M18 12h28l10 15-24 28L8 27z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+            <path d="M18 12l14 43 14-43M8 27h48" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>
+          </svg>
+        """,
+        "crosshair": """
+          <svg class="award-symbol-svg" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+            <circle cx="32" cy="32" r="18" fill="none" stroke="currentColor" stroke-width="4"/>
+            <circle cx="32" cy="32" r="5" fill="currentColor"/>
+            <path d="M32 8v12M32 44v12M8 32h12M44 32h12" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+        """,
+        "wheel": """
+          <svg class="award-symbol-svg" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+            <circle cx="32" cy="32" r="20" fill="none" stroke="currentColor" stroke-width="4"/>
+            <circle cx="32" cy="32" r="5" fill="currentColor"/>
+            <path d="M32 12v15M32 37v15M12 32h15M37 32h15M18 18l11 11M35 35l11 11M46 18L35 29M29 35L18 46" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        """,
+        "fan": """
+          <svg class="award-symbol-svg" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+            <path d="M32 52V16" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+            <path d="M32 52c-9-8-16-17-15-29 10 1 16 10 15 29zM32 52c9-8 16-17 15-29-10 1-16 10-15 29z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+            <path d="M19 52h26" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+        """,
+        "warning": """
+          <svg class="award-symbol-svg" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+            <path d="M32 10l25 44H7z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+            <path d="M32 25v14" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+            <circle cx="32" cy="47" r="3" fill="currentColor"/>
+          </svg>
+        """,
+        "shield": """
+          <svg class="award-symbol-svg" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+            <path d="M32 8l21 8v16c0 13-8 22-21 26-13-4-21-13-21-26V16z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+            <path d="M24 32l6 7 12-15" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        """,
+        "clash": """
+          <svg class="award-symbol-svg" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+            <path d="M18 11l35 35M46 11L11 46" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+            <path d="M12 52l8-8M52 52l-8-8" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+        """,
+        "spark": """
+          <svg class="award-symbol-svg" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+            <path d="M32 7l6 19 19 6-19 6-6 19-6-19-19-6 19-6z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+            <path d="M48 8l2 7 7 2-7 2-2 7-2-7-7-2 7-2z" fill="currentColor"/>
+          </svg>
+        """,
+        "lane": """
+          <svg class="award-symbol-svg" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+            <rect x="16" y="16" width="32" height="32" rx="6" fill="none" stroke="currentColor" stroke-width="4" transform="rotate(45 32 32)"/>
+            <circle cx="24" cy="24" r="4" fill="currentColor"/>
+            <circle cx="40" cy="40" r="4" fill="currentColor"/>
+          </svg>
+        """,
+        "leaf": """
+          <svg class="award-symbol-svg" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+            <path d="M51 13c-18 1-34 11-36 29-1 8 5 12 13 10 18-3 25-21 23-39z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+            <path d="M18 49c9-13 19-21 31-30" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+        """,
+    }
+    return symbols.get(icon_name, symbols["spark"])
+
+
 def render_awards(awards: Sequence[dict[str, object]]) -> str:
     award_icon_map = {
         "WR": "crown",
@@ -1551,7 +1628,7 @@ def render_awards(awards: Sequence[dict[str, object]]) -> str:
             icon_name = award_icon_map.get(badge.upper(), "spark")
             visual = (
                 f'<div class="award-icon award-badge award-symbol award-symbol-{html_attr(icon_name)}">'
-                f'<i></i>'
+                f'{render_award_symbol(icon_name)}'
                 f'</div>'
             )
         cards.append(
@@ -1589,9 +1666,19 @@ def render_bar_chart(
         max_value = max((float(row.get(value_key, 0)) for row in chart_rows), default=1)
     max_value = max(max_value, 0.01)
     rendered = []
-    for row in chart_rows:
+    bar_accents = ("#62a8ff", "#4fc48b", "#f0c96a", "#b596ff", "#ff6f81")
+    for index, row in enumerate(chart_rows, start=1):
         value = float(row.get(value_key, 0))
         width = max(2.0, min(100.0, value / max_value * 100))
+        label_value = str(row.get(label_key, "-"))
+        label_icon = ""
+        label_modifier = ""
+        if label_key == "champion" and label_value and label_value != "-":
+            label_modifier = " bar-label-with-icon"
+            label_icon = (
+                f'<img class="bar-label-icon" src="{html_attr(champion_icon_url(label_value))}" '
+                f'alt="{html_attr(label_value)}">'
+            )
         footer = ""
         if footer_key:
             footer_value = row.get(footer_key, "")
@@ -1603,9 +1690,9 @@ def render_bar_chart(
             footer = f"<small>{escape(footer_text)}</small>"
         rendered.append(
             f"""
-            <div class="bar-row">
-              <div class="bar-label">
-                <span>{escape(str(row.get(label_key, "-")))}</span>
+            <div class="bar-row" data-rank="{index:02d}" style="--bar-accent: {bar_accents[(index - 1) % len(bar_accents)]};">
+              <div class="bar-label{label_modifier}">
+                <span class="bar-label-main">{label_icon}<span class="bar-label-text">{escape(label_value)}</span></span>
                 {footer}
               </div>
               <div class="bar-track"><div class="bar-fill" style="width: {width:.2f}%"></div></div>
@@ -4864,13 +4951,17 @@ def build_dashboard(
       gap: 8px;
       min-height: 24px;
       max-width: 560px;
+      padding: 5px 6px;
+    }}
+    .compact-bar-chart .bar-row::before {{
+      display: none;
     }}
     .compact-bar-chart .bar-label {{
       display: grid;
       grid-template-columns: 1fr;
       gap: 0;
     }}
-    .compact-bar-chart .bar-label span {{
+    .compact-bar-chart .bar-label-text {{
       font-size: 0.92rem;
     }}
     .compact-bar-chart .bar-label small {{
@@ -4904,6 +4995,17 @@ def build_dashboard(
     }}
     .chart-panel, .svg-panel {{
       padding: 16px;
+    }}
+    .chart-panel h3 {{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }}
+    .chart-panel h3::after {{
+      content: "";
+      height: 1px;
+      flex: 1;
+      background: linear-gradient(90deg, var(--line), transparent);
     }}
     .unplayed-panel {{
       display: flex;
@@ -4957,40 +5059,95 @@ def build_dashboard(
     }}
     .bar-chart {{
       display: grid;
-      gap: 12px;
+      gap: 10px;
       margin-top: 14px;
     }}
     .bar-row {{
+      --bar-accent: var(--blue);
       display: grid;
-      grid-template-columns: minmax(150px, 1fr) 3fr minmax(56px, auto);
+      grid-template-columns: 34px minmax(150px, 1fr) 3fr minmax(56px, auto);
       align-items: center;
-      gap: 12px;
-      min-height: 36px;
+      gap: 10px;
+      min-height: 46px;
+      padding: 7px 8px;
+      border: 1px solid rgba(151, 164, 181, 0.16);
+      border-radius: 8px;
+      background:
+        linear-gradient(90deg, color-mix(in srgb, var(--bar-accent) 20%, transparent), transparent 62%),
+        #101924;
+    }}
+    .bar-row::before {{
+      content: attr(data-rank);
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      color: var(--bar-accent);
+      background: rgba(8, 13, 19, 0.92);
+      border: 1px solid color-mix(in srgb, var(--bar-accent) 38%, var(--line));
+      font-size: 0.7rem;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
     }}
     .bar-label {{
       min-width: 0;
+      display: grid;
+      gap: 2px;
     }}
-    .bar-label span {{
+    .bar-label-main {{
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 800;
+    }}
+    .bar-label-text {{
       display: block;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-weight: 700;
+    }}
+    .bar-label-icon {{
+      width: 30px;
+      height: 30px;
+      flex: 0 0 30px;
+      object-fit: cover;
+      border-radius: 7px;
+      border: 1px solid rgba(17, 25, 35, 0.18);
+      box-shadow: 0 6px 14px rgba(17, 25, 35, 0.14);
+      background: #0d141d;
+    }}
+    .bar-label small {{
+      display: block;
+      padding-left: 0;
     }}
     .bar-track {{
-      height: 12px;
-      background: #e8edf3;
+      position: relative;
+      height: 13px;
+      background: #233246;
       border-radius: 999px;
       overflow: hidden;
+      box-shadow: inset 0 1px 2px rgba(17, 25, 35, 0.12);
     }}
     .bar-fill {{
       height: 100%;
-      background: linear-gradient(90deg, var(--blue), var(--green));
+      background: linear-gradient(90deg, var(--bar-accent), var(--green));
       border-radius: inherit;
+      box-shadow: 0 0 14px color-mix(in srgb, var(--bar-accent) 36%, transparent);
+    }}
+    .bar-fill::after {{
+      content: "";
+      display: block;
+      width: 100%;
+      height: 45%;
+      border-radius: inherit;
+      background: rgba(255, 255, 255, 0.22);
     }}
     .bar-row b {{
       text-align: right;
       font-variant-numeric: tabular-nums;
+      color: #eef4fb;
     }}
     .combo-chart {{
       display: grid;
@@ -5186,233 +5343,14 @@ def build_dashboard(
         radial-gradient(circle at 50% 42%, rgba(240, 201, 106, 0.22), rgba(13, 20, 29, 0) 58%),
         #0d141d;
     }}
-    .award-symbol i,
-    .award-symbol i::before,
-    .award-symbol i::after {{
-      content: "";
-      position: absolute;
+    .award-symbol {{
+      place-items: center;
+    }}
+    .award-symbol-svg {{
+      width: 43px;
+      height: 43px;
       display: block;
-    }}
-    .award-symbol-crown i {{
-      left: 16px;
-      top: 18px;
-      width: 30px;
-      height: 22px;
-      border-bottom: 12px solid currentColor;
-      border-left: 6px solid transparent;
-      border-right: 6px solid transparent;
-    }}
-    .award-symbol-crown i::before {{
-      left: -5px;
-      top: -10px;
-      width: 38px;
-      height: 18px;
-      background:
-        linear-gradient(135deg, transparent 0 42%, currentColor 43% 57%, transparent 58%),
-        linear-gradient(45deg, transparent 0 42%, currentColor 43% 57%, transparent 58%);
-    }}
-    .award-symbol-crown i::after {{
-      left: 2px;
-      top: 26px;
-      width: 26px;
-      height: 4px;
-      border-radius: 999px;
-      background: currentColor;
-    }}
-    .award-symbol-diamond i {{
-      left: 18px;
-      top: 15px;
-      width: 28px;
-      height: 28px;
-      transform: rotate(45deg);
-      border: 5px solid currentColor;
-      border-radius: 4px;
-    }}
-    .award-symbol-diamond i::after {{
-      left: 4px;
-      top: 4px;
-      width: 10px;
-      height: 10px;
-      background: currentColor;
-      border-radius: 2px;
-    }}
-    .award-symbol-crosshair i {{
-      left: 15px;
-      top: 15px;
-      width: 34px;
-      height: 34px;
-      border: 4px solid currentColor;
-      border-radius: 50%;
-    }}
-    .award-symbol-crosshair i::before {{
-      left: 13px;
-      top: -7px;
-      width: 4px;
-      height: 42px;
-      background: currentColor;
-    }}
-    .award-symbol-crosshair i::after {{
-      left: -7px;
-      top: 13px;
-      width: 42px;
-      height: 4px;
-      background: currentColor;
-    }}
-    .award-symbol-wheel i {{
-      left: 15px;
-      top: 15px;
-      width: 34px;
-      height: 34px;
-      border: 5px solid currentColor;
-      border-radius: 50%;
-    }}
-    .award-symbol-wheel i::before {{
-      left: 10px;
-      top: 10px;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: currentColor;
-      box-shadow: 0 -13px 0 currentColor, 0 13px 0 currentColor, 13px 0 0 currentColor, -13px 0 0 currentColor;
-    }}
-    .award-symbol-fan i {{
-      left: 29px;
-      top: 14px;
-      width: 7px;
-      height: 34px;
-      border-radius: 999px;
-      background: currentColor;
-      transform-origin: 50% 100%;
-      box-shadow: -12px 7px 0 currentColor, 12px 7px 0 currentColor;
-    }}
-    .award-symbol-fan i::before {{
-      left: -12px;
-      top: 25px;
-      width: 31px;
-      height: 5px;
-      border-radius: 999px;
-      background: currentColor;
-    }}
-    .award-symbol-warning i {{
-      left: 16px;
-      top: 14px;
-      width: 32px;
-      height: 30px;
-      background: currentColor;
-      clip-path: polygon(50% 0, 100% 100%, 0 100%);
-    }}
-    .award-symbol-warning i::before {{
-      left: 14px;
-      top: 10px;
-      width: 4px;
-      height: 11px;
-      border-radius: 999px;
-      background: #0d141d;
-    }}
-    .award-symbol-warning i::after {{
-      left: 14px;
-      top: 24px;
-      width: 4px;
-      height: 4px;
-      border-radius: 50%;
-      background: #0d141d;
-    }}
-    .award-symbol-shield i {{
-      left: 17px;
-      top: 12px;
-      width: 30px;
-      height: 38px;
-      background: currentColor;
-      clip-path: polygon(50% 0, 94% 14%, 88% 64%, 50% 100%, 12% 64%, 6% 14%);
-    }}
-    .award-symbol-shield i::after {{
-      left: 9px;
-      top: 9px;
-      width: 12px;
-      height: 18px;
-      border-right: 4px solid #0d141d;
-      border-bottom: 4px solid #0d141d;
-      transform: rotate(40deg);
-    }}
-    .award-symbol-clash i {{
-      left: 18px;
-      top: 15px;
-      width: 10px;
-      height: 36px;
-      border-radius: 999px;
-      background: currentColor;
-      transform: rotate(42deg);
-      box-shadow: 15px -15px 0 currentColor;
-    }}
-    .award-symbol-clash i::after {{
-      left: 7px;
-      top: 11px;
-      width: 7px;
-      height: 18px;
-      border-radius: 999px;
-      background: #0d141d;
-      transform: rotate(96deg);
-    }}
-    .award-symbol-spark i {{
-      left: 28px;
-      top: 11px;
-      width: 8px;
-      height: 42px;
-      border-radius: 999px;
-      background: currentColor;
-    }}
-    .award-symbol-spark i::before {{
-      left: -17px;
-      top: 17px;
-      width: 42px;
-      height: 8px;
-      border-radius: 999px;
-      background: currentColor;
-    }}
-    .award-symbol-spark i::after {{
-      left: -8px;
-      top: 8px;
-      width: 24px;
-      height: 24px;
-      border-right: 6px solid currentColor;
-      border-bottom: 6px solid currentColor;
-      transform: rotate(45deg);
-    }}
-    .award-symbol-lane i {{
-      left: 16px;
-      top: 16px;
-      width: 32px;
-      height: 32px;
-      border: 5px solid currentColor;
-      border-radius: 9px;
-      transform: rotate(45deg);
-    }}
-    .award-symbol-lane i::after {{
-      left: 8px;
-      top: 8px;
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: currentColor;
-      box-shadow: 12px 12px 0 currentColor;
-    }}
-    .award-symbol-leaf i {{
-      left: 16px;
-      top: 16px;
-      width: 34px;
-      height: 28px;
-      border-radius: 34px 0 34px 0;
-      background: currentColor;
-      transform: rotate(-25deg);
-    }}
-    .award-symbol-leaf i::after {{
-      left: 6px;
-      top: 12px;
-      width: 26px;
-      height: 4px;
-      border-radius: 999px;
-      background: #0d141d;
-      transform: rotate(28deg);
+      filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.28));
     }}
     .award-copy {{
       position: relative;
@@ -6182,7 +6120,11 @@ def build_dashboard(
       .player-pool-browser select, .player-pool-browser .card-search, .pool-count {{ grid-column: 1 / -1; }}
       .match-teams {{ grid-template-columns: 1fr; }}
       .match-team + .match-team {{ border-left: 0; border-top: 1px solid var(--line); }}
-      .bar-row {{ grid-template-columns: 1fr; gap: 6px; }}
+      .bar-row {{ grid-template-columns: 34px minmax(0, 1fr) auto; gap: 8px; }}
+      .bar-row::before {{ grid-column: 1; grid-row: 1; }}
+      .bar-label {{ grid-column: 2; grid-row: 1; }}
+      .bar-track {{ grid-column: 1 / -1; grid-row: 2; }}
+      .bar-row b {{ grid-column: 3; grid-row: 1; text-align: right; }}
       .combo-row {{ grid-template-columns: 1fr; gap: 6px; }}
       .role-champion-list {{ grid-template-columns: 1fr; }}
       .role-champion-row {{ grid-template-columns: minmax(120px, 1fr) 34px minmax(100px, 1.6fr); max-width: none; }}
@@ -6193,7 +6135,6 @@ def build_dashboard(
       .heatmap-table th:first-child {{ width: 90px; min-width: 0; max-width: none; }}
       .heatmap-table td {{ width: auto; min-width: 0; font-size: 0.72rem; }}
       .heatmap-table td small {{ font-size: 0.68rem; }}
-      .bar-row b {{ text-align: left; }}
       .combo-row b {{ text-align: left; }}
       .section-heading {{ align-items: stretch; flex-direction: column; }}
       .table-controls {{ justify-content: stretch; }}
