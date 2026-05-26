@@ -1520,6 +1520,22 @@ def render_popular_champions_strip(rows: Sequence[dict[str, object]], *, limit: 
 
 
 def render_awards(awards: Sequence[dict[str, object]]) -> str:
+    award_icon_map = {
+        "WR": "crown",
+        "KDA": "diamond",
+        "K": "crosshair",
+        "GP": "wheel",
+        "POOL": "fan",
+        "D": "warning",
+        "SAFE": "shield",
+        "VS": "clash",
+        "WIN": "spark",
+        "TOP": "lane",
+        "JUNG": "leaf",
+        "MID": "spark",
+        "BOT": "crosshair",
+        "SUPP": "shield",
+    }
     cards = []
     for index, award in enumerate(awards, start=1):
         champion = str(award.get("champion", "")).strip()
@@ -1532,7 +1548,12 @@ def render_awards(awards: Sequence[dict[str, object]]) -> str:
                 f'</div>'
             )
         else:
-            visual = f'<div class="award-icon award-badge">{escape(badge.upper())}</div>'
+            icon_name = award_icon_map.get(badge.upper(), "spark")
+            visual = (
+                f'<div class="award-icon award-badge award-symbol award-symbol-{html_attr(icon_name)}">'
+                f'<i></i>'
+                f'</div>'
+            )
         cards.append(
             f"""
             <article class="award-card award-theme-{html_attr(theme)}">
@@ -5160,10 +5181,238 @@ def build_dashboard(
     }}
     .award-badge {{
       color: var(--gold);
-      font-size: 0.84rem;
-      font-weight: 900;
-      text-align: center;
-      letter-spacing: 0.02em;
+      position: relative;
+      background:
+        radial-gradient(circle at 50% 42%, rgba(240, 201, 106, 0.22), rgba(13, 20, 29, 0) 58%),
+        #0d141d;
+    }}
+    .award-symbol i,
+    .award-symbol i::before,
+    .award-symbol i::after {{
+      content: "";
+      position: absolute;
+      display: block;
+    }}
+    .award-symbol-crown i {{
+      left: 16px;
+      top: 18px;
+      width: 30px;
+      height: 22px;
+      border-bottom: 12px solid currentColor;
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+    }}
+    .award-symbol-crown i::before {{
+      left: -5px;
+      top: -10px;
+      width: 38px;
+      height: 18px;
+      background:
+        linear-gradient(135deg, transparent 0 42%, currentColor 43% 57%, transparent 58%),
+        linear-gradient(45deg, transparent 0 42%, currentColor 43% 57%, transparent 58%);
+    }}
+    .award-symbol-crown i::after {{
+      left: 2px;
+      top: 26px;
+      width: 26px;
+      height: 4px;
+      border-radius: 999px;
+      background: currentColor;
+    }}
+    .award-symbol-diamond i {{
+      left: 18px;
+      top: 15px;
+      width: 28px;
+      height: 28px;
+      transform: rotate(45deg);
+      border: 5px solid currentColor;
+      border-radius: 4px;
+    }}
+    .award-symbol-diamond i::after {{
+      left: 4px;
+      top: 4px;
+      width: 10px;
+      height: 10px;
+      background: currentColor;
+      border-radius: 2px;
+    }}
+    .award-symbol-crosshair i {{
+      left: 15px;
+      top: 15px;
+      width: 34px;
+      height: 34px;
+      border: 4px solid currentColor;
+      border-radius: 50%;
+    }}
+    .award-symbol-crosshair i::before {{
+      left: 13px;
+      top: -7px;
+      width: 4px;
+      height: 42px;
+      background: currentColor;
+    }}
+    .award-symbol-crosshair i::after {{
+      left: -7px;
+      top: 13px;
+      width: 42px;
+      height: 4px;
+      background: currentColor;
+    }}
+    .award-symbol-wheel i {{
+      left: 15px;
+      top: 15px;
+      width: 34px;
+      height: 34px;
+      border: 5px solid currentColor;
+      border-radius: 50%;
+    }}
+    .award-symbol-wheel i::before {{
+      left: 10px;
+      top: 10px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 -13px 0 currentColor, 0 13px 0 currentColor, 13px 0 0 currentColor, -13px 0 0 currentColor;
+    }}
+    .award-symbol-fan i {{
+      left: 29px;
+      top: 14px;
+      width: 7px;
+      height: 34px;
+      border-radius: 999px;
+      background: currentColor;
+      transform-origin: 50% 100%;
+      box-shadow: -12px 7px 0 currentColor, 12px 7px 0 currentColor;
+    }}
+    .award-symbol-fan i::before {{
+      left: -12px;
+      top: 25px;
+      width: 31px;
+      height: 5px;
+      border-radius: 999px;
+      background: currentColor;
+    }}
+    .award-symbol-warning i {{
+      left: 16px;
+      top: 14px;
+      width: 32px;
+      height: 30px;
+      background: currentColor;
+      clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    }}
+    .award-symbol-warning i::before {{
+      left: 14px;
+      top: 10px;
+      width: 4px;
+      height: 11px;
+      border-radius: 999px;
+      background: #0d141d;
+    }}
+    .award-symbol-warning i::after {{
+      left: 14px;
+      top: 24px;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #0d141d;
+    }}
+    .award-symbol-shield i {{
+      left: 17px;
+      top: 12px;
+      width: 30px;
+      height: 38px;
+      background: currentColor;
+      clip-path: polygon(50% 0, 94% 14%, 88% 64%, 50% 100%, 12% 64%, 6% 14%);
+    }}
+    .award-symbol-shield i::after {{
+      left: 9px;
+      top: 9px;
+      width: 12px;
+      height: 18px;
+      border-right: 4px solid #0d141d;
+      border-bottom: 4px solid #0d141d;
+      transform: rotate(40deg);
+    }}
+    .award-symbol-clash i {{
+      left: 18px;
+      top: 15px;
+      width: 10px;
+      height: 36px;
+      border-radius: 999px;
+      background: currentColor;
+      transform: rotate(42deg);
+      box-shadow: 15px -15px 0 currentColor;
+    }}
+    .award-symbol-clash i::after {{
+      left: 7px;
+      top: 11px;
+      width: 7px;
+      height: 18px;
+      border-radius: 999px;
+      background: #0d141d;
+      transform: rotate(96deg);
+    }}
+    .award-symbol-spark i {{
+      left: 28px;
+      top: 11px;
+      width: 8px;
+      height: 42px;
+      border-radius: 999px;
+      background: currentColor;
+    }}
+    .award-symbol-spark i::before {{
+      left: -17px;
+      top: 17px;
+      width: 42px;
+      height: 8px;
+      border-radius: 999px;
+      background: currentColor;
+    }}
+    .award-symbol-spark i::after {{
+      left: -8px;
+      top: 8px;
+      width: 24px;
+      height: 24px;
+      border-right: 6px solid currentColor;
+      border-bottom: 6px solid currentColor;
+      transform: rotate(45deg);
+    }}
+    .award-symbol-lane i {{
+      left: 16px;
+      top: 16px;
+      width: 32px;
+      height: 32px;
+      border: 5px solid currentColor;
+      border-radius: 9px;
+      transform: rotate(45deg);
+    }}
+    .award-symbol-lane i::after {{
+      left: 8px;
+      top: 8px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 12px 12px 0 currentColor;
+    }}
+    .award-symbol-leaf i {{
+      left: 16px;
+      top: 16px;
+      width: 34px;
+      height: 28px;
+      border-radius: 34px 0 34px 0;
+      background: currentColor;
+      transform: rotate(-25deg);
+    }}
+    .award-symbol-leaf i::after {{
+      left: 6px;
+      top: 12px;
+      width: 26px;
+      height: 4px;
+      border-radius: 999px;
+      background: #0d141d;
+      transform: rotate(28deg);
     }}
     .award-copy {{
       position: relative;
@@ -5960,7 +6209,7 @@ def build_dashboard(
     <div class="topline">
       <div>
         <h1>LoL Customs Dashboard</h1>
-        <p>{len(matches)} matches, {len(appearances)} player games, {len(player_rows)} players, and {len(champion_rows)} champions. Stats are aggregated by real name, not summoner name.</p>
+        <p>{len(matches)} matches, {len(player_rows)} players, and {len(champion_rows)} champions. Stats are aggregated by real name, not summoner name.</p>
       </div>
       {render_refresh_control(generated_at)}
     </div>
