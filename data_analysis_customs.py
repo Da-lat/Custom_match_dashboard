@@ -59,6 +59,7 @@ ROLE_SCORE_WEIGHTS = {
     "Overall MVP": 0.05,
 }
 SPOTLIGHT_EXCLUDED_PLAYERS = {"rich"}
+MOST_CONTESTED_EXCLUDED_CHAMPIONS = {"qiyana"}
 TEAM_TIERS = ("S", "A", "B", "C", "D", "F")
 CHAMPION_ROSTER_VERSION = "16.10.1"
 CHAMPION_ROSTER_SOURCE_URL = (
@@ -532,6 +533,10 @@ def role_fit_score(rank: int) -> float:
 def champion_key(name: str) -> str:
     value = name.casefold().replace("&", "and")
     return "".join(character for character in value if character.isalnum())
+
+
+def is_most_contested_excluded_champion(name: object) -> bool:
+    return champion_key(str(name)) in MOST_CONTESTED_EXCLUDED_CHAMPIONS
 
 
 def champion_asset_id(name: str) -> str:
@@ -1366,7 +1371,14 @@ def build_awards(
         )
     )
     most_played_champion = find_first(
-        sorted(champion_rows, key=lambda row: -int(row["games"]))
+        sorted(
+            [
+                row
+                for row in champion_rows
+                if not is_most_contested_excluded_champion(row.get("champion", ""))
+            ],
+            key=lambda row: -int(row["games"]),
+        )
     )
     best_combo = find_first(
         sorted(combo_pool, key=lambda row: (-float(row["winrate"]), -int(row["games"])))
@@ -1630,7 +1642,8 @@ def render_table(
     searchable: bool = True,
     controls_html: str = "",
 ) -> str:
-    visible_rows = list(rows if limit is None else rows[:limit])
+    table_rows = without_spotlight_excluded_players(rows)
+    visible_rows = list(table_rows if limit is None else table_rows[:limit])
     search_html = (
         f'<input class="table-search" type="search" placeholder="Filter {html_attr(title)}" '
         f'data-table-filter="{html_attr(table_id)}">'
@@ -2018,6 +2031,8 @@ def render_player_role_heatmap(
     player_rows: Sequence[dict[str, object]],
     player_role_rows: Sequence[dict[str, object]],
 ) -> str:
+    player_rows = without_spotlight_excluded_players(player_rows)
+    player_role_rows = without_spotlight_excluded_players(player_role_rows)
     by_pair = {
         (str(row["name"]), str(row["role"])): row for row in player_role_rows
     }
@@ -2344,6 +2359,8 @@ def render_player_champion_pools(
     player_rows: Sequence[dict[str, object]],
     player_champion_rows: Sequence[dict[str, object]],
 ) -> str:
+    player_rows = without_spotlight_excluded_players(player_rows)
+    player_champion_rows = without_spotlight_excluded_players(player_champion_rows)
     rows_by_player: dict[str, list[dict[str, object]]] = defaultdict(list)
     for row in player_champion_rows:
         rows_by_player[str(row["name"])].append(row)
@@ -2486,6 +2503,8 @@ def team_combo_rows(
 ) -> list[dict[str, object]]:
     grouped: dict[tuple[int, str], set[str]] = defaultdict(set)
     for appearance in appearances:
+        if is_spotlight_excluded_player(appearance.name):
+            continue
         grouped[(appearance.match_id, appearance.side)].add(appearance.name)
 
     stats: dict[tuple[str, ...], dict[str, int]] = defaultdict(lambda: {"games": 0, "wins": 0})
@@ -5292,12 +5311,26 @@ def build_dashboard(
     four_rows = team_combo_rows(appearances, 4, TEAM_COMBO_MIN_GAMES[4])
     five_rows = team_combo_rows(appearances, 5, TEAM_COMBO_MIN_GAMES[5])
     add_player_role_breakdowns(player_rows, player_role_rows)
+    display_player_rows = without_spotlight_excluded_players(player_rows)
+    display_player_role_rows = without_spotlight_excluded_players(player_role_rows)
+    display_player_champion_rows = without_spotlight_excluded_players(
+        player_champion_rows
+    )
+    display_player_champion_role_rows = without_spotlight_excluded_players(
+        player_champion_role_rows
+    )
+    display_player_role_champion_pool = without_spotlight_excluded_players(
+        player_role_champion_pool
+    )
     mvp_rows = mvp_score_rows(player_rows)
     target_ban_rows = target_ban_score_rows(player_champion_rows, player_rows, mvp_rows)
     target_pick_rows = target_ban_score_rows(
         player_champion_role_rows, player_rows, mvp_rows
     )
     practice_pick_rows = practice_pick_score_rows(player_champion_rows, player_rows)
+    display_target_ban_rows = without_spotlight_excluded_players(target_ban_rows)
+    display_target_pick_rows = without_spotlight_excluded_players(target_pick_rows)
+    display_practice_pick_rows = without_spotlight_excluded_players(practice_pick_rows)
     best_mvp = find_first(mvp_rows)
     role_score_rows = player_role_score_rows(player_rows, player_role_rows, mvp_rows)
     tiered_teams, unused_team_players = build_tiered_teams(player_rows, role_score_rows)
@@ -5368,14 +5401,14 @@ def build_dashboard(
         key=lambda row: (float(row["winrate"]), -int(row["games"])),
     )
     top_kda_chart_rows = sorted(
-        qualify(player_rows, MIN_PLAYER_GAMES),
+        qualify(display_player_rows, MIN_PLAYER_GAMES),
         key=lambda row: (-float(row["kda_ratio"]), -int(row["games"])),
     )
     most_played_champion_rows = sorted(champion_rows, key=lambda row: -int(row["games"]))
     popular_champion_strip_rows = [
         row
         for row in most_played_champion_rows
-        if champion_key(str(row.get("champion", ""))) != champion_key("Qiyana")
+        if not is_most_contested_excluded_champion(row.get("champion", ""))
     ]
     top_champion_winrate_rows = sorted(
         qualify(champion_rows, MIN_CHAMPION_GAMES),
@@ -7300,8 +7333,8 @@ def build_dashboard(
 
     <section id="players" class="section tables-grid">
       <div class="section-title"><h2>Players</h2></div>
-      {render_player_role_heatmap(player_rows, player_role_rows)}
-      {render_table("player-summary", "Player Summary", player_rows, player_columns)}
+      {render_player_role_heatmap(display_player_rows, display_player_role_rows)}
+      {render_table("player-summary", "Player Summary", display_player_rows, player_columns)}
       {render_table("player-role", "Player Performance By Role", role_score_rows, player_role_columns)}
     </section>
 
@@ -7322,7 +7355,7 @@ def build_dashboard(
         <button type="button" class="orientation-button" data-pool-orientation="vertical">Vertical</button>
       </div>
       <div class="player-pool-grid pool-orientation-horizontal" data-card-container="champion-pools">
-        {render_player_champion_pools(player_rows, player_champion_rows)}
+        {render_player_champion_pools(display_player_rows, display_player_champion_rows)}
       </div>
     </section>
 
@@ -7344,7 +7377,7 @@ def build_dashboard(
         {render_bar_chart("Unique Champions By Role", role_champion_pool, "role", "unique_champions", integer, limit=5, footer_key="matches", footer_formatter=lambda value: f"{integer(value)} matches", class_name="compact-bar-chart")}
       </div>
       {render_role_champion_browser(role_champion_pool)}
-      {render_table("player-role-champion-pools", "Player Unique Champions By Role", player_role_champion_pool, player_role_pool_columns, controls_html=role_filter_control("player-role-champion-pools"))}
+      {render_table("player-role-champion-pools", "Player Unique Champions By Role", display_player_role_champion_pool, player_role_pool_columns, controls_html=role_filter_control("player-role-champion-pools"))}
     </section>
 
     <section id="combos" class="section">
@@ -7367,8 +7400,8 @@ def build_dashboard(
         <h2>Player Champion Deep Dive</h2>
         <p class="note">Use the filters to find any player, champion, or role combination.</p>
       </div>
-      {render_table("player-champion", "Player Champion Summary", player_champion_rows, [column for column in player_champion_role_columns if column[1] != "role"])}
-      {render_table("player-champion-role", "Player Champion Role Summary", player_champion_role_rows, player_champion_role_columns)}
+      {render_table("player-champion", "Player Champion Summary", display_player_champion_rows, [column for column in player_champion_role_columns if column[1] != "role"])}
+      {render_table("player-champion-role", "Player Champion Role Summary", display_player_champion_role_rows, player_champion_role_columns)}
     </section>
   </main>
   <script>
@@ -7693,7 +7726,7 @@ def build_dashboard(
       rebuildPoolPicker(poolCards[0].dataset.playerPoolId);
     }}
 
-    {render_ban_planner_script(target_ban_rows, target_pick_rows, player_rows)}
+    {render_ban_planner_script(display_target_ban_rows, display_target_pick_rows, display_player_rows)}
 
     document.querySelectorAll("[data-role-tab]").forEach(button => {{
       button.addEventListener("click", () => {{
@@ -7776,8 +7809,8 @@ def build_dashboard(
       </div>
     </section>
 
-    {render_target_ban_section(target_ban_rows, practice_pick_rows, player_rows)}
-    {render_scoring_formula_explainer(mvp_rows, role_score_rows, player_rows, player_role_rows)}
+    {render_target_ban_section(display_target_ban_rows, display_practice_pick_rows, display_player_rows)}
+    {render_scoring_formula_explainer(mvp_rows, role_score_rows, display_player_rows, display_player_role_rows)}
   </main>
   <script>{shared_script}</script>
 </body>
@@ -7787,11 +7820,11 @@ def build_dashboard(
     showcase_html = render_player_showcase_page(
         shared_style=shared_style,
         appearances=appearances,
-        player_rows=player_rows,
-        player_role_rows=player_role_rows,
-        player_champion_rows=player_champion_rows,
-        target_ban_rows=target_ban_rows,
-        practice_pick_rows=practice_pick_rows,
+        player_rows=display_player_rows,
+        player_role_rows=display_player_role_rows,
+        player_champion_rows=display_player_champion_rows,
+        target_ban_rows=display_target_ban_rows,
+        practice_pick_rows=display_practice_pick_rows,
         mvp_rows=mvp_rows,
         role_score_rows=role_score_rows,
         generated_at=generated_at,
