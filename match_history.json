@@ -1,0 +1,4821 @@
+[
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Sett",
+        "kda": "7/6/5"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Jarvan IV",
+        "kda": "6/1/17"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "MID",
+        "champion": "Brand",
+        "kda": "5/1/5"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "BOT",
+        "champion": "Jhin",
+        "kda": "10/1/15"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Seraphine",
+        "kda": "4/4/16"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Xordania",
+        "name": "Jordan",
+        "role": "TOP",
+        "champion": "Trundle",
+        "kda": "3/9/5"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "JUNGLE",
+        "champion": "Elise",
+        "kda": "3/6/5"
+      },
+      {
+        "player": "GothFemBoy2",
+        "name": "Iestyn",
+        "role": "MID",
+        "champion": "Orianna",
+        "kda": "1/2/1"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Vayne",
+        "kda": "3/8/2"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "SUPP",
+        "champion": "Shen",
+        "kda": "3/7/4"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-04T23:47:50.343695Z",
+    "checksum": "c0b4f155970ed80c24ba35080722a249a96d4378e7d13ffba1792ac6227ad009"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Poppy",
+        "kda": "6/2/6"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Xin Zhao",
+        "kda": "10/1/6"
+      },
+      {
+        "player": "GothFemBoy2",
+        "name": "Iestyn",
+        "role": "MID",
+        "champion": "Viktor",
+        "kda": "4/1/6"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Jinx",
+        "kda": "10/5/8"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Renata Glasc",
+        "kda": "2/5/16"
+      }
+    ],
+    "lose": [
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "TOP",
+        "champion": "Gnar",
+        "kda": "1/6/1"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Pantheon",
+        "kda": "4/4/4"
+      },
+      {
+        "player": "Kestros",
+        "name": "Dan",
+        "role": "MID",
+        "champion": "Neeko",
+        "kda": "1/5/1"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "BOT",
+        "champion": "Ashe",
+        "kda": "5/9/6"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "SUPP",
+        "champion": "Swain",
+        "kda": "3/8/7"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-05T23:39:23.741637Z",
+    "checksum": "ccade86fd7a1963b586286fdf9dc4654c882d0a1ac9080134eac8ecb607ca872"
+  },
+  {
+    "win": [
+      {
+        "player": "Jays Nemesis",
+        "name": "Andreas",
+        "role": "TOP",
+        "champion": "Kennen",
+        "kda": "8/2/3"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Amumu",
+        "kda": "6/6/19"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "MID",
+        "champion": "Anivia",
+        "kda": "2/5/7"
+      },
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "BOT",
+        "champion": "Caitlyn",
+        "kda": "18/7/16"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "SUPP",
+        "champion": "Neeko",
+        "kda": "6/5/18"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "TOP",
+        "champion": "Diana",
+        "kda": "8/6/2"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Darius",
+        "kda": "7/8/5"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "MID",
+        "champion": "Galio",
+        "kda": "1/4/6"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Aphelios",
+        "kda": "7/11/10"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "SUPP",
+        "champion": "Leona",
+        "kda": "2/11/10"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-06T22:16:54.588778Z",
+    "checksum": "efd0223b24b7d3b5d555f9e564f75cb65df4bb18c92951a61386350a27ba804f"
+  },
+  {
+    "win": [
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "TOP",
+        "champion": "Viktor",
+        "kda": "8/2/7"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Xin Zhao",
+        "kda": "6/0/11"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "MID",
+        "champion": "Riven",
+        "kda": "4/1/1"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Smolder",
+        "kda": "11/0/4"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Taric",
+        "kda": "1/2/17"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Cho'Gath",
+        "kda": "1/7/1"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Warwick",
+        "kda": "1/8/4"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "MID",
+        "champion": "Syndra",
+        "kda": "1/4/0"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "BOT",
+        "champion": "Jinx",
+        "kda": "2/3/0"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "SUPP",
+        "champion": "Thresh",
+        "kda": "0/8/4"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-06T23:03:43.142616Z",
+    "checksum": "259704abd38fdc1d56bc3c7341abb079302d2d2eaa2386aa22b9c2a9cdb6eb32"
+  },
+  {
+    "win": [
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "TOP",
+        "champion": "Sion",
+        "kda": "5/7/13"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "JUNGLE",
+        "champion": "Malphite",
+        "kda": "6/2/12"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "MID",
+        "champion": "Kassadin",
+        "kda": "5/4/7"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Kai'Sa",
+        "kda": "9/5/6"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "SUPP",
+        "champion": "Leona",
+        "kda": "1/4/14"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Xordania",
+        "name": "Jordan",
+        "role": "TOP",
+        "champion": "Sett",
+        "kda": "8/7/3"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "JUNGLE",
+        "champion": "Qiyana",
+        "kda": "4/5/4"
+      },
+      {
+        "player": "GothFemBoy2",
+        "name": "Iestyn",
+        "role": "MID",
+        "champion": "Syndra",
+        "kda": "5/7/2"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Ezreal",
+        "kda": "3/4/7"
+      },
+      {
+        "player": "Tiebo Riri",
+        "name": "Riri",
+        "role": "SUPP",
+        "champion": "Seraphine",
+        "kda": "2/3/9"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-07T20:36:30.559874Z",
+    "checksum": "9e95f281864c1af4cba68335e7923898b2c6bb9f00a5f84f1adf0292a2f27c0b"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Gangplank",
+        "kda": "14/6/7"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Talon",
+        "kda": "3/3/7"
+      },
+      {
+        "player": "GothFemBoy2",
+        "name": "Iestyn",
+        "role": "MID",
+        "champion": "Smolder",
+        "kda": "1/8/6"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Vayne",
+        "kda": "11/6/1"
+      },
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "SUPP",
+        "champion": "Soraka",
+        "kda": "0/6/10"
+      }
+    ],
+    "lose": [
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "TOP",
+        "champion": "Qiyana",
+        "kda": "3/8/5"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "JUNGLE",
+        "champion": "Nautilus",
+        "kda": "7/1/14"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "MID",
+        "champion": "LeBlanc",
+        "kda": "9/6/9"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Sivir",
+        "kda": "6/10/6"
+      },
+      {
+        "player": "Tiebo Riri",
+        "name": "Riri",
+        "role": "SUPP",
+        "champion": "Nami",
+        "kda": "3/4/11"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-07T21:59:07.493008Z",
+    "checksum": "d0dfda9e5ea27e65bd03dd34bc8cfb10294cbf4f4452f6d29b25ebb49ed0e32b"
+  },
+  {
+    "win": [
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "TOP",
+        "champion": "Graves",
+        "kda": "12/12/10"
+      },
+      {
+        "player": "jakegt1",
+        "name": "Jake",
+        "role": "JUNGLE",
+        "champion": "Volibear",
+        "kda": "11/6/10"
+      },
+      {
+        "player": "GothFemBoy2",
+        "name": "Iestyn",
+        "role": "MID",
+        "champion": "Diana",
+        "kda": "6/13/6"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Miss Fortune",
+        "kda": "16/6/12"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "SUPP",
+        "champion": "Pantheon",
+        "kda": "1/10/20"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Darius",
+        "kda": "19/11/8"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "JUNGLE",
+        "champion": "Qiyana",
+        "kda": "8/10/10"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "MID",
+        "champion": "Ahri",
+        "kda": "12/6/11"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "BOT",
+        "champion": "Varus",
+        "kda": "6/8/11"
+      },
+      {
+        "player": "Xordania",
+        "name": "Jordan",
+        "role": "SUPP",
+        "champion": "Zilean",
+        "kda": "2/11/22"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-07T23:28:53.397909Z",
+    "checksum": "ae1d67fbc080d9b5cadbd7843c240da7596a49609d77b3e1c28bd1e4b0952bbc"
+  },
+  {
+    "win": [
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "TOP",
+        "champion": "Gnar",
+        "kda": "4/5/3"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Diana",
+        "kda": "7/2/10"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Qiyana",
+        "kda": "12/2/5"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Ashe",
+        "kda": "9/3/9"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Thresh",
+        "kda": "3/0/19"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Xordania",
+        "name": "Jordan",
+        "role": "TOP",
+        "champion": "Yorick",
+        "kda": "4/6/1"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Talon",
+        "kda": "5/9/3"
+      },
+      {
+        "player": "GothFemBoy2",
+        "name": "Iestyn",
+        "role": "MID",
+        "champion": "Orianna",
+        "kda": "2/5/2"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Lucian",
+        "kda": "1/7/2"
+      },
+      {
+        "player": "Tiebo Riri",
+        "name": "Riri",
+        "role": "SUPP",
+        "champion": "Nami",
+        "kda": "0/8/5"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-08T22:06:05.015671Z",
+    "checksum": "8680cc2f69165bdc27b411862e4d6467ebee288aaa0356eaae6e5618a623cf9c"
+  },
+  {
+    "win": [
+      {
+        "player": "Jays Nemesis",
+        "name": "Andreas",
+        "role": "TOP",
+        "champion": "Sion",
+        "kda": "1/0/3"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "JUNGLE",
+        "champion": "Volibear",
+        "kda": "6/1/9"
+      },
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "MID",
+        "champion": "Akshan",
+        "kda": "4/5/9"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Caitlyn",
+        "kda": "13/2/8"
+      },
+      {
+        "player": "Tiebo Riri",
+        "name": "Riri",
+        "role": "SUPP",
+        "champion": "Sona",
+        "kda": "1/0/16"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Xordania",
+        "name": "Jordan",
+        "role": "TOP",
+        "champion": "Shen",
+        "kda": "0/2/1"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Sejuani",
+        "kda": "1/4/2"
+      },
+      {
+        "player": "GothFemBoy4",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Qiyana",
+        "kda": "6/3/1"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Draven",
+        "kda": "1/7/2"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "SUPP",
+        "champion": "Seraphine",
+        "kda": "0/9/3"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-09T21:03:03.939244Z",
+    "checksum": "9f4e714eb4bf13d51e51ece98868b48e0bf8ae930280afef636e12c6bcecb1f5"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Master Yi",
+        "kda": "13/15/15"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Amumu",
+        "kda": "4/8/33"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "MID",
+        "champion": "Ahri",
+        "kda": "11/8/10"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "BOT",
+        "champion": "Twitch",
+        "kda": "22/6/12"
+      },
+      {
+        "player": "GothFemBoy2",
+        "name": "Iestyn",
+        "role": "SUPP",
+        "champion": "Annie",
+        "kda": "5/13/23"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Xordania",
+        "name": "Jordan",
+        "role": "TOP",
+        "champion": "Jax",
+        "kda": "14/9/1"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "JUNGLE",
+        "champion": "Sylas",
+        "kda": "12/12/13"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "MID",
+        "champion": "Twisted Fate",
+        "kda": "10/10/14"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Aphelios",
+        "kda": "9/14/9"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "SUPP",
+        "champion": "Leona",
+        "kda": "5/10/20"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-09T22:14:56.318487Z",
+    "checksum": "8369746dd95a42cfd27000c0787d3a800529513552895f22d368e3a0e8e9e836"
+  },
+  {
+    "win": [
+      {
+        "player": "GothFemBoy2",
+        "name": "Iestyn",
+        "role": "TOP",
+        "champion": "Garen",
+        "kda": "2/8/3"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Shyvana",
+        "kda": "15/3/11"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "MID",
+        "champion": "Ryze",
+        "kda": "8/4/17"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Tristana",
+        "kda": "10/7/13"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "SUPP",
+        "champion": "Leona",
+        "kda": "2/6/21"
+      }
+    ],
+    "lose": [
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "TOP",
+        "champion": "Mordekaiser",
+        "kda": "7/6/2"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Nocturne",
+        "kda": "6/7/5"
+      },
+      {
+        "player": "GothFemBoy4",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Qiyana",
+        "kda": "2/6/5"
+      },
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "BOT",
+        "champion": "Kai'Sa",
+        "kda": "8/9/9"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "SUPP",
+        "champion": "Thresh",
+        "kda": "5/9/12"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-09T23:26:37.569183Z",
+    "checksum": "07a1ba57cb5df06396275183500846aaf7a11a1c6aaf0954a00c54503a56f94e"
+  },
+  {
+    "win": [
+      {
+        "player": "Jays Nemesis",
+        "name": "Andreas",
+        "role": "TOP",
+        "champion": "Gwen",
+        "kda": "4/2/5"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "JUNGLE",
+        "champion": "Lee Sin",
+        "kda": "9/3/11"
+      },
+      {
+        "player": "GothFemBoy4",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Qiyana",
+        "kda": "11/3/6"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Jinx",
+        "kda": "8/4/10"
+      },
+      {
+        "player": "Cass",
+        "name": "Cass",
+        "role": "SUPP",
+        "champion": "Seraphine",
+        "kda": "0/6/16"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Tryndamere",
+        "kda": "8/7/4"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "JUNGLE",
+        "champion": "Volibear",
+        "kda": "4/5/8"
+      },
+      {
+        "player": "Xordania",
+        "name": "Jordan",
+        "role": "MID",
+        "champion": "Taliyah",
+        "kda": "0/7/0"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Jhin",
+        "kda": "4/7/6"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "SUPP",
+        "champion": "Leona",
+        "kda": "2/6/10"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-10T22:13:40.617350Z",
+    "checksum": "df26556be65b9cd82a093f8e0d2d5fedba457807a7b74b3f50a871d2eb659954"
+  },
+  {
+    "win": [
+      {
+        "player": "Xordania",
+        "name": "Jordan",
+        "role": "TOP",
+        "champion": "Urgot",
+        "kda": "3/6/3"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "JUNGLE",
+        "champion": "Jayce",
+        "kda": "7/1/16"
+      },
+      {
+        "player": "GothFemBoy2",
+        "name": "Iestyn",
+        "role": "MID",
+        "champion": "Viktor",
+        "kda": "3/4/4"
+      },
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "BOT",
+        "champion": "Smolder",
+        "kda": "8/3/17"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "SUPP",
+        "champion": "Mel",
+        "kda": "15/4/6"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "TOP",
+        "champion": "Anivia",
+        "kda": "4/5/6"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Vi",
+        "kda": "2/8/3"
+      },
+      {
+        "player": "GothFemBoy4",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Qiyana",
+        "kda": "4/4/2"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Ashe",
+        "kda": "3/10/5"
+      },
+      {
+        "player": "Cass",
+        "name": "Cass",
+        "role": "SUPP",
+        "champion": "Vel'Koz",
+        "kda": "4/9/5"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-11T00:31:54.959454Z",
+    "checksum": "33f8255c7eef35d316ff8dd1c750f4c6c0cd7530ebacf74d3e2cee5e527cc7d8"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Renekton",
+        "kda": "8/6/5"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "JUNGLE",
+        "champion": "Zyra",
+        "kda": "7/4/18"
+      },
+      {
+        "player": "GothFemBoy4",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Qiyana",
+        "kda": "9/3/6"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Kai'Sa",
+        "kda": "10/5/9"
+      },
+      {
+        "player": "Cass",
+        "name": "Cass",
+        "role": "SUPP",
+        "champion": "Seraphine",
+        "kda": "1/1/20"
+      }
+    ],
+    "lose": [
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "TOP",
+        "champion": "Illaoi",
+        "kda": "5/4/5"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Nocturne",
+        "kda": "5/7/8"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "MID",
+        "champion": "Xerath",
+        "kda": "1/10/4"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Miss Fortune",
+        "kda": "7/7/4"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "SUPP",
+        "champion": "Rakan",
+        "kda": "1/7/9"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-11T21:00:08.697654Z",
+    "checksum": "d6b564dd0aa9ce8139d082c24a8f67ed1ea6bb9e98ce9f1a1513f93cca50614a"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Ambessa",
+        "kda": "14/7/3"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Mordekaiser",
+        "kda": "6/2/7"
+      },
+      {
+        "player": "GothFemBoy4",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Talon",
+        "kda": "4/3/11"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Caitlyn",
+        "kda": "14/2/7"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "SUPP",
+        "champion": "Nautilus",
+        "kda": "0/7/15"
+      }
+    ],
+    "lose": [
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "TOP",
+        "champion": "Singed",
+        "kda": "2/15/4"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "JUNGLE",
+        "champion": "Nasus",
+        "kda": "9/6/5"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "MID",
+        "champion": "Brand",
+        "kda": "6/6/6"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Sivir",
+        "kda": "3/7/7"
+      },
+      {
+        "player": "Cass",
+        "name": "Cass",
+        "role": "SUPP",
+        "champion": "Morgana",
+        "kda": "1/5/14"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-11T21:54:23.226649Z",
+    "checksum": "cb31dc0b41b108d2f0bcce6e2b2fddd6fe9155461efc102c9bb111b294da57af"
+  },
+  {
+    "win": [
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "TOP",
+        "champion": "Xin Zhao",
+        "kda": "10/5/7"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Shyvana",
+        "kda": "8/1/9"
+      },
+      {
+        "player": "GothFemBoy4",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Zoe",
+        "kda": "6/2/9"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Ashe",
+        "kda": "3/2/10"
+      },
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "SUPP",
+        "champion": "Leona",
+        "kda": "0/4/8"
+      }
+    ],
+    "lose": [
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "TOP",
+        "champion": "Sion",
+        "kda": "5/7/2"
+      },
+      {
+        "player": "jakegt1",
+        "name": "Jake",
+        "role": "JUNGLE",
+        "champion": "Rammus",
+        "kda": "1/5/8"
+      },
+      {
+        "player": "GothFemBoy2",
+        "name": "Iestyn",
+        "role": "MID",
+        "champion": "Aurora",
+        "kda": "1/6/1"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Xayah",
+        "kda": "7/4/2"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "SUPP",
+        "champion": "Taric",
+        "kda": "0/5/9"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-11T22:56:33.129075Z",
+    "checksum": "1a8bd814ba5877c5a117c9d1caf71962dc09d7e1513c7a77033ecde6836e2e9d"
+  },
+  {
+    "win": [
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "TOP",
+        "champion": "Maokai",
+        "kda": "4/1/8"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "JUNGLE",
+        "champion": "Fizz",
+        "kda": "8/2/6"
+      },
+      {
+        "player": "Xordania",
+        "name": "Jordan",
+        "role": "MID",
+        "champion": "Vel'Koz",
+        "kda": "4/3/8"
+      },
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "BOT",
+        "champion": "Lucian",
+        "kda": "16/3/2"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "SUPP",
+        "champion": "Nami",
+        "kda": "0/1/22"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "TOP",
+        "champion": "Smolder",
+        "kda": "0/6/2"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "JUNGLE",
+        "champion": "Viego",
+        "kda": "3/7/3"
+      },
+      {
+        "player": "GothFemBoy4",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Twisted Fate",
+        "kda": "1/4/1"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Ezreal",
+        "kda": "5/2/1"
+      },
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "SUPP",
+        "champion": "Annie",
+        "kda": "1/13/2"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-11T23:51:47.920638Z",
+    "checksum": "aa63ddfe48e66829ae2ead3f593d931612064be6ecba8e2904c0b492b76f3393"
+  },
+  {
+    "win": [
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "TOP",
+        "champion": "Karthus",
+        "kda": "5/7/12"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Udyr",
+        "kda": "4/6/16"
+      },
+      {
+        "player": "GothFemBoy2",
+        "name": "Iestyn",
+        "role": "MID",
+        "champion": "Ryze",
+        "kda": "2/6/6"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Jinx",
+        "kda": "16/7/11"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "SUPP",
+        "champion": "Lulu",
+        "kda": "3/4/22"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Xordania",
+        "name": "Jordan",
+        "role": "TOP",
+        "champion": "Warwick",
+        "kda": "6/6/7"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "JUNGLE",
+        "champion": "Jax",
+        "kda": "6/6/7"
+      },
+      {
+        "player": "GothFemBoy4",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Ziggs",
+        "kda": "3/5/8"
+      },
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "BOT",
+        "champion": "Twitch",
+        "kda": "15/8/6"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "SUPP",
+        "champion": "Zilean",
+        "kda": "0/7/19"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-12T01:03:10.635666Z",
+    "checksum": "053295d91c65bc33dc49911742211e06b4755e5e7dd6d1071381d5b3dadb6d8c"
+  },
+  {
+    "win": [
+      {
+        "player": "Xordania",
+        "name": "Jordan",
+        "role": "TOP",
+        "champion": "Urgot",
+        "kda": "6/0/4"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Zac",
+        "kda": "4/1/17"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "MID",
+        "champion": "Elise",
+        "kda": "8/2/5"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Ashe",
+        "kda": "9/2/13"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "SUPP",
+        "champion": "Bard",
+        "kda": "4/3/20"
+      }
+    ],
+    "lose": [
+      {
+        "player": "GothFemBoy2",
+        "name": "Iestyn",
+        "role": "TOP",
+        "champion": "Dr. Mundo",
+        "kda": "0/4/1"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "JUNGLE",
+        "champion": "Diana",
+        "kda": "3/4/3"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Qiyana",
+        "kda": "1/7/0"
+      },
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "BOT",
+        "champion": "Caitlyn",
+        "kda": "3/8/2"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "SUPP",
+        "champion": "Leona",
+        "kda": "1/8/3"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-12T22:21:47.071172Z",
+    "checksum": "03c75d0c5c4408469ca225a1c488283668509bdb4da9eb4b557e2b1373ed4424"
+  },
+  {
+    "win": [
+      {
+        "player": "Xordania",
+        "name": "Jordan",
+        "role": "TOP",
+        "champion": "Urgot",
+        "kda": "7/3/4"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "JUNGLE",
+        "champion": "Jayce",
+        "kda": "10/3/12"
+      },
+      {
+        "player": "GothFemBoy2",
+        "name": "Iestyn",
+        "role": "MID",
+        "champion": "Orianna",
+        "kda": "6/4/10"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Varus",
+        "kda": "6/4/9"
+      },
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "SUPP",
+        "champion": "Morgana",
+        "kda": "0/5/13"
+      }
+    ],
+    "lose": [
+      {
+        "player": "jakegt1",
+        "name": "Jake",
+        "role": "TOP",
+        "champion": "Volibear",
+        "kda": "1/8/2"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Shen",
+        "kda": "5/7/12"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Zoe",
+        "kda": "3/5/4"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Lucian",
+        "kda": "10/3/5"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "SUPP",
+        "champion": "Karma",
+        "kda": "0/6/14"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-12T23:36:36.048273Z",
+    "checksum": "a056d54e768c9d55b9f26742b588de849fcf6b042b7aefb722da8148227c76ed"
+  },
+  {
+    "win": [
+      {
+        "player": "Cass",
+        "name": "Cass",
+        "role": "TOP",
+        "champion": "Teemo",
+        "kda": "4/1/9"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "JUNGLE",
+        "champion": "Nocturne",
+        "kda": "10/1/11"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Qiyana",
+        "kda": "5/5/6"
+      },
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "BOT",
+        "champion": "Brand",
+        "kda": "6/9/8"
+      },
+      {
+        "player": "Tiebo Riri",
+        "name": "Riri",
+        "role": "SUPP",
+        "champion": "Nami",
+        "kda": "0/1/17"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Jays Nemesis",
+        "name": "Andreas",
+        "role": "TOP",
+        "champion": "Darius",
+        "kda": "1/5/0"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Hecarim",
+        "kda": "5/6/2"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "MID",
+        "champion": "Anivia",
+        "kda": "6/6/5"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Yunara",
+        "kda": "4/4/5"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "SUPP",
+        "champion": "Blitzcrank",
+        "kda": "1/4/7"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-14T20:28:15.344914Z",
+    "checksum": "044b01954666d298486e309af42068a43b780d1d9724a9260f98ba6c41a75d47"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Aatrox",
+        "kda": "9/4/6"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Mordekaiser",
+        "kda": "6/3/8"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Qiyana",
+        "kda": "9/4/7"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "BOT",
+        "champion": "Ashe",
+        "kda": "5/4/13"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "SUPP",
+        "champion": "Leona",
+        "kda": "0/3/15"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "TOP",
+        "champion": "Vladimir",
+        "kda": "1/7/2"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Shen",
+        "kda": "5/5/9"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "MID",
+        "champion": "Yone",
+        "kda": "4/7/8"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Caitlyn",
+        "kda": "4/5/7"
+      },
+      {
+        "player": "Tiebo Riri",
+        "name": "Riri",
+        "role": "SUPP",
+        "champion": "Morgana",
+        "kda": "4/5/6"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-14T21:32:21.728094Z",
+    "checksum": "b60ef37b62ee8c93245cdc265980ec4759202f2269b9d7e6220890e61a6b020c"
+  },
+  {
+    "win": [
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "TOP",
+        "champion": "Qiyana",
+        "kda": "2/5/8"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Xin Zhao",
+        "kda": "6/8/18"
+      },
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "MID",
+        "champion": "Ziggs",
+        "kda": "12/5/11"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Kai'Sa",
+        "kda": "23/4/6"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "SUPP",
+        "champion": "Thresh",
+        "kda": "1/1/25"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Volibear",
+        "kda": "4/11/3"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Dr. Mundo",
+        "kda": "2/7/6"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "MID",
+        "champion": "Kog'Maw",
+        "kda": "11/8/4"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "BOT",
+        "champion": "Miss Fortune",
+        "kda": "6/9/4"
+      },
+      {
+        "player": "Tiebo Riri",
+        "name": "Riri",
+        "role": "SUPP",
+        "champion": "Sona",
+        "kda": "0/9/13"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-14T22:27:14.917970Z",
+    "checksum": "4fa5f3edb636f27e62c77c3666ed460067ea05e6379a4aae6f2bc6834135de2d"
+  },
+  {
+    "win": [
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "TOP",
+        "champion": "Zed",
+        "kda": "3/2/1"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Sejuani",
+        "kda": "5/0/5"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "MID",
+        "champion": "Viktor",
+        "kda": "3/2/1"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Ashe",
+        "kda": "4/0/5"
+      },
+      {
+        "player": "Jays Nemesis",
+        "name": "Andreas",
+        "role": "SUPP",
+        "champion": "Nautilus",
+        "kda": "1/3/5"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Rumble",
+        "kda": "1/4/1"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "JUNGLE",
+        "champion": "Qiyana",
+        "kda": "3/2/0"
+      },
+      {
+        "player": "Cass",
+        "name": "Cass",
+        "role": "MID",
+        "champion": "Orianna",
+        "kda": "0/3/2"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Caitlyn",
+        "kda": "2/3/1"
+      },
+      {
+        "player": "Tiebo Riri",
+        "name": "Riri",
+        "role": "SUPP",
+        "champion": "Zyra",
+        "kda": "1/4/2"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-19T21:33:33.224628Z",
+    "checksum": "fa7b0fa08f4e0154eafc616bde8133af6ae2cc4cc19edfe5e37b5bb4c5acf6d3"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Poppy",
+        "kda": "5/7/6"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Pantheon",
+        "kda": "7/2/3"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Qiyana",
+        "kda": "3/2/4"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Lux",
+        "kda": "5/0/13"
+      },
+      {
+        "player": "Cass",
+        "name": "Cass",
+        "role": "SUPP",
+        "champion": "Seraphine",
+        "kda": "4/2/8"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Xordania",
+        "name": "Jordan",
+        "role": "TOP",
+        "champion": "Ornn",
+        "kda": "6/3/5"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "JUNGLE",
+        "champion": "Gragas",
+        "kda": "5/6/5"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "MID",
+        "champion": "Vladimir",
+        "kda": "1/2/3"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Xayah",
+        "kda": "1/9/3"
+      },
+      {
+        "player": "Tiebo Riri",
+        "name": "Riri",
+        "role": "SUPP",
+        "champion": "Sona",
+        "kda": "0/4/6"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-19T22:46:59.805597Z",
+    "checksum": "29678a7b0ccb5d33f49209d8ee0d16c2f4ac5b33be31e9960a6983e4080fc9ab"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Zaahen",
+        "kda": "5/2/7"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Sylas",
+        "kda": "10/3/13"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Ziggs",
+        "kda": "4/4/12"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "BOT",
+        "champion": "Jinx",
+        "kda": "14/2/9"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "SUPP",
+        "champion": "Lulu",
+        "kda": "0/2/24"
+      }
+    ],
+    "lose": [
+      {
+        "player": "01554",
+        "name": "Minz",
+        "role": "TOP",
+        "champion": "Twisted Fate",
+        "kda": "3/3/6"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Shyvana",
+        "kda": "3/6/3"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "MID",
+        "champion": "Syndra",
+        "kda": "3/8/1"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Miss Fortune",
+        "kda": "3/10/4"
+      },
+      {
+        "player": "wincon",
+        "name": "Andreas",
+        "role": "SUPP",
+        "champion": "Blitzcrank",
+        "kda": "1/6/5"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-22T23:07:49.533821Z",
+    "checksum": "4aae67081b3be34d010e32224d8fd2f0a6ca5a15a126bc9eb91b84c017ad3cd1"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Sett",
+        "kda": "9/6/8"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Shyvana",
+        "kda": "9/6/9"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Qiyana",
+        "kda": "4/3/6"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Ezreal",
+        "kda": "11/3/8"
+      },
+      {
+        "player": "Jays Nemesis",
+        "name": "Andreas",
+        "role": "SUPP",
+        "champion": "Braum",
+        "kda": "1/2/17"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Xordania",
+        "name": "Jordan",
+        "role": "TOP",
+        "champion": "Heimerdinger",
+        "kda": "4/7/7"
+      },
+      {
+        "player": "01554",
+        "name": "Minz",
+        "role": "JUNGLE",
+        "champion": "Jayce",
+        "kda": "3/7/10"
+      },
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "MID",
+        "champion": "Ekko",
+        "kda": "5/10/5"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Sivir",
+        "kda": "7/4/5"
+      },
+      {
+        "player": "Cass",
+        "name": "Cass",
+        "role": "SUPP",
+        "champion": "Seraphine",
+        "kda": "1/7/13"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-24T21:20:28.200959Z",
+    "checksum": "04cc96cf1fa1320b66db24eb8bccfe75bef991c1ce19a95a08d705f293acc2dc"
+  },
+  {
+    "win": [
+      {
+        "player": "wincon",
+        "name": "Andreas",
+        "role": "TOP",
+        "champion": "Rumble",
+        "kda": "1/1/2"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Jax",
+        "kda": "4/0/2"
+      },
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "MID",
+        "champion": "Veigar",
+        "kda": "10/1/1"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Aphelios",
+        "kda": "0/2/5"
+      },
+      {
+        "player": "Cass",
+        "name": "Cass",
+        "role": "SUPP",
+        "champion": "Seraphine",
+        "kda": "0/0/9"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Xordania",
+        "name": "Jordan",
+        "role": "TOP",
+        "champion": "Ornn",
+        "kda": "0/1/1"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Hecarim",
+        "kda": "3/4/0"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Qiyana",
+        "kda": "1/5/0"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Twitch",
+        "kda": "0/4/1"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Soraka",
+        "kda": "0/1/1"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-24T23:12:21.069962Z",
+    "checksum": "2dfe8b7bcd51a138d96550a1f408a7efcde13878a3dea8229e51d25ae1259200"
+  },
+  {
+    "win": [
+      {
+        "player": "Xordania",
+        "name": "Jordan",
+        "role": "TOP",
+        "champion": "Aatrox",
+        "kda": "2/6/5"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Warwick",
+        "kda": "5/3/7"
+      },
+      {
+        "player": "01554",
+        "name": "Minz",
+        "role": "MID",
+        "champion": "Viktor",
+        "kda": "4/2/12"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Corki",
+        "kda": "6/3/8"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "SUPP",
+        "champion": "Swain",
+        "kda": "6/2/11"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Zaahen",
+        "kda": "6/5/2"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "JUNGLE",
+        "champion": "Lee Sin",
+        "kda": "5/3/6"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "MID",
+        "champion": "Galio",
+        "kda": "1/6/6"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Jinx",
+        "kda": "3/5/2"
+      },
+      {
+        "player": "Tiebo Riri",
+        "name": "Riri",
+        "role": "SUPP",
+        "champion": "Sona",
+        "kda": "1/4/6"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-25T00:14:25.569138Z",
+    "checksum": "976fd38995be93dbd10fb42105f6deff7ae937219eac62c309cd8bf564805266"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Nasus",
+        "kda": "6/2/4"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Brand",
+        "kda": "3/2/10"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "MID",
+        "champion": "Ahri",
+        "kda": "7/2/4"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Yunara",
+        "kda": "9/0/6"
+      },
+      {
+        "player": "Xordania",
+        "name": "Jordan",
+        "role": "SUPP",
+        "champion": "Swain",
+        "kda": "4/4/9"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Cass",
+        "name": "Cass",
+        "role": "TOP",
+        "champion": "Soraka",
+        "kda": "0/5/6"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Diana",
+        "kda": "3/7/5"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "MID",
+        "champion": "Mel",
+        "kda": "4/4/3"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Varus",
+        "kda": "2/8/5"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Renata Glasc",
+        "kda": "1/5/6"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-25T21:33:08.427567Z",
+    "checksum": "bf6bbfda0511eb8584f7818fe8e9620c6523b1b090e13901337043762274a2f1"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Poppy",
+        "kda": "4/4/10"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Mordekaiser",
+        "kda": "7/7/7"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "MID",
+        "champion": "Ziggs",
+        "kda": "4/5/2"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Caitlyn",
+        "kda": "5/2/6"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Seraphine",
+        "kda": "1/3/7"
+      }
+    ],
+    "lose": [
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "TOP",
+        "champion": "Ornn",
+        "kda": "5/4/3"
+      },
+      {
+        "player": "01554",
+        "name": "Minz",
+        "role": "JUNGLE",
+        "champion": "Briar",
+        "kda": "3/5/9"
+      },
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "MID",
+        "champion": "Annie",
+        "kda": "9/5/7"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Ezreal",
+        "kda": "2/4/3"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "SUPP",
+        "champion": "Braum",
+        "kda": "2/3/9"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-25T22:46:07.424498Z",
+    "checksum": "d715f551103c0d97b1873678aa6f8c0dc8c043377b2e50907ea5fffbec9c722c"
+  },
+  {
+    "win": [
+      {
+        "player": "Xordania",
+        "name": "Jordan",
+        "role": "TOP",
+        "champion": "K'Sante",
+        "kda": "2/3/6"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "JUNGLE",
+        "champion": "Nocturne",
+        "kda": "5/2/13"
+      },
+      {
+        "player": "01554",
+        "name": "Minz",
+        "role": "MID",
+        "champion": "Viktor",
+        "kda": "12/2/7"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Jinx",
+        "kda": "9/1/9"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Bard",
+        "kda": "2/0/18"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Yorick",
+        "kda": "3/7/0"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Zyra",
+        "kda": "2/4/5"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "MID",
+        "champion": "Pantheon",
+        "kda": "2/6/3"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Smolder",
+        "kda": "0/5/4"
+      },
+      {
+        "player": "Cass",
+        "name": "Cass",
+        "role": "SUPP",
+        "champion": "Lulu",
+        "kda": "1/8/3"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-25T23:59:07.790244Z",
+    "checksum": "e1c3f03da1a31f6736e5152b3ef01e5730a52787894a68e6141e2b6387f451b0"
+  },
+  {
+    "win": [
+      {
+        "player": "wincon",
+        "name": "Andreas",
+        "role": "TOP",
+        "champion": "Vladimir",
+        "kda": "3/0/8"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "JUNGLE",
+        "champion": "Volibear",
+        "kda": "10/2/10"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "MID",
+        "champion": "Jhin",
+        "kda": "10/3/12"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Varus",
+        "kda": "11/7/10"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Braum",
+        "kda": "3/4/22"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Tryndamere",
+        "kda": "0/8/4"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Cho'Gath",
+        "kda": "8/7/4"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "MID",
+        "champion": "Zoe",
+        "kda": "2/5/3"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Ashe",
+        "kda": "6/8/4"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "SUPP",
+        "champion": "Nami",
+        "kda": "0/9/10"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-26T21:48:59.979048Z",
+    "checksum": "80775908e1ffc8df9b8efe8af1b47b2a6e7817433e6253e3b2ba4389821ba991"
+  },
+  {
+    "win": [
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "TOP",
+        "champion": "Kennen",
+        "kda": "6/3/10"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Lee Sin",
+        "kda": "13/3/11"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "MID",
+        "champion": "Viktor",
+        "kda": "1/3/5"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Kai'Sa",
+        "kda": "11/0/11"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "SUPP",
+        "champion": "Lulu",
+        "kda": "2/3/17"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Sett",
+        "kda": "0/9/5"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Nocturne",
+        "kda": "3/8/3"
+      },
+      {
+        "player": "Xordania",
+        "name": "Jordan",
+        "role": "MID",
+        "champion": "Mel",
+        "kda": "5/5/1"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Ezreal",
+        "kda": "3/5/1"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Nautilus",
+        "kda": "1/6/3"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-26T22:56:11.799937Z",
+    "checksum": "6e63e19984c80061489ba112221398b9dd14d4896ca0fc074afb81a1cadb7811"
+  },
+  {
+    "win": [
+      {
+        "player": "wincon",
+        "name": "Andreas",
+        "role": "TOP",
+        "champion": "Aurora",
+        "kda": "2/5/8"
+      },
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "JUNGLE",
+        "champion": "Lee Sin",
+        "kda": "15/2/12"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "MID",
+        "champion": "Tristana",
+        "kda": "16/6/11"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Varus",
+        "kda": "8/5/17"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "SUPP",
+        "champion": "Leona",
+        "kda": "2/8/21"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Xordania",
+        "name": "Jordan",
+        "role": "TOP",
+        "champion": "Quinn",
+        "kda": "3/12/9"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Ekko",
+        "kda": "10/7/7"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "MID",
+        "champion": "Kassadin",
+        "kda": "4/7/8"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "BOT",
+        "champion": "Jhin",
+        "kda": "9/8/11"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Taric",
+        "kda": "0/9/19"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-27T21:26:17.530706Z",
+    "checksum": "266f81522cb32fac6106ea15e5f64f844767a8102d0b71939d73b17741f28e16"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Gangplank",
+        "kda": "8/5/14"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "JUNGLE",
+        "champion": "Qiyana",
+        "kda": "10/6/11"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "MID",
+        "champion": "LeBlanc",
+        "kda": "4/8/9"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Corki",
+        "kda": "12/5/8"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Seraphine",
+        "kda": "2/6/24"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Cass",
+        "name": "Cass",
+        "role": "TOP",
+        "champion": "Shen",
+        "kda": "3/6/18"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Nocturne",
+        "kda": "4/9/14"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "MID",
+        "champion": "Ahri",
+        "kda": "8/6/9"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Miss Fortune",
+        "kda": "11/9/9"
+      },
+      {
+        "player": "Tiebo Riri",
+        "name": "Riri",
+        "role": "SUPP",
+        "champion": "Xerath",
+        "kda": "4/6/11"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-28T20:08:26.750387Z",
+    "checksum": "00ce0275753c24fc95a56e88daaf67bf518316f0e65af524df0448c649166a8b"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Zaahen",
+        "kda": "9/6/5"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Xin Zhao",
+        "kda": "4/1/8"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "MID",
+        "champion": "Brand",
+        "kda": "4/1/5"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Xayah",
+        "kda": "9/4/5"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "SUPP",
+        "champion": "Zilean",
+        "kda": "0/3/18"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "TOP",
+        "champion": "Tryndamere",
+        "kda": "7/9/3"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "JUNGLE",
+        "champion": "Diana",
+        "kda": "1/7/4"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Cassiopeia",
+        "kda": "2/3/4"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Caitlyn",
+        "kda": "2/4/5"
+      },
+      {
+        "player": "Tiebo Riri",
+        "name": "Riri",
+        "role": "SUPP",
+        "champion": "Seraphine",
+        "kda": "3/3/5"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-28T21:04:54.284360Z",
+    "checksum": "1b5488be7a90af23378486daee00117b836f9700bde90f718707ba0ed0d71e8b"
+  },
+  {
+    "win": [
+      {
+        "player": "TheTopStomper",
+        "name": "Jordan",
+        "role": "TOP",
+        "champion": "Jax",
+        "kda": "12/8/3"
+      },
+      {
+        "player": "jakegt1",
+        "name": "Jake",
+        "role": "JUNGLE",
+        "champion": "Dr. Mundo",
+        "kda": "4/0/8"
+      },
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "MID",
+        "champion": "Anivia",
+        "kda": "6/3/8"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Ashe",
+        "kda": "11/5/8"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "SUPP",
+        "champion": "Zyra",
+        "kda": "3/9/11"
+      }
+    ],
+    "lose": [
+      {
+        "player": "narMazyk",
+        "name": "Eddy",
+        "role": "TOP",
+        "champion": "Kog'Maw",
+        "kda": "8/8/2"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "JUNGLE",
+        "champion": "Xin Zhao",
+        "kda": "11/5/1"
+      },
+      {
+        "player": "Dunkelheit",
+        "name": "Bet\u00fcl",
+        "role": "MID",
+        "champion": "Aurora",
+        "kda": "2/6/6"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Xayah",
+        "kda": "2/10/7"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "SUPP",
+        "champion": "Swain",
+        "kda": "2/7/7"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-04-29T23:26:08.581658Z",
+    "checksum": "ce09f61ad9e1de456b7bdfad7bd3df9588531c78548c512c066f78ff2fb28809"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Gwen",
+        "kda": "6/2/0"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Zac",
+        "kda": "6/1/8"
+      },
+      {
+        "player": "Dunkelheit",
+        "name": "Bet\u00fcl",
+        "role": "MID",
+        "champion": "Ornn",
+        "kda": "5/4/10"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Caitlyn",
+        "kda": "1/0/5"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Senna",
+        "kda": "4/0/6"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "TOP",
+        "champion": "Cho'Gath",
+        "kda": "0/7/2"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "JUNGLE",
+        "champion": "Gragas",
+        "kda": "2/4/3"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Qiyana",
+        "kda": "3/8/2"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Sivir",
+        "kda": "2/1/0"
+      },
+      {
+        "player": "Peezy",
+        "name": "Sean",
+        "role": "SUPP",
+        "champion": "Lulu",
+        "kda": "0/2/2"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-03T19:46:53.579628Z",
+    "checksum": "d9e8f22fa3be847ab578a768fc3576bb8867bbf42aba4080b3cdc354e9db916e"
+  },
+  {
+    "win": [
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "TOP",
+        "champion": "Aurora",
+        "kda": "1/6/3"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Talon",
+        "kda": "7/4/14"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "MID",
+        "champion": "Xerath",
+        "kda": "4/1/12"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Jinx",
+        "kda": "15/1/8"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "SUPP",
+        "champion": "Leona",
+        "kda": "1/5/16"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Malphite",
+        "kda": "7/3/4"
+      },
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "JUNGLE",
+        "champion": "Diana",
+        "kda": "3/3/4"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Qiyana",
+        "kda": "0/6/2"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Aphelios",
+        "kda": "7/9/2"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Taric",
+        "kda": "0/7/8"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-03T19:52:30.833226Z",
+    "checksum": "fdde9d80611051e7aa5d66e0702ecd012b34cfdaa4d5c78a05d6ba91b885d743"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Garen",
+        "kda": "13/4/6"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Zyra",
+        "kda": "4/3/11"
+      },
+      {
+        "player": "TheTopStomper",
+        "name": "Jordan",
+        "role": "MID",
+        "champion": "Vex",
+        "kda": "5/6/7"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Miss Fortune",
+        "kda": "15/3/6"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "SUPP",
+        "champion": "Nami",
+        "kda": "0/5/21"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "TOP",
+        "champion": "Quinn",
+        "kda": "3/13/2"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Amumu",
+        "kda": "6/7/8"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "MID",
+        "champion": "Ahri",
+        "kda": "5/6/5"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Zeri",
+        "kda": "7/4/5"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Seraphine",
+        "kda": "0/7/14"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-03T20:48:51.783886Z",
+    "checksum": "2ca056f1ebfed337316c93cb0a11f531cc8ac5d628ab3a6ad53ae7fbefef567d"
+  },
+  {
+    "win": [
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "TOP",
+        "champion": "Kennen",
+        "kda": "14/3/7"
+      },
+      {
+        "player": "GothFemBoy4",
+        "name": "Rich",
+        "role": "JUNGLE",
+        "champion": "Qiyana",
+        "kda": "11/4/11"
+      },
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "MID",
+        "champion": "Xerath",
+        "kda": "2/7/18"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Senna",
+        "kda": "3/4/20"
+      },
+      {
+        "player": "Jays Nemesis",
+        "name": "Andreas",
+        "role": "SUPP",
+        "champion": "Tahm Kench",
+        "kda": "4/3/15"
+      }
+    ],
+    "lose": [
+      {
+        "player": "TheTopStomper",
+        "name": "Jordan",
+        "role": "TOP",
+        "champion": "Darius",
+        "kda": "3/10/0"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Kha'Zix",
+        "kda": "11/6/5"
+      },
+      {
+        "player": "Cass",
+        "name": "Cass",
+        "role": "MID",
+        "champion": "Morgana",
+        "kda": "4/5/11"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Ashe",
+        "kda": "1/6/5"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "SUPP",
+        "champion": "Leona",
+        "kda": "2/7/9"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-12T19:25:56.898740Z",
+    "checksum": "802b1ec1b7a41609d532a35db287ac974450f1e472e76feb89bb9d3abf45eba0"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Gangplank",
+        "kda": "8/6/14"
+      },
+      {
+        "player": "GothFemBoy4",
+        "name": "Rich",
+        "role": "JUNGLE",
+        "champion": "Qiyana",
+        "kda": "13/7/17"
+      },
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "MID",
+        "champion": "Ziggs",
+        "kda": "10/2/14"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Jhin",
+        "kda": "11/3/20"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "SUPP",
+        "champion": "Janna",
+        "kda": "2/7/29"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Jays Nemesis",
+        "name": "Andreas",
+        "role": "TOP",
+        "champion": "Trundle",
+        "kda": "5/4/3"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Naafiri",
+        "kda": "5/7/8"
+      },
+      {
+        "player": "Cass",
+        "name": "Cass",
+        "role": "MID",
+        "champion": "Seraphine",
+        "kda": "4/8/6"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Samira",
+        "kda": "8/12/3"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "SUPP",
+        "champion": "Blitzcrank",
+        "kda": "3/13/9"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-12T20:28:58.857078Z",
+    "checksum": "35071ba0132972d311afd29ac468192b7fe792e0871b818907f4ba6e22a21f09"
+  },
+  {
+    "win": [
+      {
+        "player": "GothFemBoy4",
+        "name": "Rich",
+        "role": "TOP",
+        "champion": "Qiyana",
+        "kda": "6/5/10"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Graves",
+        "kda": "14/4/8"
+      },
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "MID",
+        "champion": "Brand",
+        "kda": "11/6/12"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Ezreal",
+        "kda": "9/4/15"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "SUPP",
+        "champion": "Sona",
+        "kda": "2/8/27"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Warwick",
+        "kda": "3/11/9"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Volibear",
+        "kda": "1/11/8"
+      },
+      {
+        "player": "jakegt1",
+        "name": "Jake",
+        "role": "MID",
+        "champion": "Vex",
+        "kda": "1/5/10"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "BOT",
+        "champion": "Twitch",
+        "kda": "21/4/3"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "SUPP",
+        "champion": "Lulu",
+        "kda": "1/11/17"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-12T21:33:45.580448Z",
+    "checksum": "5cf3119cc56a87743eea991109faf5534364a5981f40616de7d8aaaba3dd290f"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Ornn",
+        "kda": "6/3/5"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Udyr",
+        "kda": "6/2/6"
+      },
+      {
+        "player": "TheTopStomper",
+        "name": "Jordan",
+        "role": "MID",
+        "champion": "Lissandra",
+        "kda": "5/3/3"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Miss Fortune",
+        "kda": "8/1/8"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "SUPP",
+        "champion": "Thresh",
+        "kda": "0/5/15"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "TOP",
+        "champion": "Swain",
+        "kda": "1/7/1"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "JUNGLE",
+        "champion": "Qiyana",
+        "kda": "1/7/6"
+      },
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "MID",
+        "champion": "Lux",
+        "kda": "7/2/2"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Jinx",
+        "kda": "5/6/4"
+      },
+      {
+        "player": "Peezy",
+        "name": "Sean",
+        "role": "SUPP",
+        "champion": "Milio",
+        "kda": "0/4/7"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-15T20:45:18.545266Z",
+    "checksum": "53eb2c2b84e5e8e2614a0e2864ea4793f30f633702bd9b7a8b7eeca257a7cd3a"
+  },
+  {
+    "win": [
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "TOP",
+        "champion": "Shen",
+        "kda": "5/3/4"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "JUNGLE",
+        "champion": "Qiyana",
+        "kda": "11/4/6"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "MID",
+        "champion": "Viktor",
+        "kda": "4/3/10"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Kai'Sa",
+        "kda": "12/5/9"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "SUPP",
+        "champion": "Leona",
+        "kda": "2/4/18"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Peezy",
+        "name": "Sean",
+        "role": "TOP",
+        "champion": "Illaoi",
+        "kda": "5/8/6"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Evelynn",
+        "kda": "1/12/6"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "MID",
+        "champion": "Malzahar",
+        "kda": "0/7/3"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Miss Fortune",
+        "kda": "13/3/1"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Rakan",
+        "kda": "0/4/14"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-16T19:51:15.114919Z",
+    "checksum": "ef9ec84477872383f30df81351a33a89fba71681a6386bf69e299706793d015f"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "K'Sante",
+        "kda": "7/6/10"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Dr. Mundo",
+        "kda": "7/4/17"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "MID",
+        "champion": "Ziggs",
+        "kda": "7/6/10"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Tristana",
+        "kda": "12/5/7"
+      },
+      {
+        "player": "Peezy",
+        "name": "Sean",
+        "role": "SUPP",
+        "champion": "Milio",
+        "kda": "0/1/20"
+      }
+    ],
+    "lose": [
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "TOP",
+        "champion": "Qiyana",
+        "kda": "2/7/5"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Sylas",
+        "kda": "8/8/5"
+      },
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "MID",
+        "champion": "Diana",
+        "kda": "9/9/1"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Jinx",
+        "kda": "1/3/9"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "SUPP",
+        "champion": "Blitzcrank",
+        "kda": "0/4/11"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-16T21:08:09.448728Z",
+    "checksum": "762c6613684bf14527b78afdc537f835a823fc04e8ea6749d0ba15f99d459214"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Jax",
+        "kda": "1/6/10"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Jarvan IV",
+        "kda": "3/6/19"
+      },
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "MID",
+        "champion": "Mel",
+        "kda": "11/9/7"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Kai'Sa",
+        "kda": "15/2/7"
+      },
+      {
+        "player": "Peezy",
+        "name": "Sean",
+        "role": "SUPP",
+        "champion": "Alistar",
+        "kda": "3/5/12"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "TOP",
+        "champion": "Illaoi",
+        "kda": "4/4/3"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Amumu",
+        "kda": "10/9/7"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "MID",
+        "champion": "Anivia",
+        "kda": "7/6/6"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "BOT",
+        "champion": "Jinx",
+        "kda": "3/9/5"
+      },
+      {
+        "player": "Jays Nemesis",
+        "name": "Andreas",
+        "role": "SUPP",
+        "champion": "Thresh",
+        "kda": "4/5/8"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-16T21:44:43.733476Z",
+    "checksum": "8ba37c983f168efea785f05afb5859fd35d23f57cf2581bb5688ffc2dd4c538e"
+  },
+  {
+    "win": [
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "TOP",
+        "champion": "Cassiopeia",
+        "kda": "0/5/5"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Xin Zhao",
+        "kda": "8/5/6"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "MID",
+        "champion": "Xerath",
+        "kda": "12/1/4"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Ashe",
+        "kda": "3/0/12"
+      },
+      {
+        "player": "Jays Nemesis",
+        "name": "Andreas",
+        "role": "SUPP",
+        "champion": "Seraphine",
+        "kda": "3/1/9"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Ornn",
+        "kda": "2/3/4"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Trundle",
+        "kda": "6/3/4"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "MID",
+        "champion": "Viktor",
+        "kda": "1/6/1"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "BOT",
+        "champion": "Sivir",
+        "kda": "2/5/2"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "SUPP",
+        "champion": "Zyra",
+        "kda": "1/9/4"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-16T22:45:09.913391Z",
+    "checksum": "573e26b6e3c46af596826ba7195eb9475aba8d2a2d027cac058e35f95f6d216e"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Fiora",
+        "kda": "8/1/2"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Amumu",
+        "kda": "4/1/9"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Qiyana",
+        "kda": "9/1/5"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Senna",
+        "kda": "4/0/11"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "SUPP",
+        "champion": "Karma",
+        "kda": "2/1/14"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "TOP",
+        "champion": "Tahm Kench",
+        "kda": "1/3/0"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Naafiri",
+        "kda": "1/6/0"
+      },
+      {
+        "player": "Chameleon",
+        "name": "Dylan",
+        "role": "MID",
+        "champion": "Ahri",
+        "kda": "1/8/0"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "BOT",
+        "champion": "Sivir",
+        "kda": "0/5/0"
+      },
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "SUPP",
+        "champion": "Nami",
+        "kda": "0/5/0"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-16T23:55:34.438981Z",
+    "checksum": "9d95016341d7c11f4c2acae17a325100bbab70316b49b0804db6142d94efcda0"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Master Yi",
+        "kda": "18/5/4"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Amumu",
+        "kda": "7/5/12"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "MID",
+        "champion": "Kassadin",
+        "kda": "5/3/4"
+      },
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "BOT",
+        "champion": "Veigar",
+        "kda": "4/4/6"
+      },
+      {
+        "player": "Caynn",
+        "name": "Caynn",
+        "role": "SUPP",
+        "champion": "Nami",
+        "kda": "0/2/20"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "TOP",
+        "champion": "Swain",
+        "kda": "3/9/3"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "JUNGLE",
+        "champion": "Qiyana",
+        "kda": "7/7/6"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "MID",
+        "champion": "Vayne",
+        "kda": "4/7/4"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Twitch",
+        "kda": "5/6/4"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Soraka",
+        "kda": "0/5/11"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-17T21:56:37.167451Z",
+    "checksum": "3cd94f9591327a43ffcece8c9668da505ee695c3f04282978dfbfc288d018d7d"
+  },
+  {
+    "win": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Aatrox",
+        "kda": "10/6/8"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Lee Sin",
+        "kda": "6/1/15"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "MID",
+        "champion": "Sylas",
+        "kda": "3/1/4"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Jhin",
+        "kda": "8/0/18"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Bard",
+        "kda": "7/1/9"
+      }
+    ],
+    "lose": [
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "TOP",
+        "champion": "Qiyana",
+        "kda": "1/8/4"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "JUNGLE",
+        "champion": "Kayn",
+        "kda": "6/5/2"
+      },
+      {
+        "player": "GothFemBoy2",
+        "name": "Iestyn",
+        "role": "MID",
+        "champion": "Viktor",
+        "kda": "0/4/0"
+      },
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "BOT",
+        "champion": "Caitlyn",
+        "kda": "1/9/3"
+      },
+      {
+        "player": "Caynn",
+        "name": "Caynn",
+        "role": "SUPP",
+        "champion": "Seraphine",
+        "kda": "1/8/4"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-17T22:42:01.926127Z",
+    "checksum": "b2c06d1d765784a87796b4ee98f7c9b26ed6733da5d6cbb334c4d8bcdb2e3acf"
+  },
+  {
+    "win": [
+      {
+        "player": "GothFemBoy2",
+        "name": "Iestyn",
+        "role": "TOP",
+        "champion": "Dr. Mundo",
+        "kda": "2/0/6"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Malphite",
+        "kda": "10/6/11"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "MID",
+        "champion": "Corki",
+        "kda": "11/3/10"
+      },
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "BOT",
+        "champion": "Ziggs",
+        "kda": "5/11/8"
+      },
+      {
+        "player": "Caynn",
+        "name": "Caynn",
+        "role": "SUPP",
+        "champion": "Zyra",
+        "kda": "3/6/11"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "TOP",
+        "champion": "Renekton",
+        "kda": "9/4/1"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Zac",
+        "kda": "2/10/9"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "MID",
+        "champion": "Qiyana",
+        "kda": "1/6/5"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Varus",
+        "kda": "13/7/4"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "SUPP",
+        "champion": "Lulu",
+        "kda": "1/4/17"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-17T23:40:32.830451Z",
+    "checksum": "1b5f2175fa0a70e15b0023212c52c15d352697860009ae58e1ddd572e0055bcd"
+  },
+  {
+    "win": [
+      {
+        "player": "Caynn",
+        "name": "Caynn",
+        "role": "TOP",
+        "champion": "Kennen",
+        "kda": "7/4/11"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Hecarim",
+        "kda": "7/4/9"
+      },
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "MID",
+        "champion": "Ziggs",
+        "kda": "8/5/12"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Ashe",
+        "kda": "5/3/14"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "SUPP",
+        "champion": "Neeko",
+        "kda": "0/7/17"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "TOP",
+        "champion": "Ornn",
+        "kda": "4/7/4"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Dr. Mundo",
+        "kda": "4/6/9"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "MID",
+        "champion": "Lux",
+        "kda": "8/2/8"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "BOT",
+        "champion": "Sivir",
+        "kda": "6/5/8"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Lulu",
+        "kda": "1/7/13"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-18T21:46:23.045575Z",
+    "checksum": "410271fd1ea90a0b5ccf6dd02ae7a61f0f762cd87027fd4693da013e9b6b7a9d"
+  },
+  {
+    "win": [
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "TOP",
+        "champion": "Illaoi",
+        "kda": "2/4/2"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "JUNGLE",
+        "champion": "Rengar",
+        "kda": "2/3/7"
+      },
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "MID",
+        "champion": "Ahri",
+        "kda": "6/2/7"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Caitlyn",
+        "kda": "5/0/4"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Bard",
+        "kda": "3/1/9"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Leigh",
+        "name": "Leigh",
+        "role": "TOP",
+        "champion": "Jax",
+        "kda": "5/3/3"
+      },
+      {
+        "player": "GothFemBoy1",
+        "name": "Jay",
+        "role": "JUNGLE",
+        "champion": "Vi",
+        "kda": "2/2/3"
+      },
+      {
+        "player": "Caynn",
+        "name": "Caynn",
+        "role": "MID",
+        "champion": "Lulu",
+        "kda": "2/4/4"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "BOT",
+        "champion": "Jinx",
+        "kda": "0/5/0"
+      },
+      {
+        "player": "James",
+        "name": "James",
+        "role": "SUPP",
+        "champion": "Alistar",
+        "kda": "0/4/1"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-18T22:38:14.070178Z",
+    "checksum": "b8a03d3e52ee800617f18ca519997624eab451adef9c1f96e37f699a61a98c0e"
+  },
+  {
+    "win": [
+      {
+        "player": "Peezy",
+        "name": "Sean",
+        "role": "TOP",
+        "champion": "Quinn",
+        "kda": "5/5/1"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Maokai",
+        "kda": "4/2/11"
+      },
+      {
+        "player": "Jays Nemesis",
+        "name": "Andreas",
+        "role": "MID",
+        "champion": "LeBlanc",
+        "kda": "2/2/3"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Lucian",
+        "kda": "15/3/6"
+      },
+      {
+        "player": "Caynn",
+        "name": "Caynn",
+        "role": "SUPP",
+        "champion": "Nami",
+        "kda": "1/3/21"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "TOP",
+        "champion": "Kennen",
+        "kda": "5/4/2"
+      },
+      {
+        "player": "jakegt1",
+        "name": "Jake",
+        "role": "JUNGLE",
+        "champion": "Volibear",
+        "kda": "3/5/4"
+      },
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "MID",
+        "champion": "Twitch",
+        "kda": "3/8/1"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Caitlyn",
+        "kda": "3/6/4"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Sona",
+        "kda": "0/4/6"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-22T21:00:47.952596Z",
+    "checksum": "f9081c14cb4e0acd040402d8b3d3f89ad7ad8672270ca050e1d6718ca8e2ca23"
+  },
+  {
+    "win": [
+      {
+        "player": "Jays Nemesis",
+        "name": "Andreas",
+        "role": "TOP",
+        "champion": "Gragas",
+        "kda": "6/1/8"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "JUNGLE",
+        "champion": "Qiyana",
+        "kda": "10/5/14"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "MID",
+        "champion": "Azir",
+        "kda": "11/6/12"
+      },
+      {
+        "player": "Caynn",
+        "name": "Caynn",
+        "role": "BOT",
+        "champion": "Ashe",
+        "kda": "7/6/15"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Rakan",
+        "kda": "1/2/24"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "TOP",
+        "champion": "Rammus",
+        "kda": "1/6/6"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Amumu",
+        "kda": "7/8/8"
+      },
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "MID",
+        "champion": "Aurelion Sol",
+        "kda": "11/9/5"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Senna",
+        "kda": "1/5/16"
+      },
+      {
+        "player": "Peezy",
+        "name": "Sean",
+        "role": "SUPP",
+        "champion": "Thresh",
+        "kda": "0/7/8"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-22T21:50:01.186817Z",
+    "checksum": "ac999356c1cdeaa65bdad6feca018307c11835bc8100432f4b4dc612deb2af93"
+  },
+  {
+    "win": [
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "TOP",
+        "champion": "Mordekaiser",
+        "kda": "9/2/8"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "JUNGLE",
+        "champion": "Qiyana",
+        "kda": "6/3/9"
+      },
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "MID",
+        "champion": "Veigar",
+        "kda": "5/5/5"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Smolder",
+        "kda": "9/1/11"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Seraphine",
+        "kda": "4/0/16"
+      }
+    ],
+    "lose": [
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "TOP",
+        "champion": "Zac",
+        "kda": "1/8/4"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "JUNGLE",
+        "champion": "Talon",
+        "kda": "1/7/6"
+      },
+      {
+        "player": "Anticide",
+        "name": "Minz",
+        "role": "MID",
+        "champion": "Ziggs",
+        "kda": "2/4/5"
+      },
+      {
+        "player": "Caynn",
+        "name": "Caynn",
+        "role": "BOT",
+        "champion": "Ezreal",
+        "kda": "6/6/0"
+      },
+      {
+        "player": "Peezy",
+        "name": "Sean",
+        "role": "SUPP",
+        "champion": "Nautilus",
+        "kda": "0/8/1"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-22T23:06:21.264267Z",
+    "checksum": "da15ef1e26e011901e1d8a5c4e1d98bd1981ac5853e027833f9d52154b0ae957"
+  },
+  {
+    "win": [
+      {
+        "player": "Gazler",
+        "name": "Gazler",
+        "role": "TOP",
+        "champion": "Sion",
+        "kda": "5/3/2"
+      },
+      {
+        "player": "MaBalls",
+        "name": "Felix",
+        "role": "JUNGLE",
+        "champion": "Udyr",
+        "kda": "6/0/5"
+      },
+      {
+        "player": "01554",
+        "name": "Minz",
+        "role": "MID",
+        "champion": "Orianna",
+        "kda": "5/2/8"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "BOT",
+        "champion": "Aphelios",
+        "kda": "3/2/3"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Soraka",
+        "kda": "0/2/10"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "TOP",
+        "champion": "Cho'Gath",
+        "kda": "2/4/1"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "JUNGLE",
+        "champion": "Kha'Zix",
+        "kda": "1/4/1"
+      },
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "MID",
+        "champion": "Vex",
+        "kda": "5/5/0"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Kai'Sa",
+        "kda": "1/3/2"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "SUPP",
+        "champion": "Morgana",
+        "kda": "0/3/3"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-23T21:29:50.709965Z",
+    "checksum": "a7a55e2d3a6826fa6badb9e08c070e85ca68b52d3f82870dc0864d31eebb7105"
+  },
+  {
+    "win": [
+      {
+        "player": "Gazler",
+        "name": "Gazler",
+        "role": "TOP",
+        "champion": "Gwen",
+        "kda": "6/4/10"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "JUNGLE",
+        "champion": "Jarvan IV",
+        "kda": "9/4/14"
+      },
+      {
+        "player": "01554",
+        "name": "Minz",
+        "role": "MID",
+        "champion": "Corki",
+        "kda": "4/3/10"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "BOT",
+        "champion": "Miss Fortune",
+        "kda": "8/3/8"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Milio",
+        "kda": "0/1/14"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "TOP",
+        "champion": "Shen",
+        "kda": "4/7/7"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "JUNGLE",
+        "champion": "Qiyana",
+        "kda": "4/7/4"
+      },
+      {
+        "player": "Grantyboi",
+        "name": "Grant",
+        "role": "MID",
+        "champion": "Aurora",
+        "kda": "1/6/6"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Jhin",
+        "kda": "4/2/4"
+      },
+      {
+        "player": "CelticMylo",
+        "name": "Mylo",
+        "role": "SUPP",
+        "champion": "Zyra",
+        "kda": "2/5/5"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-23T22:30:44.613625Z",
+    "checksum": "4e2a6f786fcbd84bf5484a00d6efc9cbbf6c895bee3112c97201cd8d5c52c8a7"
+  },
+  {
+    "win": [
+      {
+        "player": "CelticMylo",
+        "name": "Mylo",
+        "role": "TOP",
+        "champion": "Gnar",
+        "kda": "8/5/13"
+      },
+      {
+        "player": "Farmer",
+        "name": "Farmer",
+        "role": "JUNGLE",
+        "champion": "Viego",
+        "kda": "7/6/7"
+      },
+      {
+        "player": "Petez",
+        "name": "Pete",
+        "role": "MID",
+        "champion": "Xerath",
+        "kda": "6/3/5"
+      },
+      {
+        "player": "Wyn",
+        "name": "Wyn",
+        "role": "BOT",
+        "champion": "Tristana",
+        "kda": "7/0/7"
+      },
+      {
+        "player": "Brands",
+        "name": "Brandon",
+        "role": "SUPP",
+        "champion": "Renata Glasc",
+        "kda": "1/1/16"
+      }
+    ],
+    "lose": [
+      {
+        "player": "Sam",
+        "name": "Sam",
+        "role": "TOP",
+        "champion": "Teemo",
+        "kda": "5/6/4"
+      },
+      {
+        "player": "MinCon",
+        "name": "Rich",
+        "role": "JUNGLE",
+        "champion": "Qiyana",
+        "kda": "3/6/5"
+      },
+      {
+        "player": "01554",
+        "name": "Minz",
+        "role": "MID",
+        "champion": "Jayce",
+        "kda": "2/6/4"
+      },
+      {
+        "player": "GothFemBoy3",
+        "name": "Laurel",
+        "role": "BOT",
+        "champion": "Miss Fortune",
+        "kda": "3/5/3"
+      },
+      {
+        "player": "Jays Nemesis",
+        "name": "Andreas",
+        "role": "SUPP",
+        "champion": "Braum",
+        "kda": "2/6/5"
+      }
+    ],
+    "date": null,
+    "timestamp": "2026-05-23T23:37:59.979233Z",
+    "checksum": "93713fd436428fa1f986341773bdd5c0480ffe599602771b2cf388474bdd3764"
+  }
+]
