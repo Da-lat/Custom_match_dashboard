@@ -42,16 +42,17 @@ TEAM_COMBO_MIN_GAMES = {
 }
 MVP_WEIGHTS = {
     "Winrate": 0.40,
-    "KDA": 0.30,
+    "KDA": 0.15,
+    "Kill Participation": 0.15,
     "Champion Pool": 0.20,
     "Takedown Impact": 0.10,
 }
 ROLE_SCORE_WEIGHTS = {
-    "Adjusted WR": 0.30,
-    "Role KDA": 0.20,
-    "Role Games": 0.20,
-    "Role Champion Pool": 0.15,
-    "Role Share": 0.10,
+    "Role Winrate": 0.35,
+    "Role KDA": 0.15,
+    "Role Kill Participation": 0.15,
+    "Role Champion Pool": 0.20,
+    "Role Takedown Impact": 0.10,
     "Overall MVP": 0.05,
 }
 TEAM_TIERS = ("S", "A", "B", "C", "D", "F")
@@ -258,6 +259,7 @@ class Appearance:
     kills: int
     deaths: int
     assists: int
+    team_kills: int
 
     @property
     def win(self) -> int:
@@ -274,6 +276,10 @@ class Appearance:
     @property
     def kda_ratio(self) -> float:
         return self.takedowns / max(1, self.deaths)
+
+    @property
+    def kill_participation(self) -> float:
+        return self.takedowns / self.team_kills if self.team_kills else 0.0
 
 
 def parse_kda(raw: str) -> tuple[int, int, int]:
@@ -388,8 +394,12 @@ def load_appearances(
                 raise ValueError(
                     f"Match {match_id} has {len(players)} players on {side}, expected 5"
                 )
-            for player_data in players:
-                kills, deaths, assists = parse_kda(player_data.get("kda", "0/0/0"))
+            parsed_players = [
+                (player_data, parse_kda(player_data.get("kda", "0/0/0")))
+                for player_data in players
+            ]
+            team_kills = sum(kills for _player_data, (kills, _deaths, _assists) in parsed_players)
+            for player_data, (kills, deaths, assists) in parsed_players:
                 appearances.append(
                     Appearance(
                         match_id=match_id,
@@ -405,6 +415,7 @@ def load_appearances(
                         kills=kills,
                         deaths=deaths,
                         assists=assists,
+                        team_kills=team_kills,
                     )
                 )
     return matches, appearances
@@ -538,6 +549,8 @@ def aggregate(
                 "kills": 0,
                 "deaths": 0,
                 "assists": 0,
+                "team_kills": 0,
+                "kill_participation": 0.0,
                 "champions": Counter(),
                 "roles": Counter(),
                 "summoners": Counter(),
@@ -550,6 +563,10 @@ def aggregate(
         group["kills"] = int(group["kills"]) + appearance.kills
         group["deaths"] = int(group["deaths"]) + appearance.deaths
         group["assists"] = int(group["assists"]) + appearance.assists
+        group["team_kills"] = int(group["team_kills"]) + appearance.team_kills
+        group["kill_participation"] = (
+            float(group["kill_participation"]) + appearance.kill_participation
+        )
         group["champions"][appearance.champion] += 1
         group["roles"][appearance.role] += 1
         group["summoners"][appearance.player] += 1
@@ -565,6 +582,8 @@ def aggregate(
         kills = int(group["kills"])
         deaths = int(group["deaths"])
         assists = int(group["assists"])
+        team_kills = int(group["team_kills"])
+        kill_participation = float(group["kill_participation"])
         unique_champions = len(group["champions"])
         row.update(
             {
@@ -576,10 +595,12 @@ def aggregate(
                 "kills": kills,
                 "deaths": deaths,
                 "assists": assists,
+                "team_kills": team_kills,
                 "avg_kills": safe_div(kills, games),
                 "avg_deaths": safe_div(deaths, games),
                 "avg_assists": safe_div(assists, games),
                 "avg_takedowns": safe_div(kills + assists, games),
+                "kill_participation": safe_div(kill_participation, games),
                 "kda_ratio": safe_div(kills + assists, max(1, deaths)),
                 "unique_champions": unique_champions,
                 "champion_pool_rate": safe_div(unique_champions, games),
@@ -597,6 +618,7 @@ def aggregate(
 def mvp_score_rows(player_rows: Sequence[dict[str, object]]) -> list[dict[str, object]]:
     eligible_rows = qualify(player_rows, MIN_PLAYER_GAMES)
     kda_low, kda_high = metric_bounds(eligible_rows, "kda_ratio")
+    kp_low, kp_high = metric_bounds(eligible_rows, "kill_participation")
     takedown_low, takedown_high = metric_bounds(eligible_rows, "avg_takedowns")
     rows = []
     for player in eligible_rows:
@@ -604,6 +626,9 @@ def mvp_score_rows(player_rows: Sequence[dict[str, object]]) -> list[dict[str, o
         reliability = 1.0
         winrate_score = clamp(winrate)
         kda_score = normalized_metric(float(player.get("kda_ratio", 0)), kda_low, kda_high)
+        kill_participation_score = normalized_metric(
+            float(player.get("kill_participation", 0)), kp_low, kp_high
+        )
         champion_pool_score = float(player.get("champion_pool_rate", 0)) ** 0.5
         takedown_score = normalized_metric(
             float(player.get("avg_takedowns", 0)), takedown_low, takedown_high
@@ -611,6 +636,7 @@ def mvp_score_rows(player_rows: Sequence[dict[str, object]]) -> list[dict[str, o
         total_score = 100 * (
             MVP_WEIGHTS["Winrate"] * winrate_score
             + MVP_WEIGHTS["KDA"] * kda_score
+            + MVP_WEIGHTS["Kill Participation"] * kill_participation_score
             + MVP_WEIGHTS["Champion Pool"] * champion_pool_score
             + MVP_WEIGHTS["Takedown Impact"] * takedown_score
         )
@@ -622,6 +648,7 @@ def mvp_score_rows(player_rows: Sequence[dict[str, object]]) -> list[dict[str, o
                 "winrate_score": winrate_score,
                 "reliability": reliability,
                 "kda_score": kda_score,
+                "kill_participation_score": kill_participation_score,
                 "champion_pool_score": champion_pool_score,
                 "takedown_score": takedown_score,
             }
@@ -644,41 +671,44 @@ def player_role_score_rows(
     player_role_rows: Sequence[dict[str, object]],
     mvp_rows: Sequence[dict[str, object]],
 ) -> list[dict[str, object]]:
-    player_by_name = {str(row["name"]): row for row in player_rows}
     mvp_by_name = {str(row["name"]): row for row in mvp_rows}
     kda_low, kda_high = metric_bounds(player_role_rows, "kda_ratio")
-    max_role_games = max(
-        (int(row.get("games", 0)) for row in player_role_rows), default=1
-    )
+    kp_low, kp_high = metric_bounds(player_role_rows, "kill_participation")
+    takedown_low, takedown_high = metric_bounds(player_role_rows, "avg_takedowns")
     rows = []
     for role_row in player_role_rows:
         role = str(role_row.get("role", ""))
         if role not in ROLE_ORDER:
             continue
         name = str(role_row["name"])
-        player = player_by_name.get(name, {})
         games = int(role_row.get("games", 0))
-        player_games = int(player.get("games", games)) or games or 1
         winrate = float(role_row.get("winrate", 0))
         reliability = clamp(games / ROLE_RELIABILITY_GAMES)
         adjusted_winrate = 0.5 + ((winrate - 0.5) * reliability)
-        role_kda_score = normalized_metric(
+        role_kda_raw_score = normalized_metric(
             float(role_row.get("kda_ratio", 0)), kda_low, kda_high
         )
-        role_games_score = (safe_div(games, max_role_games)) ** 0.5
+        role_kda_score = 0.5 + ((role_kda_raw_score - 0.5) * reliability)
+        role_kp_raw_score = normalized_metric(
+            float(role_row.get("kill_participation", 0)), kp_low, kp_high
+        )
+        role_kp_score = 0.5 + ((role_kp_raw_score - 0.5) * reliability)
+        role_takedown_raw_score = normalized_metric(
+            float(role_row.get("avg_takedowns", 0)), takedown_low, takedown_high
+        )
+        role_takedown_score = 0.5 + ((role_takedown_raw_score - 0.5) * reliability)
         role_pool_score = (
             float(role_row.get("champion_pool_rate", 0)) * reliability
         ) ** 0.5
-        role_share = safe_div(games, player_games)
         overall_mvp_score = safe_div(
             float(mvp_by_name.get(name, {}).get("mvp_score", 0)), 100
         )
         role_score = 100 * (
-            ROLE_SCORE_WEIGHTS["Adjusted WR"] * clamp(adjusted_winrate)
+            ROLE_SCORE_WEIGHTS["Role Winrate"] * clamp(adjusted_winrate)
             + ROLE_SCORE_WEIGHTS["Role KDA"] * role_kda_score
-            + ROLE_SCORE_WEIGHTS["Role Games"] * role_games_score
+            + ROLE_SCORE_WEIGHTS["Role Kill Participation"] * role_kp_score
             + ROLE_SCORE_WEIGHTS["Role Champion Pool"] * role_pool_score
-            + ROLE_SCORE_WEIGHTS["Role Share"] * role_share
+            + ROLE_SCORE_WEIGHTS["Role Takedown Impact"] * role_takedown_score
             + ROLE_SCORE_WEIGHTS["Overall MVP"] * overall_mvp_score
         )
         row = dict(role_row)
@@ -686,10 +716,10 @@ def player_role_score_rows(
             {
                 "role_score": role_score,
                 "adjusted_winrate": adjusted_winrate,
-                "role_share": role_share,
                 "reliability": reliability,
                 "role_kda_score": role_kda_score,
-                "role_games_score": role_games_score,
+                "role_kp_score": role_kp_score,
+                "role_takedown_score": role_takedown_score,
                 "role_pool_score": role_pool_score,
                 "overall_mvp_score": overall_mvp_score,
             }
@@ -4707,10 +4737,12 @@ def render_scoring_formula_explainer(
 
     eligible_player_rows = qualify(player_rows, MIN_PLAYER_GAMES)
     kda_low, kda_high = metric_bounds(eligible_player_rows, "kda_ratio")
+    kp_low, kp_high = metric_bounds(eligible_player_rows, "kill_participation")
     takedown_low, takedown_high = metric_bounds(eligible_player_rows, "avg_takedowns")
     role_kda_low, role_kda_high = metric_bounds(player_role_rows, "kda_ratio")
-    max_role_games = max(
-        (int(row.get("games", 0)) for row in player_role_rows), default=1
+    role_kp_low, role_kp_high = metric_bounds(player_role_rows, "kill_participation")
+    role_takedown_low, role_takedown_high = metric_bounds(
+        player_role_rows, "avg_takedowns"
     )
 
     def weighted_points(component_score: float, weight: float) -> str:
@@ -4771,6 +4803,7 @@ def render_scoring_formula_explainer(
 
     mvp_winrate_score = float(player_example.get("winrate_score", player_example.get("winrate", 0)))
     mvp_kda_score = float(player_example.get("kda_score", 0))
+    mvp_kp_score = float(player_example.get("kill_participation_score", 0))
     mvp_pool_score = float(player_example.get("champion_pool_score", 0))
     mvp_takedown_score = float(player_example.get("takedown_score", 0))
     player_games = int(player_example.get("games", 0))
@@ -4781,6 +4814,7 @@ def render_scoring_formula_explainer(
     player_assists = int(player_example.get("assists", 0))
     player_unique_champs = int(player_example.get("unique_champions", 0))
     player_pool_rate = float(player_example.get("champion_pool_rate", 0))
+    player_kp = float(player_example.get("kill_participation", 0))
 
     mvp_example_rows = [
         (
@@ -4798,6 +4832,14 @@ def render_scoring_formula_explainer(
             pct(mvp_kda_score),
             pct(MVP_WEIGHTS["KDA"]),
             weighted_points(mvp_kda_score, MVP_WEIGHTS["KDA"]),
+        ),
+        (
+            "Kill Participation",
+            "Average per-game share of team kills: (kills + assists) / team kills.",
+            f"{pct(player_kp)} average KP; range {pct(kp_low)} to {pct(kp_high)}",
+            pct(mvp_kp_score),
+            pct(MVP_WEIGHTS["Kill Participation"]),
+            weighted_points(mvp_kp_score, MVP_WEIGHTS["Kill Participation"]),
         ),
         (
             "Champion Pool",
@@ -4827,6 +4869,10 @@ def render_scoring_formula_explainer(
             "Kills plus assists divided by deaths. The dashboard converts this to a 0-100% component by comparing it to the lowest and highest KDA in the current dataset.",
         ),
         (
+            "Kill Participation / Role Kill Participation",
+            "Average per-game share of team kills where kills and assists both count. For example, 0/2/15 in a 30-kill team game is 50% KP.",
+        ),
+        (
             "Takedown Impact",
             "Average kills plus assists per game. This keeps high-KDA but low-involvement games from carrying the whole MVP score.",
         ),
@@ -4835,12 +4881,8 @@ def render_scoring_formula_explainer(
             "Unique-pick rate rather than raw unique champion count. A player with 16 unique champions in 17 games rates higher than a player with 20 unique champions in 60 games.",
         ),
         (
-            "Role Games",
-            "A team-role sample-size component using square root scaling. It remains in team-role score because drafted teams need proven role experience.",
-        ),
-        (
-            "Role Share",
-            "The share of a player's total games played in that role. This rewards actual role comfort instead of one-off role appearances.",
+            "Role Reliability",
+            f"Role games do not score directly. They only pull role-only metrics toward neutral until that role reaches {ROLE_RELIABILITY_GAMES} games.",
         ),
         (
             "Overall MVP",
@@ -4858,9 +4900,9 @@ def render_scoring_formula_explainer(
         role_reliability = float(role_example.get("reliability", 0))
         role_adjusted_wr = clamp(float(role_example.get("adjusted_winrate", 0)))
         role_kda_score = float(role_example.get("role_kda_score", 0))
-        role_games_score = float(role_example.get("role_games_score", 0))
+        role_kp_score = float(role_example.get("role_kp_score", 0))
+        role_takedown_score = float(role_example.get("role_takedown_score", 0))
         role_pool_score = float(role_example.get("role_pool_score", 0))
-        role_share = float(role_example.get("role_share", 0))
         overall_mvp_score = float(role_example.get("overall_mvp_score", 0))
         role_games = int(role_example.get("games", 0))
         role_wins = int(role_example.get("wins", 0))
@@ -4870,32 +4912,35 @@ def render_scoring_formula_explainer(
         role_assists = int(role_example.get("assists", 0))
         role_unique_champs = int(role_example.get("unique_champions", 0))
         role_pool_rate = float(role_example.get("champion_pool_rate", 0))
+        role_kp = float(role_example.get("kill_participation", 0))
         role_example_rows = [
             (
-                "Adjusted WR",
+                "Role Winrate",
                 f"Role reliability = min(role games / {ROLE_RELIABILITY_GAMES}, 1). Adjusted WR = 50% + ((role WR - 50%) x reliability).",
                 f"{role_wins}-{role_losses}, {pct(float(role_example.get('winrate', 0)))} {role} WR; reliability {pct(role_reliability)}",
                 pct(role_adjusted_wr),
-                pct(ROLE_SCORE_WEIGHTS["Adjusted WR"]),
+                pct(ROLE_SCORE_WEIGHTS["Role Winrate"]),
                 weighted_points(
-                    role_adjusted_wr, ROLE_SCORE_WEIGHTS["Adjusted WR"]
+                    role_adjusted_wr, ROLE_SCORE_WEIGHTS["Role Winrate"]
                 ),
             ),
             (
                 "Role KDA",
-                "Role KDA is normalized against every player-role KDA in the current dataset.",
-                f"({role_kills} + {role_assists}) / {max(1, role_deaths)} = {two_decimal(float(role_example.get('kda_ratio', 0)))}; range {two_decimal(role_kda_low)} to {two_decimal(role_kda_high)}",
+                "Role KDA is normalized against every player-role KDA in the current dataset, then reliability-adjusted for small role samples.",
+                f"({role_kills} + {role_assists}) / {max(1, role_deaths)} = {two_decimal(float(role_example.get('kda_ratio', 0)))}; range {two_decimal(role_kda_low)} to {two_decimal(role_kda_high)}; reliability {pct(role_reliability)}",
                 pct(role_kda_score),
                 pct(ROLE_SCORE_WEIGHTS["Role KDA"]),
                 weighted_points(role_kda_score, ROLE_SCORE_WEIGHTS["Role KDA"]),
             ),
             (
-                "Role Games",
-                "Sample-size credit inside the role: sqrt(role games / highest player-role game count).",
-                f"{role_games} {role} games / {max_role_games} max player-role games",
-                pct(role_games_score),
-                pct(ROLE_SCORE_WEIGHTS["Role Games"]),
-                weighted_points(role_games_score, ROLE_SCORE_WEIGHTS["Role Games"]),
+                "Role Kill Participation",
+                "Role KP is average per-game share of team kills while playing this role, reliability-adjusted for small role samples.",
+                f"{pct(role_kp)} {role} KP; range {pct(role_kp_low)} to {pct(role_kp_high)}; reliability {pct(role_reliability)}",
+                pct(role_kp_score),
+                pct(ROLE_SCORE_WEIGHTS["Role Kill Participation"]),
+                weighted_points(
+                    role_kp_score, ROLE_SCORE_WEIGHTS["Role Kill Participation"]
+                ),
             ),
             (
                 "Role Champion Pool",
@@ -4908,12 +4953,14 @@ def render_scoring_formula_explainer(
                 ),
             ),
             (
-                "Role Share",
-                "How much of this player's history is in this role.",
-                f"{role_games} of {player_games} {example_name} games were {role}",
-                pct(role_share),
-                pct(ROLE_SCORE_WEIGHTS["Role Share"]),
-                weighted_points(role_share, ROLE_SCORE_WEIGHTS["Role Share"]),
+                "Role Takedown Impact",
+                "Average kills plus assists in this role, reliability-adjusted for small role samples.",
+                f"{one_decimal(float(role_example.get('avg_takedowns', 0)))} {role} takedowns/game; range {one_decimal(role_takedown_low)} to {one_decimal(role_takedown_high)}; reliability {pct(role_reliability)}",
+                pct(role_takedown_score),
+                pct(ROLE_SCORE_WEIGHTS["Role Takedown Impact"]),
+                weighted_points(
+                    role_takedown_score, ROLE_SCORE_WEIGHTS["Role Takedown Impact"]
+                ),
             ),
             (
                 "Overall MVP",
@@ -4960,7 +5007,7 @@ def render_scoring_formula_explainer(
           <div class="formula-copy">
             <p><b>MVP score</b> = 100 x ({escape(weighted_formula(MVP_WEIGHTS))}).</p>
             <p><b>Team role score</b> = 100 x ({escape(weighted_formula(ROLE_SCORE_WEIGHTS))}).</p>
-            <p>Overall MVP only includes players with at least {MIN_PLAYER_GAMES} games. Once eligible, extra games do not add points. Team role score still includes Role Games because drafted teams need proven role experience. Role reliability reaches full strength at {ROLE_RELIABILITY_GAMES} games.</p>
+            <p>Overall MVP only includes players with at least {MIN_PLAYER_GAMES} games. Once eligible, extra games do not add points. Role Games and Role Share do not score directly; role games only affect role-metric reliability. Role reliability reaches full strength at {ROLE_RELIABILITY_GAMES} games.</p>
           </div>
         </section>
       </div>
@@ -5127,6 +5174,7 @@ def build_dashboard(
         ("L", "losses", integer, "number"),
         ("Winrate", "winrate", lambda value: pct(float(value)), "number"),
         ("KDA", "kda_ratio", lambda value: two_decimal(float(value)), "number"),
+        ("KP", "kill_participation", lambda value: pct(float(value)), "number"),
         ("K", "avg_kills", lambda value: one_decimal(float(value)), "number"),
         ("D", "avg_deaths", lambda value: one_decimal(float(value)), "number"),
         ("A", "avg_assists", lambda value: one_decimal(float(value)), "number"),
@@ -5147,6 +5195,7 @@ def build_dashboard(
         ("Games", "games", integer, "number"),
         ("Winrate", "winrate", lambda value: pct(float(value)), "number"),
         ("KDA", "kda_ratio", lambda value: two_decimal(float(value)), "number"),
+        ("KP", "kill_participation", lambda value: pct(float(value)), "number"),
         ("Avg TD", "avg_takedowns", lambda value: one_decimal(float(value)), "number"),
         ("Unique Champs", "unique_champions", integer, "number"),
         ("Unique Pick %", "champion_pool_rate", lambda value: pct(float(value)), "number"),
@@ -5158,6 +5207,7 @@ def build_dashboard(
         ("L", "losses", integer, "number"),
         ("Winrate", "winrate", lambda value: pct(float(value)), "number"),
         ("KDA", "kda_ratio", lambda value: two_decimal(float(value)), "number"),
+        ("KP", "kill_participation", lambda value: pct(float(value)), "number"),
         ("K", "avg_kills", lambda value: one_decimal(float(value)), "number"),
         ("D", "avg_deaths", lambda value: one_decimal(float(value)), "number"),
         ("A", "avg_assists", lambda value: one_decimal(float(value)), "number"),
@@ -5170,6 +5220,7 @@ def build_dashboard(
         ("W", "wins", integer, "number"),
         ("Winrate", "winrate", lambda value: pct(float(value)), "number"),
         ("KDA", "kda_ratio", lambda value: two_decimal(float(value)), "number"),
+        ("KP", "kill_participation", lambda value: pct(float(value)), "number"),
         ("K", "avg_kills", lambda value: one_decimal(float(value)), "number"),
         ("D", "avg_deaths", lambda value: one_decimal(float(value)), "number"),
         ("A", "avg_assists", lambda value: one_decimal(float(value)), "number"),
@@ -5181,6 +5232,7 @@ def build_dashboard(
         ("W", "wins", integer, "number"),
         ("Winrate", "winrate", lambda value: pct(float(value)), "number"),
         ("KDA", "kda_ratio", lambda value: two_decimal(float(value)), "number"),
+        ("KP", "kill_participation", lambda value: pct(float(value)), "number"),
         ("K", "avg_kills", lambda value: one_decimal(float(value)), "number"),
         ("D", "avg_deaths", lambda value: one_decimal(float(value)), "number"),
         ("A", "avg_assists", lambda value: one_decimal(float(value)), "number"),
@@ -5211,6 +5263,7 @@ def build_dashboard(
         ("W", "wins", integer, "number"),
         ("Winrate", "winrate", lambda value: pct(float(value)), "number"),
         ("KDA", "kda_ratio", lambda value: two_decimal(float(value)), "number"),
+        ("KP", "kill_participation", lambda value: pct(float(value)), "number"),
         ("K", "avg_kills", lambda value: one_decimal(float(value)), "number"),
         ("D", "avg_deaths", lambda value: one_decimal(float(value)), "number"),
         ("A", "avg_assists", lambda value: one_decimal(float(value)), "number"),
@@ -7371,7 +7424,7 @@ def build_dashboard(
       <div class="section-title">
         <div>
           <h2>MVP & Drafted Teams</h2>
-          <p class="note">MVP formula: {escape(weight_summary(MVP_WEIGHTS))}. MVP board requires at least {MIN_PLAYER_GAMES} games; games do not score after that cutoff. Team role score: {escape(weight_summary(ROLE_SCORE_WEIGHTS))}. Role Champion Pool uses role-specific unique-pick rate. Drafted teams use one TOP, JUNGLE, MID, BOT, and SUPP, without reusing players.</p>
+          <p class="note">MVP formula: {escape(weight_summary(MVP_WEIGHTS))}. MVP board requires at least {MIN_PLAYER_GAMES} games; games do not score after that cutoff. Team role score: {escape(weight_summary(ROLE_SCORE_WEIGHTS))}. Role Games and Role Share do not score directly; role games only affect role-metric reliability. Role Champion Pool uses role-specific unique-pick rate. Drafted teams use one TOP, JUNGLE, MID, BOT, and SUPP, without reusing players.</p>
         </div>
       </div>
       <div class="mvp-team-grid">
