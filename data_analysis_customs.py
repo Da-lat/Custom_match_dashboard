@@ -1277,10 +1277,7 @@ def text_mentions_spotlight_excluded_player(value: object) -> bool:
 
 
 def award_mentions_spotlight_excluded_player(award: dict[str, object]) -> bool:
-    return any(
-        text_mentions_spotlight_excluded_player(award.get(key, ""))
-        for key in ("winner", "stat", "detail")
-    )
+    return text_mentions_spotlight_excluded_player(award.get("winner", ""))
 
 
 def without_spotlight_excluded_players(
@@ -6467,11 +6464,11 @@ def build_dashboard(
       display: block;
     }}
     .search-highlight {{
-      background: rgba(240, 201, 106, 0.38);
-      color: var(--ink);
+      background: #ffe45c;
+      color: #101820;
       border-radius: 3px;
       padding: 0 2px;
-      box-shadow: 0 0 0 1px rgba(240, 201, 106, 0.26);
+      box-shadow: 0 0 0 1px rgba(255, 228, 92, 0.5);
     }}
     .match-card-heading, .player-pool-heading {{
       display: flex;
