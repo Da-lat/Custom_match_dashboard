@@ -1394,7 +1394,7 @@ def heat_table_cell(
         f"color: {heat_text_color(winrate)}; font-weight: 900;"
     )
     sort = winrate if sort_value is None else sort_value
-    return table_cell(value, sort, "table-heat-cell", style)
+    return table_cell(value, sort, "table-heat-cell number-cell", style)
 
 
 def role_breakdown_winrate(value: object) -> float | None:
@@ -1463,6 +1463,10 @@ def render_table(
                     cells.append(table_cell(value, sort_value))
                 else:
                     cells.append(heat_table_cell(value, role_winrate, role_winrate))
+            elif key == "name":
+                cells.append(table_cell(value, sort_value, "name-cell"))
+            elif data_type == "number":
+                cells.append(table_cell(value, sort_value, "number-cell"))
             else:
                 cells.append(table_cell(value, sort_value))
         body_parts.append(f"<tr>{''.join(cells)}</tr>")
@@ -1951,19 +1955,19 @@ def render_match_history(appearances: Sequence[Appearance]) -> str:
 def champion_pool_horizontal_svg(
     player_name: str, champion_rows: Sequence[dict[str, object]]
 ) -> str:
-    row_height = 34
-    top = 30
-    left = 154
-    right = 104
+    row_height = 27
+    top = 26
+    left = 146
+    right = 96
     width = 920
     chart_width = width - left - right
-    height = top + 30 + max(1, len(champion_rows)) * row_height
+    height = top + 20 + max(1, len(champion_rows)) * row_height
     max_games = max((int(row["games"]) for row in champion_rows), default=1)
     parts = [
         f'<svg class="champ-pool-svg horizontal-chart" viewBox="0 0 {width} {height}" role="img" aria-label="{html_attr(player_name)} champion pool horizontal bar chart">'
     ]
     parts.append(
-        f'<text x="{left}" y="20" class="pool-axis-label">Champion games played</text>'
+        f'<text x="{left}" y="18" class="pool-axis-label">Champion games played</text>'
     )
     for index, row in enumerate(champion_rows):
         games = int(row["games"])
@@ -1972,19 +1976,19 @@ def champion_pool_horizontal_svg(
         bar_width = max(3, games / max_games * chart_width)
         label = str(row["champion"])
         parts.append(
-            f'<text x="{left - 12}" y="{y + 18}" class="pool-label horizontal-label">{escape(label)}</text>'
+            f'<text x="{left - 10}" y="{y + 16}" class="pool-label horizontal-label">{escape(label)}</text>'
         )
         parts.append(
-            f'<rect x="{left}" y="{y + 6}" width="{chart_width}" height="14" rx="4" class="pool-track"/>'
+            f'<rect x="{left}" y="{y + 8}" width="{chart_width}" height="10" rx="5" class="pool-track"/>'
         )
         parts.append(
-            f'<rect x="{left}" y="{y + 6}" width="{bar_width:.1f}" height="14" rx="4" class="pool-bar"/>'
+            f'<rect x="{left}" y="{y + 8}" width="{bar_width:.1f}" height="10" rx="5" class="pool-bar"/>'
         )
         parts.append(
-            f'<text x="{left + chart_width + 14}" y="{y + 18}" class="pool-value">{games}g</text>'
+            f'<text x="{left + chart_width + 12}" y="{y + 16}" class="pool-value">{games}g</text>'
         )
         parts.append(
-            f'<text x="{width - 8}" y="{y + 18}" class="pool-winrate">{pct(winrate)}</text>'
+            f'<text x="{width - 8}" y="{y + 16}" class="pool-winrate">{pct(winrate)}</text>'
         )
     parts.append("</svg>")
     return "".join(parts)
@@ -1993,12 +1997,12 @@ def champion_pool_horizontal_svg(
 def champion_pool_vertical_svg(
     player_name: str, champion_rows: Sequence[dict[str, object]]
 ) -> str:
-    bar_width = 28
-    gap = 18
+    bar_width = 24
+    gap = 13
     left = 52
-    top = 34
-    chart_height = 240
-    label_height = 122
+    top = 30
+    chart_height = 214
+    label_height = 104
     right = 34
     width = max(760, left + right + len(champion_rows) * (bar_width + gap))
     height = top + chart_height + label_height
@@ -2205,12 +2209,13 @@ def render_combo_chart(
 ) -> str:
     visible_rows = list(rows[:limit])
     rendered = []
-    for row in visible_rows:
+    bar_accents = ("#4fc48b", "#62a8ff", "#f0c96a", "#b596ff", "#ff6f81")
+    for index, row in enumerate(visible_rows, start=1):
         winrate = float(row["winrate"])
         width = max(2.0, winrate * 100)
         rendered.append(
             f"""
-            <div class="combo-row">
+            <div class="combo-row" data-rank="{index:02d}" style="--bar-accent: {bar_accents[(index - 1) % len(bar_accents)]};">
               <div class="combo-label">
                 <span>{escape(str(row["combo"]))}</span>
                 <small>{escape(str(row["footer"]))}</small>
@@ -4402,6 +4407,13 @@ def render_player_showcase_page(
 
 
 def render_role_champion_browser(role_rows: Sequence[dict[str, object]]) -> str:
+    role_accents = {
+        "TOP": "#4fc48b",
+        "JUNGLE": "#62a8ff",
+        "MID": "#b596ff",
+        "BOT": "#ff6f81",
+        "SUPP": "#f0c96a",
+    }
     buttons = []
     panels = []
     for index, row in enumerate(role_rows):
@@ -4417,10 +4429,12 @@ def render_role_champion_browser(role_rows: Sequence[dict[str, object]]) -> str:
             champion_counts.items(), key=lambda item: (-item[1], str(item[0]))
         ):
             width = max(3.0, games / max_games * 100)
+            champion_name = str(champion)
+            accent = role_accents.get(role, "#62a8ff")
             champion_rows.append(
                 f"""
-                <div class="role-champion-row">
-                  <span>{escape(str(champion))}</span>
+                <div class="role-champion-row" style="--bar-accent: {accent};">
+                  <span><img src="{html_attr(champion_icon_url(champion_name))}" alt="{html_attr(champion_name)}">{escape(champion_name)}</span>
                   <b>{games}</b>
                   <div class="bar-track"><div class="bar-fill" style="width: {width:.2f}%"></div></div>
                 </div>
@@ -5132,9 +5146,9 @@ def build_dashboard(
     }}
     .bar-fill {{
       height: 100%;
-      background: linear-gradient(90deg, var(--bar-accent), var(--green));
+      background: linear-gradient(90deg, var(--bar-accent, var(--blue)), var(--green));
       border-radius: inherit;
-      box-shadow: 0 0 14px color-mix(in srgb, var(--bar-accent) 36%, transparent);
+      box-shadow: 0 0 14px color-mix(in srgb, var(--bar-accent, var(--blue)) 36%, transparent);
     }}
     .bar-fill::after {{
       content: "";
@@ -5151,15 +5165,36 @@ def build_dashboard(
     }}
     .combo-chart {{
       display: grid;
-      gap: 13px;
+      gap: 10px;
       margin-top: 14px;
     }}
     .combo-row {{
+      --bar-accent: var(--green);
       display: grid;
-      grid-template-columns: minmax(220px, 1.35fr) 2fr minmax(58px, auto);
-      gap: 12px;
+      grid-template-columns: 34px minmax(220px, 1.35fr) 2fr minmax(58px, auto);
+      gap: 10px;
       align-items: center;
-      min-height: 42px;
+      min-height: 48px;
+      padding: 8px;
+      border: 1px solid color-mix(in srgb, var(--bar-accent) 30%, var(--line));
+      border-radius: 8px;
+      background:
+        linear-gradient(90deg, color-mix(in srgb, var(--bar-accent) 19%, transparent), transparent 62%),
+        #101924;
+    }}
+    .combo-row::before {{
+      content: attr(data-rank);
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      color: var(--bar-accent);
+      background: rgba(8, 13, 19, 0.92);
+      border: 1px solid color-mix(in srgb, var(--bar-accent) 42%, var(--line));
+      font-size: 0.7rem;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
     }}
     .combo-label {{
       min-width: 0;
@@ -5177,6 +5212,7 @@ def build_dashboard(
     .combo-row b {{
       text-align: right;
       font-variant-numeric: tabular-nums;
+      color: #eef4fb;
     }}
     .chart-note {{
       margin: 6px 0 0;
@@ -5249,33 +5285,53 @@ def build_dashboard(
     .role-champion-list {{
       display: grid;
       grid-template-columns: 1fr;
-      gap: 6px;
-      max-height: 420px;
+      gap: 7px;
+      max-height: 400px;
       overflow: auto;
       padding-right: 4px;
     }}
     .role-champion-row {{
+      --bar-accent: var(--blue);
       display: grid;
-      grid-template-columns: minmax(130px, 190px) 34px minmax(130px, 420px);
+      grid-template-columns: minmax(170px, 240px) 34px minmax(150px, 440px);
       align-items: center;
       gap: 8px;
-      min-height: 24px;
-      max-width: 680px;
+      min-height: 34px;
+      max-width: 760px;
+      padding: 4px 7px;
+      border: 1px solid rgba(151, 164, 181, 0.15);
+      border-radius: 7px;
+      background:
+        linear-gradient(90deg, color-mix(in srgb, var(--bar-accent) 16%, transparent), transparent 62%),
+        rgba(16, 25, 36, 0.62);
     }}
     .role-champion-row span {{
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-weight: 700;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }}
+    .role-champion-row img {{
+      width: 24px;
+      height: 24px;
+      flex: 0 0 24px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid rgba(232, 238, 246, 0.16);
+      background: #0d141d;
     }}
     .role-champion-row b {{
       text-align: center;
       font-variant-numeric: tabular-nums;
-      color: var(--muted);
+      color: #dce5ef;
       font-size: 0.86rem;
     }}
     .role-champion-row .bar-track {{
-      height: 10px;
+      height: 9px;
     }}
     .award-grid {{
       display: grid;
@@ -5686,7 +5742,7 @@ def build_dashboard(
       display: block;
     }}
     .champ-pool-chart {{
-      padding: 14px 16px 16px;
+      padding: 10px 14px 12px;
       overflow-x: hidden;
       background: #ffffff;
     }}
@@ -5707,19 +5763,19 @@ def build_dashboard(
       display: block;
     }}
     .pool-track {{
-      fill: #e8edf3;
+      fill: #dfe7f1;
     }}
     .pool-bar {{
-      fill: var(--blue);
+      fill: #62a8ff;
     }}
     .pool-axis-label {{
       fill: var(--muted);
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 800;
     }}
     .pool-label {{
       fill: #17212b;
-      font-size: 14px;
+      font-size: 12.5px;
       font-weight: 800;
     }}
     .horizontal-label {{
@@ -5727,11 +5783,11 @@ def build_dashboard(
     }}
     .vertical-label {{
       text-anchor: start;
-      font-size: 12px;
+      font-size: 11px;
     }}
     .pool-value, .pool-winrate {{
       fill: #334253;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 800;
       font-variant-numeric: tabular-nums;
     }}
@@ -5783,13 +5839,14 @@ def build_dashboard(
     }}
     .table-wrap {{
       overflow-y: auto;
-      overflow-x: hidden;
+      overflow-x: auto;
       max-height: 620px;
       min-width: 0;
     }}
     table {{
       width: 100%;
       max-width: 100%;
+      min-width: 860px;
       border-collapse: collapse;
       font-size: 0.91rem;
       table-layout: auto;
@@ -5800,7 +5857,8 @@ def build_dashboard(
       text-align: left;
       vertical-align: top;
       white-space: normal;
-      overflow-wrap: anywhere;
+      overflow-wrap: normal;
+      word-break: normal;
     }}
     th + th, td + td {{
       border-left: 1px solid #edf1f5;
@@ -5820,6 +5878,21 @@ def build_dashboard(
     td {{
       color: #273443;
       font-variant-numeric: tabular-nums;
+    }}
+    td.name-cell,
+    td.mvp-name-cell {{
+      min-width: 12ch;
+      white-space: nowrap;
+      overflow-wrap: normal;
+      word-break: normal;
+    }}
+    td.number-cell {{
+      white-space: nowrap;
+      overflow-wrap: normal;
+      word-break: normal;
+    }}
+    #player-summary {{
+      min-width: 1180px;
     }}
     thead th {{
       position: sticky;
@@ -6125,7 +6198,11 @@ def build_dashboard(
       .bar-label {{ grid-column: 2; grid-row: 1; }}
       .bar-track {{ grid-column: 1 / -1; grid-row: 2; }}
       .bar-row b {{ grid-column: 3; grid-row: 1; text-align: right; }}
-      .combo-row {{ grid-template-columns: 1fr; gap: 6px; }}
+      .combo-row {{ grid-template-columns: 34px minmax(0, 1fr) auto; gap: 8px; }}
+      .combo-row::before {{ grid-column: 1; grid-row: 1; }}
+      .combo-label {{ grid-column: 2; grid-row: 1; }}
+      .combo-row .bar-track {{ grid-column: 1 / -1; grid-row: 2; }}
+      .combo-row b {{ grid-column: 3; grid-row: 1; text-align: right; }}
       .role-champion-list {{ grid-template-columns: 1fr; }}
       .role-champion-row {{ grid-template-columns: minmax(120px, 1fr) 34px minmax(100px, 1.6fr); max-width: none; }}
       .team-role-row {{ grid-template-columns: 48px minmax(84px, 1fr) 42px; }}
@@ -6135,7 +6212,6 @@ def build_dashboard(
       .heatmap-table th:first-child {{ width: 90px; min-width: 0; max-width: none; }}
       .heatmap-table td {{ width: auto; min-width: 0; font-size: 0.72rem; }}
       .heatmap-table td small {{ font-size: 0.68rem; }}
-      .combo-row b {{ text-align: left; }}
       .section-heading {{ align-items: stretch; flex-direction: column; }}
       .table-controls {{ justify-content: stretch; }}
       .table-role-filter {{ width: 100%; }}
