@@ -2221,18 +2221,39 @@ def team_combo_rows(
     )
 
 
-def render_combo_chart(
-    title: str, rows: Sequence[dict[str, object]], minimum_games: int, limit: int = 10
+def worst_combo_rows(rows: Sequence[dict[str, object]]) -> list[dict[str, object]]:
+    return sorted(
+        rows,
+        key=lambda row: (
+            float(row["winrate"]),
+            -int(row["losses"]),
+            -int(row["games"]),
+            str(row["combo"]),
+        ),
+    )
+
+
+def render_combo_list(
+    rows: Sequence[dict[str, object]],
+    minimum_games: int,
+    *,
+    limit: int = 10,
+    mode: str = "best",
 ) -> str:
     visible_rows = list(rows[:limit])
     rendered = []
-    bar_accents = ("#4fc48b", "#62a8ff", "#f0c96a", "#b596ff", "#ff6f81")
+    if mode == "worst":
+        bar_accents = ("#ff6f81", "#ff8a6a", "#f0c96a", "#ff9aa7", "#b596ff")
+    else:
+        bar_accents = ("#4fc48b", "#62a8ff", "#f0c96a", "#b596ff", "#ff6f81")
+    row_class = "combo-row combo-row-worst" if mode == "worst" else "combo-row"
     for index, row in enumerate(visible_rows, start=1):
         winrate = float(row["winrate"])
-        width = max(2.0, winrate * 100)
+        width_value = 1 - winrate if mode == "worst" else winrate
+        width = max(2.0, width_value * 100)
         rendered.append(
             f"""
-            <div class="combo-row" data-rank="{index:02d}" style="--bar-accent: {bar_accents[(index - 1) % len(bar_accents)]};">
+            <div class="{row_class}" data-rank="{index:02d}" style="--bar-accent: {bar_accents[(index - 1) % len(bar_accents)]};">
               <div class="combo-label">
                 <span>{escape(str(row["combo"]))}</span>
                 <small>{escape(str(row["footer"]))}</small>
@@ -2250,11 +2271,30 @@ def render_combo_chart(
             </div>
             """
         )
+    return "".join(rendered)
+
+
+def render_combo_comparison(
+    title: str, rows: Sequence[dict[str, object]], minimum_games: int, limit: int = 10
+) -> str:
+    best_rows = list(rows[:limit])
+    worst_rows = worst_combo_rows(rows)[:limit]
     return f"""
-    <section class="chart-panel combo-panel">
-      <h3>{escape(title)}</h3>
-      <p class="chart-note">Minimum sample: {minimum_games} games</p>
-      <div class="combo-chart">{''.join(rendered)}</div>
+    <section class="chart-panel combo-comparison-panel">
+      <div class="combo-comparison-heading">
+        <h3>{escape(title)}</h3>
+        <p class="chart-note">Minimum sample: {minimum_games} games</p>
+      </div>
+      <div class="combo-compare-grid">
+        <div class="combo-compare-column combo-compare-best">
+          <h4>Best {escape(title)}</h4>
+          <div class="combo-chart">{render_combo_list(best_rows, minimum_games, limit=limit, mode="best")}</div>
+        </div>
+        <div class="combo-compare-column combo-compare-worst">
+          <h4>Worst {escape(title)}</h4>
+          <div class="combo-chart">{render_combo_list(worst_rows, minimum_games, limit=limit, mode="worst")}</div>
+        </div>
+      </div>
     </section>
     """
 
@@ -5212,8 +5252,44 @@ def build_dashboard(
     }}
     .combo-chart {{
       display: grid;
-      gap: 10px;
+      gap: 8px;
+      margin-top: 10px;
+    }}
+    .combo-comparison-stack {{
+      display: grid;
+      gap: 14px;
       margin-top: 14px;
+    }}
+    .combo-comparison-panel {{
+      padding: 16px;
+    }}
+    .combo-comparison-heading {{
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }}
+    .combo-compare-grid {{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }}
+    .combo-compare-column {{
+      min-width: 0;
+    }}
+    .combo-compare-column h4 {{
+      margin: 0;
+      color: var(--ink);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }}
+    .combo-compare-best h4 {{
+      color: var(--green);
+    }}
+    .combo-compare-worst h4 {{
+      color: var(--red);
     }}
     .combo-row {{
       --bar-accent: var(--green);
@@ -5221,8 +5297,8 @@ def build_dashboard(
       grid-template-columns: 34px minmax(220px, 1.35fr) 2fr minmax(58px, auto);
       gap: 10px;
       align-items: center;
-      min-height: 48px;
-      padding: 8px;
+      min-height: 44px;
+      padding: 7px;
       border: 1px solid color-mix(in srgb, var(--bar-accent) 30%, var(--line));
       border-radius: 8px;
       background:
@@ -5260,6 +5336,10 @@ def build_dashboard(
       text-align: right;
       font-variant-numeric: tabular-nums;
       color: #eef4fb;
+    }}
+    .combo-row-worst .bar-fill {{
+      background: linear-gradient(90deg, var(--bar-accent, var(--red)), var(--gold));
+      box-shadow: 0 0 14px color-mix(in srgb, var(--bar-accent, var(--red)) 36%, transparent);
     }}
     .chart-note {{
       margin: 6px 0 0;
@@ -6292,6 +6372,8 @@ def build_dashboard(
       nav {{ padding: 10px 16px; }}
       main {{ padding: 16px; }}
       .metric-grid, .chart-grid, .svg-grid, .award-grid, .team-tier-grid {{ grid-template-columns: 1fr; }}
+      .combo-compare-grid {{ grid-template-columns: 1fr; }}
+      .combo-comparison-heading {{ align-items: flex-start; flex-direction: column; }}
       .popular-champion-row {{ grid-template-columns: repeat(5, minmax(0, 1fr)); }}
       .match-card-heading, .player-pool-heading {{ align-items: flex-start; flex-direction: column; }}
       .match-browser {{ grid-template-columns: 1fr 1fr; }}
@@ -6450,15 +6532,15 @@ def build_dashboard(
     <section id="combos" class="section">
       <div class="section-title">
         <div>
-          <h2>Best Player Combos</h2>
-          <p class="note">Same-side real-name combinations, ranked by winrate first, then wins and games. Minimum samples: duos {TEAM_COMBO_MIN_GAMES[2]} games, trios {TEAM_COMBO_MIN_GAMES[3]}, fours {TEAM_COMBO_MIN_GAMES[4]}, fives {TEAM_COMBO_MIN_GAMES[5]}.</p>
+          <h2>Best / Worst Player Combos</h2>
+          <p class="note">Same-side real-name combinations. Best ranks by highest winrate; worst ranks by lowest winrate. Minimum samples: duos {TEAM_COMBO_MIN_GAMES[2]} games, trios {TEAM_COMBO_MIN_GAMES[3]}, fours {TEAM_COMBO_MIN_GAMES[4]}, fives {TEAM_COMBO_MIN_GAMES[5]}.</p>
         </div>
       </div>
-      <div class="chart-grid">
-        {render_combo_chart("Best Duos", duo_rows, TEAM_COMBO_MIN_GAMES[2])}
-        {render_combo_chart("Best Trios", trio_rows, TEAM_COMBO_MIN_GAMES[3])}
-        {render_combo_chart("Best Fours", four_rows, TEAM_COMBO_MIN_GAMES[4])}
-        {render_combo_chart("Best Fives", five_rows, TEAM_COMBO_MIN_GAMES[5])}
+      <div class="combo-comparison-stack">
+        {render_combo_comparison("Duos", duo_rows, TEAM_COMBO_MIN_GAMES[2])}
+        {render_combo_comparison("Trios", trio_rows, TEAM_COMBO_MIN_GAMES[3])}
+        {render_combo_comparison("Fours", four_rows, TEAM_COMBO_MIN_GAMES[4])}
+        {render_combo_comparison("Fives", five_rows, TEAM_COMBO_MIN_GAMES[5])}
       </div>
     </section>
 
