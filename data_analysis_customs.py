@@ -625,6 +625,7 @@ def mvp_score_rows(player_rows: Sequence[dict[str, object]]) -> list[dict[str, o
                 "mvp_score": total_score,
                 "adjusted_winrate": adjusted_winrate,
                 "reliability": reliability,
+                "kda_score": kda_score,
                 "games_score": games_score,
                 "champion_pool_score": champion_pool_score,
                 "low_death_score": low_death_score,
@@ -692,6 +693,9 @@ def player_role_score_rows(
                 "adjusted_winrate": adjusted_winrate,
                 "role_share": role_share,
                 "reliability": reliability,
+                "role_kda_score": role_kda_score,
+                "role_games_score": role_games_score,
+                "role_pool_score": role_pool_score,
                 "overall_mvp_score": overall_mvp_score,
             }
         )
@@ -4601,6 +4605,313 @@ def role_filter_control(table_id: str) -> str:
     )
 
 
+def render_scoring_formula_explainer(
+    mvp_rows: Sequence[dict[str, object]],
+    role_score_rows: Sequence[dict[str, object]],
+    player_rows: Sequence[dict[str, object]],
+    player_role_rows: Sequence[dict[str, object]],
+    *,
+    example_player: str = "Felix",
+) -> str:
+    if not mvp_rows:
+        return ""
+
+    mvp_by_name = {str(row.get("name", "")): row for row in mvp_rows}
+    player_example = mvp_by_name.get(example_player, mvp_rows[0])
+    example_name = str(player_example.get("name", example_player))
+    example_roles = [
+        row for row in role_score_rows if str(row.get("name", "")) == example_name
+    ]
+    role_example = next(
+        (row for row in example_roles if str(row.get("role", "")) == "JUNGLE"),
+        None,
+    )
+    if role_example is None and example_roles:
+        role_example = max(example_roles, key=lambda row: float(row.get("role_score", 0)))
+
+    kda_low, kda_high = metric_bounds(player_rows, "kda_ratio")
+    death_low, death_high = metric_bounds(player_rows, "avg_deaths")
+    max_games = max((int(row.get("games", 0)) for row in player_rows), default=1)
+    role_kda_low, role_kda_high = metric_bounds(player_role_rows, "kda_ratio")
+    max_role_games = max(
+        (int(row.get("games", 0)) for row in player_role_rows), default=1
+    )
+
+    def weighted_points(component_score: float, weight: float) -> str:
+        return score(component_score * weight * 100)
+
+    def weighted_formula(weights: dict[str, float]) -> str:
+        return " + ".join(
+            f"({name} score x {weight:.2f})" for name, weight in weights.items()
+        )
+
+    def formula_rows(rows: Sequence[tuple[str, str, str, str, str, str]]) -> str:
+        return "\n".join(
+            f"""
+            <tr>
+              <td><b>{escape(metric)}</b><small>{escape(detail)}</small></td>
+              <td>{escape(raw)}</td>
+              <td class="number-cell">{escape(converted)}</td>
+              <td class="number-cell">{escape(weight)}</td>
+              <td class="number-cell">{escape(points)}</td>
+            </tr>
+            """
+            for metric, detail, raw, converted, weight, points in rows
+        )
+
+    def formula_table(
+        title: str,
+        note: str,
+        rows: Sequence[tuple[str, str, str, str, str, str]],
+        total_label: str,
+        total_score: float,
+    ) -> str:
+        return f"""
+        <section class="table-panel formula-example-panel">
+          <div class="section-heading">
+            <h3>{escape(title)}</h3>
+            <small>{escape(note)}</small>
+          </div>
+          <div class="table-wrap">
+            <table class="formula-table">
+              <thead>
+                <tr>
+                  <th>Metric</th>
+                  <th>Raw input</th>
+                  <th>Converted score</th>
+                  <th>Weight</th>
+                  <th>Points</th>
+                </tr>
+              </thead>
+              <tbody>{formula_rows(rows)}</tbody>
+            </table>
+          </div>
+          <div class="formula-total">
+            <b>{escape(total_label)}</b>
+            <strong>{score(total_score)}</strong>
+          </div>
+        </section>
+        """
+
+    mvp_reliability = float(player_example.get("reliability", 0))
+    mvp_kda_score = float(player_example.get("kda_score", 0))
+    mvp_games_score = float(player_example.get("games_score", 0))
+    mvp_pool_score = float(player_example.get("champion_pool_score", 0))
+    mvp_low_death_score = float(player_example.get("low_death_score", 0))
+    mvp_adjusted_wr = clamp(float(player_example.get("adjusted_winrate", 0)))
+    player_games = int(player_example.get("games", 0))
+    player_wins = int(player_example.get("wins", 0))
+    player_losses = int(player_example.get("losses", 0))
+    player_kills = int(player_example.get("kills", 0))
+    player_deaths = int(player_example.get("deaths", 0))
+    player_assists = int(player_example.get("assists", 0))
+    player_unique_champs = int(player_example.get("unique_champions", 0))
+    player_pool_rate = float(player_example.get("champion_pool_rate", 0))
+
+    mvp_example_rows = [
+        (
+            "Adjusted WR",
+            f"Reliability = min(games / {MIN_PLAYER_GAMES}, 1). Adjusted WR = 50% + ((raw WR - 50%) x reliability).",
+            f"{player_wins}-{player_losses}, {pct(float(player_example.get('winrate', 0)))} WR; reliability {pct(mvp_reliability)}",
+            pct(mvp_adjusted_wr),
+            pct(MVP_WEIGHTS["Adjusted WR"]),
+            weighted_points(mvp_adjusted_wr, MVP_WEIGHTS["Adjusted WR"]),
+        ),
+        (
+            "KDA",
+            "KDA = (kills + assists) / deaths, then normalized against the current player range.",
+            f"({player_kills} + {player_assists}) / {max(1, player_deaths)} = {two_decimal(float(player_example.get('kda_ratio', 0)))}; range {two_decimal(kda_low)} to {two_decimal(kda_high)}",
+            pct(mvp_kda_score),
+            pct(MVP_WEIGHTS["KDA"]),
+            weighted_points(mvp_kda_score, MVP_WEIGHTS["KDA"]),
+        ),
+        (
+            "Games",
+            "Sample-size credit with diminishing returns: sqrt(player games / most games by any player).",
+            f"{player_games} games / {max_games} max games",
+            pct(mvp_games_score),
+            pct(MVP_WEIGHTS["Games"]),
+            weighted_points(mvp_games_score, MVP_WEIGHTS["Games"]),
+        ),
+        (
+            "Champion Pool",
+            "Unique-pick rate with reliability: sqrt((unique champions / games) x reliability).",
+            f"{player_unique_champs} unique champions / {player_games} games = {pct(player_pool_rate)}; reliability {pct(mvp_reliability)}",
+            pct(mvp_pool_score),
+            pct(MVP_WEIGHTS["Champion Pool"]),
+            weighted_points(mvp_pool_score, MVP_WEIGHTS["Champion Pool"]),
+        ),
+        (
+            "Low Deaths",
+            "Average deaths per game, normalized against the player range and inverted so lower is better.",
+            f"{one_decimal(float(player_example.get('avg_deaths', 0)))} deaths/game; range {one_decimal(death_low)} to {one_decimal(death_high)}",
+            pct(mvp_low_death_score),
+            pct(MVP_WEIGHTS["Low Deaths"]),
+            weighted_points(mvp_low_death_score, MVP_WEIGHTS["Low Deaths"]),
+        ),
+    ]
+
+    definition_rows = [
+        (
+            "Adjusted WR",
+            "A sample-adjusted winrate. Under the reliability threshold, a player's raw winrate is pulled toward 50% so one hot or cold night does not dominate.",
+        ),
+        (
+            "KDA / Role KDA",
+            "Kills plus assists divided by deaths. The dashboard converts this to a 0-100% component by comparing it to the lowest and highest KDA in the current dataset.",
+        ),
+        (
+            "Games / Role Games",
+            "A sample-size component using square root scaling. More games help, but the benefit slows down as the sample gets larger.",
+        ),
+        (
+            "Champion Pool / Role Champion Pool",
+            "Unique-pick rate rather than raw unique champion count. A player with 16 unique champions in 17 games rates higher than a player with 20 unique champions in 60 games.",
+        ),
+        (
+            "Low Deaths",
+            "Average deaths per game. It is inverted after normalization, so fewer deaths create a higher score.",
+        ),
+        (
+            "Role Share",
+            "The share of a player's total games played in that role. This rewards actual role comfort instead of one-off role appearances.",
+        ),
+        (
+            "Overall MVP",
+            "The player's overall MVP score divided by 100. It is only 5% of role score, so role performance still matters most.",
+        ),
+    ]
+    definition_html = "\n".join(
+        f"<li><b>{escape(title)}</b><small>{escape(detail)}</small></li>"
+        for title, detail in definition_rows
+    )
+
+    role_table_html = ""
+    if role_example:
+        role = str(role_example.get("role", "Role"))
+        role_reliability = float(role_example.get("reliability", 0))
+        role_adjusted_wr = clamp(float(role_example.get("adjusted_winrate", 0)))
+        role_kda_score = float(role_example.get("role_kda_score", 0))
+        role_games_score = float(role_example.get("role_games_score", 0))
+        role_pool_score = float(role_example.get("role_pool_score", 0))
+        role_share = float(role_example.get("role_share", 0))
+        overall_mvp_score = float(role_example.get("overall_mvp_score", 0))
+        role_games = int(role_example.get("games", 0))
+        role_wins = int(role_example.get("wins", 0))
+        role_losses = int(role_example.get("losses", 0))
+        role_kills = int(role_example.get("kills", 0))
+        role_deaths = int(role_example.get("deaths", 0))
+        role_assists = int(role_example.get("assists", 0))
+        role_unique_champs = int(role_example.get("unique_champions", 0))
+        role_pool_rate = float(role_example.get("champion_pool_rate", 0))
+        role_example_rows = [
+            (
+                "Adjusted WR",
+                f"Role reliability = min(role games / {ROLE_RELIABILITY_GAMES}, 1). Adjusted WR = 50% + ((role WR - 50%) x reliability).",
+                f"{role_wins}-{role_losses}, {pct(float(role_example.get('winrate', 0)))} {role} WR; reliability {pct(role_reliability)}",
+                pct(role_adjusted_wr),
+                pct(ROLE_SCORE_WEIGHTS["Adjusted WR"]),
+                weighted_points(
+                    role_adjusted_wr, ROLE_SCORE_WEIGHTS["Adjusted WR"]
+                ),
+            ),
+            (
+                "Role KDA",
+                "Role KDA is normalized against every player-role KDA in the current dataset.",
+                f"({role_kills} + {role_assists}) / {max(1, role_deaths)} = {two_decimal(float(role_example.get('kda_ratio', 0)))}; range {two_decimal(role_kda_low)} to {two_decimal(role_kda_high)}",
+                pct(role_kda_score),
+                pct(ROLE_SCORE_WEIGHTS["Role KDA"]),
+                weighted_points(role_kda_score, ROLE_SCORE_WEIGHTS["Role KDA"]),
+            ),
+            (
+                "Role Games",
+                "Sample-size credit inside the role: sqrt(role games / highest player-role game count).",
+                f"{role_games} {role} games / {max_role_games} max player-role games",
+                pct(role_games_score),
+                pct(ROLE_SCORE_WEIGHTS["Role Games"]),
+                weighted_points(role_games_score, ROLE_SCORE_WEIGHTS["Role Games"]),
+            ),
+            (
+                "Role Champion Pool",
+                "Role-specific unique-pick rate with role reliability.",
+                f"{role_unique_champs} unique {role} champions / {role_games} games = {pct(role_pool_rate)}; reliability {pct(role_reliability)}",
+                pct(role_pool_score),
+                pct(ROLE_SCORE_WEIGHTS["Role Champion Pool"]),
+                weighted_points(
+                    role_pool_score, ROLE_SCORE_WEIGHTS["Role Champion Pool"]
+                ),
+            ),
+            (
+                "Role Share",
+                "How much of this player's history is in this role.",
+                f"{role_games} of {player_games} {example_name} games were {role}",
+                pct(role_share),
+                pct(ROLE_SCORE_WEIGHTS["Role Share"]),
+                weighted_points(role_share, ROLE_SCORE_WEIGHTS["Role Share"]),
+            ),
+            (
+                "Overall MVP",
+                "A small tie-breaker from the overall player score.",
+                f"{example_name} MVP score {score(float(player_example.get('mvp_score', 0)))} / 100",
+                pct(overall_mvp_score),
+                pct(ROLE_SCORE_WEIGHTS["Overall MVP"]),
+                weighted_points(
+                    overall_mvp_score, ROLE_SCORE_WEIGHTS["Overall MVP"]
+                ),
+            ),
+        ]
+        role_table_html = formula_table(
+            f"{example_name} {role} Role Score Example",
+            f"These points add up to the {role} score used when building drafted teams.",
+            role_example_rows,
+            f"{example_name} {role} Role Score",
+            float(role_example.get("role_score", 0)),
+        )
+
+    return f"""
+    <section id="scoring-guide" class="section scoring-guide">
+      <div class="section-title">
+        <div>
+          <h2>How MVP & Team Scores Work</h2>
+          <p class="note">Every component is converted into a 0-100% score, multiplied by its weight, then added together. Normalized components are relative to the current match history, so new data can slightly move the ranges.</p>
+        </div>
+      </div>
+      <div class="formula-grid">
+        <section class="table-panel formula-definition-panel">
+          <div class="section-heading">
+            <h3>Metric Meanings</h3>
+            <small>What each part is trying to reward</small>
+          </div>
+          <ul class="formula-list">
+            {definition_html}
+          </ul>
+        </section>
+        <section class="table-panel formula-definition-panel">
+          <div class="section-heading">
+            <h3>Final Formulas</h3>
+            <small>The exact weights used by the dashboard</small>
+          </div>
+          <div class="formula-copy">
+            <p><b>MVP score</b> = 100 x ({escape(weighted_formula(MVP_WEIGHTS))}).</p>
+            <p><b>Team role score</b> = 100 x ({escape(weighted_formula(ROLE_SCORE_WEIGHTS))}).</p>
+            <p>Adjusted WR uses {MIN_PLAYER_GAMES} games for overall MVP reliability and {ROLE_RELIABILITY_GAMES} games for role-score reliability. Champion Pool uses unique-pick rate, calculated as unique champions divided by games.</p>
+          </div>
+        </section>
+      </div>
+      <div class="formula-example-grid">
+        {formula_table(
+            f"{example_name} MVP Score Example",
+            "The Points column is the converted score multiplied by that metric's weight.",
+            mvp_example_rows,
+            f"{example_name} MVP Score",
+            float(player_example.get("mvp_score", 0)),
+        )}
+        {role_table_html}
+      </div>
+    </section>
+    """
+
+
 def build_dashboard(
     input_path: Path, output_path: Path, *, api_url: str = "", api_key: str = ""
 ) -> None:
@@ -5758,6 +6069,76 @@ def build_dashboard(
     .unused-players {{
       padding: 0 16px 16px;
     }}
+    .formula-grid {{
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }}
+    .formula-example-grid {{
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }}
+    .formula-definition-panel,
+    .formula-example-panel {{
+      overflow: hidden;
+    }}
+    .formula-list {{
+      display: grid;
+      gap: 10px;
+      list-style: none;
+      margin: 0;
+      padding: 0 16px 16px;
+    }}
+    .formula-list li {{
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+    }}
+    .formula-list li:first-child {{
+      border-top: 0;
+      padding-top: 0;
+    }}
+    .formula-list b,
+    .formula-table b,
+    .formula-copy b {{
+      color: var(--ink);
+    }}
+    .formula-list small,
+    .formula-table small {{
+      display: block;
+      margin-top: 3px;
+    }}
+    .formula-copy {{
+      display: grid;
+      gap: 10px;
+      padding: 0 16px 16px;
+      color: var(--muted);
+      line-height: 1.45;
+    }}
+    .formula-copy p {{
+      margin: 0;
+    }}
+    .formula-table td {{
+      vertical-align: top;
+    }}
+    .formula-table td:first-child {{
+      min-width: 190px;
+    }}
+    .formula-total {{
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--line);
+      background: rgba(98, 168, 255, 0.08);
+    }}
+    .formula-total strong {{
+      color: var(--gold);
+      font-size: 1.35rem;
+      font-variant-numeric: tabular-nums;
+    }}
     {render_ban_planner_css()}
     .match-history-grid {{
       display: grid;
@@ -6418,7 +6799,7 @@ def build_dashboard(
       header {{ padding: 22px 16px 18px; }}
       nav {{ padding: 10px 16px; }}
       main {{ padding: 16px; }}
-      .metric-grid, .chart-grid, .svg-grid, .award-grid, .team-tier-grid {{ grid-template-columns: 1fr; }}
+      .metric-grid, .chart-grid, .svg-grid, .award-grid, .team-tier-grid, .formula-grid {{ grid-template-columns: 1fr; }}
       .combo-compare-grid {{ grid-template-columns: 1fr; }}
       .combo-comparison-heading {{ align-items: flex-start; flex-direction: column; }}
       .popular-champion-row {{ grid-template-columns: repeat(5, minmax(0, 1fr)); }}
@@ -6896,6 +7277,7 @@ def build_dashboard(
     </section>
 
     {render_target_ban_section(target_ban_rows, practice_pick_rows, player_rows)}
+    {render_scoring_formula_explainer(mvp_rows, role_score_rows, player_rows, player_role_rows)}
   </main>
   <script>{shared_script}</script>
 </body>
