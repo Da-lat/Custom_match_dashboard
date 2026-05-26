@@ -3210,7 +3210,6 @@ def render_head_to_head_page(
     <a href="{html_attr(main_page_name)}#champions">Champions</a>
     <a href="{html_attr(main_page_name)}#role-pools">Role Pools</a>
     <a href="{html_attr(main_page_name)}#combos">Combos</a>
-    <a href="#head-to-head">Head to Head</a>
     <a href="{html_attr(teams_page_name)}#teams">Teams</a>
     <a href="{html_attr(teams_page_name)}#target-bans">Bans</a>
     <a href="{html_attr(showcases_page_name)}">Showcases</a>
@@ -4392,6 +4391,10 @@ def render_refresh_control(generated_at: str) -> str:
     """
 
 
+def render_hidden_head_to_head_link(head_to_head_page_name: str) -> str:
+    return f'<a class="hidden-page-link" href="{html_attr(head_to_head_page_name)}#head-to-head" aria-label="Head to Head"></a>'
+
+
 def render_refresh_script() -> str:
     return """
     document.querySelectorAll("[data-refresh-data]").forEach(button => {
@@ -5452,6 +5455,7 @@ def render_player_showcase_page(
   <style>{shared_style}{render_showcase_css()}</style>
 </head>
 <body class="showcase-body">
+  {render_hidden_head_to_head_link(head_to_head_page_name)}
   <header>
     <div class="topline">
       <div>
@@ -5470,7 +5474,6 @@ def render_player_showcase_page(
     <a href="{html_attr(main_page_name)}#champions">Champions</a>
     <a href="{html_attr(main_page_name)}#role-pools">Role Pools</a>
     <a href="{html_attr(main_page_name)}#combos">Combos</a>
-    <a href="{html_attr(head_to_head_page_name)}#head-to-head">Head to Head</a>
     <a href="{html_attr(teams_page_name)}#teams">Teams</a>
     <a href="{html_attr(teams_page_name)}#target-bans">Bans</a>
     <a href="#{html_attr(first_slug)}">Showcases</a>
@@ -6275,6 +6278,26 @@ def build_dashboard(
       border-radius: 6px;
     }}
     nav a:hover {{ background: #eef3f8; }}
+    .hidden-page-link {{
+      position: fixed;
+      top: 0;
+      right: 0;
+      z-index: 9999;
+      width: 5px;
+      height: 5px;
+      display: block;
+      overflow: hidden;
+      background: rgba(240, 201, 106, 0.08);
+      border-radius: 0 0 0 2px;
+      text-indent: -999px;
+    }}
+    .hidden-page-link:hover,
+    .hidden-page-link:focus-visible {{
+      width: 12px;
+      height: 12px;
+      background: rgba(240, 201, 106, 0.8);
+      outline: 1px solid rgba(240, 201, 106, 0.95);
+    }}
     main {{
       max-width: 1320px;
       margin: 0 auto;
@@ -7896,6 +7919,7 @@ def build_dashboard(
   </style>
 </head>
 <body>
+  {render_hidden_head_to_head_link(head_to_head_page_name)}
   <header>
     <div class="topline">
       <div>
@@ -7914,7 +7938,6 @@ def build_dashboard(
     <a href="#champions">Champions</a>
     <a href="#role-pools">Role Pools</a>
     <a href="#combos">Combos</a>
-    <a href="{html_attr(head_to_head_page_name)}#head-to-head">Head to Head</a>
     <a href="{html_attr(teams_page_name)}#teams">Teams</a>
     <a href="{html_attr(teams_page_name)}#target-bans">Bans</a>
     <a href="{html_attr(showcases_page_name)}">Showcases</a>
@@ -8401,6 +8424,7 @@ def build_dashboard(
   <style>{shared_style}</style>
 </head>
 <body>
+  {render_hidden_head_to_head_link(head_to_head_page_name)}
   <header>
     <div class="topline">
       <div>
@@ -8419,7 +8443,6 @@ def build_dashboard(
     <a href="{html_attr(main_page_name)}#champions">Champions</a>
     <a href="{html_attr(main_page_name)}#role-pools">Role Pools</a>
     <a href="{html_attr(main_page_name)}#combos">Combos</a>
-    <a href="{html_attr(head_to_head_page_name)}#head-to-head">Head to Head</a>
     <a href="#teams">Teams</a>
     <a href="#target-bans">Bans</a>
     <a href="{html_attr(showcases_page_name)}">Showcases</a>
