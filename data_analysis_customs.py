@@ -50,12 +50,12 @@ MVP_WEIGHTS = {
     "Games": 0.05,
 }
 ROLE_SCORE_WEIGHTS = {
-    "Role Net Wins": 0.30,
-    "Role KDA": 0.15,
-    "Role Kill Participation": 0.20,
-    "Role Champion Pool": 0.15,
+    "Role Net Wins": 0.25,
+    "Role KDA": 0.13,
+    "Role Kill Participation": 0.17,
+    "Role Champion Pool": 0.10,
     "Role Games": 0.05,
-    "Role Fit": 0.10,
+    "Role Fit": 0.25,
     "Overall MVP": 0.05,
 }
 SPOTLIGHT_EXCLUDED_PLAYERS = {"rich"}
@@ -523,11 +523,11 @@ def role_fit_label(rank: int) -> str:
 def role_fit_score(rank: int) -> float:
     return {
         1: 1.0,
-        2: 0.78,
-        3: 0.56,
-        4: 0.34,
-        5: 0.16,
-    }.get(rank, 0.1)
+        2: 0.55,
+        3: 0.30,
+        4: 0.14,
+        5: 0.06,
+    }.get(rank, 0.02)
 
 
 def champion_key(name: str) -> str:
@@ -884,9 +884,13 @@ def build_tiered_teams(
                 role_score = float(row["role_score"])
                 role_games = int(row["games"])
                 role_rank = int(row.get("role_rank", len(ROLE_ORDER)))
-                fit_priority = max(0, len(ROLE_ORDER) + 1 - role_rank)
+                fit_component = float(row.get("role_fit_score", role_fit_score(role_rank)))
+                primary_bonus = 1.0 if role_rank == 1 else 0.0
                 cost = -round(
-                    (fit_priority * 1_000_000) + (role_score * 1000) + role_games
+                    (primary_bonus * 2_000_000)
+                    + (fit_component * 1_000_000)
+                    + (role_score * 1000)
+                    + role_games
                 )
                 add_edge(player_node, role_node, 1, cost, (role, name, row))
 
