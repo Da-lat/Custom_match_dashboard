@@ -321,6 +321,23 @@ def format_weekday(raw: str | None) -> str:
     return parsed.strftime("%A")
 
 
+def ordinal_day(day: int) -> str:
+    if 10 <= day % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+    return f"{day}{suffix}"
+
+
+def format_refresh_timestamp(moment: datetime) -> str:
+    local_moment = moment.astimezone(LOCAL_TZ)
+    return (
+        f"{local_moment.strftime('%A')} "
+        f"{ordinal_day(local_moment.day)} "
+        f"{local_moment.strftime('%H:%M')}"
+    )
+
+
 def load_matches_from_api(url: str, api_key: str) -> list[dict]:
     request = Request(
         url,
@@ -3247,6 +3264,7 @@ def render_refresh_control(generated_at: str) -> str:
     return f"""
     <div class="header-actions" data-generated-at="{html_attr(generated_at)}">
       <button class="refresh-data-button" type="button" data-refresh-data>Refresh Data</button>
+      <small class="refresh-data-note">Last refresh: {escape(generated_at)}</small>
       <small class="refresh-data-status" data-refresh-data-status></small>
     </div>
     """
@@ -3256,38 +3274,10 @@ def render_refresh_script() -> str:
     return """
     document.querySelectorAll("[data-refresh-data]").forEach(button => {
       const status = button.parentElement?.querySelector("[data-refresh-data-status]");
-      const generatedAt = button.parentElement?.dataset.generatedAt || "";
       const setStatus = (state, text) => {
         if (!status) return;
         status.dataset.state = state || "";
         status.textContent = text;
-      };
-      const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
-      const latestGeneratedAt = async () => {
-        const response = await fetch(`${window.location.pathname}?refresh-check=${Date.now()}`, {
-          cache: "no-store",
-        });
-        const html = await response.text();
-        const match = html.match(/data-generated-at="([^"]+)"/);
-        return match ? match[1] : "";
-      };
-      const waitForFreshDeploy = async () => {
-        const attempts = 60;
-        for (let index = 0; index < attempts; index += 1) {
-          await sleep(30000);
-          const latest = await latestGeneratedAt();
-          if (latest && latest !== generatedAt) {
-            setStatus("ok", "New data is live. Reloading...");
-            await sleep(1200);
-            window.location.reload();
-            return;
-          }
-          setStatus("", `Refresh queued. Checking for new data... ${index + 1}/${attempts}`);
-        }
-        setStatus(
-          "",
-          "Refresh queued, but this page has not updated yet. Try reloading in a few minutes."
-        );
       };
       button.addEventListener("click", async () => {
         button.disabled = true;
@@ -3298,8 +3288,7 @@ def render_refresh_script() -> str:
           if (!response.ok) {
             throw new Error(data.error || `Refresh failed with ${response.status}`);
           }
-          setStatus("ok", data.message || "Refresh queued. Watching for new data...");
-          await waitForFreshDeploy();
+          setStatus("ok", "Refresh queued. Reload the page after a couple of minutes");
         } catch (error) {
           setStatus("error", error?.message || "Refresh unavailable. Check the Netlify Function logs.");
         } finally {
@@ -4441,7 +4430,7 @@ def build_dashboard(
     last_timestamp = max((row.timestamp for row in appearances if row.timestamp), default="")
     first_date = format_date(first_timestamp)
     last_date = format_date(last_timestamp)
-    generated_at = datetime.now().strftime("%d %b %Y %H:%M")
+    generated_at = format_refresh_timestamp(datetime.now(LOCAL_TZ))
     teams_output_path = teams_page_path(output_path)
     showcase_output_path = showcases_page_path(output_path)
     main_page_name = output_path.name
@@ -4679,6 +4668,7 @@ def build_dashboard(
       cursor: wait;
       opacity: 0.68;
     }}
+    .refresh-data-note,
     .refresh-data-status {{
       min-height: 1rem;
       color: #c8d4df;
@@ -4687,6 +4677,9 @@ def build_dashboard(
       line-height: 1.3;
       text-align: right;
       max-width: 320px;
+    }}
+    .refresh-data-note {{
+      color: #f0c96a;
     }}
     .refresh-data-status[data-state="ok"] {{
       color: #a9f0ca;
@@ -5925,7 +5918,7 @@ def build_dashboard(
       .player-pool-browser .card-search, .player-pool-browser .pool-count {{ grid-column: 1 / -1; }}
       .topline {{ flex-direction: column; }}
       .header-actions {{ justify-items: start; }}
-      .refresh-data-status {{ text-align: left; }}
+      .refresh-data-note, .refresh-data-status {{ text-align: left; }}
     }}
     @media (max-width: 720px) {{
       header {{ padding: 22px 16px 18px; }}
@@ -5994,6 +5987,13 @@ def build_dashboard(
       </div>
       <div class="metric-grid">{metric_cards}</div>
       {render_popular_champions_strip(popular_champion_strip_rows)}
+      <section id="awards" class="section">
+        <div class="section-title">
+          <h2>Award Ceremony</h2>
+          <p class="note">Regular-player awards use at least {MIN_PLAYER_GAMES} games where possible; pocket-pick awards use at least {MIN_COMBO_GAMES} games.</p>
+        </div>
+        <div class="award-grid">{render_awards(awards)}</div>
+      </section>
       <div class="chart-grid">
         {render_bar_chart("Top Player Win Rate", top_player_chart_rows, "name", "winrate", pct, limit=10, max_value=1.0, footer_key="games", footer_formatter=lambda value: f"{integer(value)} games")}
         {render_bar_chart("Bottom Player Win Rate", bottom_player_chart_rows, "name", "winrate", pct, limit=10, max_value=1.0, footer_key="games", footer_formatter=lambda value: f"{integer(value)} games")}
@@ -6004,14 +6004,6 @@ def build_dashboard(
         {render_bar_chart("Match Volume By Weekday", weekday_rows, "weekday", "games", integer, limit=7, footer_key="share", footer_formatter=lambda value: f"{pct(float(value))} of matches")}
         {render_unplayed_champions_panel(unplayed_champions)}
       </div>
-    </section>
-
-    <section id="awards" class="section">
-      <div class="section-title">
-        <h2>Award Ceremony</h2>
-        <p class="note">Regular-player awards use at least {MIN_PLAYER_GAMES} games where possible; pocket-pick awards use at least {MIN_COMBO_GAMES} games.</p>
-      </div>
-      <div class="award-grid">{render_awards(awards)}</div>
     </section>
 
     <section id="match-history" class="section">
