@@ -33,13 +33,20 @@ exports.handler = async function handler(event) {
   }
 
   try {
-    const response = await fetch(buildHookUrl, { method: "POST" });
+    const response = await fetch(buildHookUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "{}",
+    });
     if (!response.ok) {
+      const responseText = await response.text().catch(() => "");
       return {
         statusCode: 502,
         headers,
         body: JSON.stringify({
-          error: `Netlify build hook returned ${response.status}.`,
+          error: `Netlify build hook returned ${response.status}.${
+            responseText ? ` ${responseText.slice(0, 220)}` : ""
+          }`,
         }),
       };
     }
