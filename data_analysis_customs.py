@@ -1762,6 +1762,241 @@ def experimental_chemistry_data(
     }
 
 
+def format_vibe_points(value: object) -> str:
+    rounded = round(float(value))
+    if rounded == 0:
+        return "0 pts"
+    return f"{signed_integer(rounded)} pts"
+
+
+def experimental_vibes_data(
+    appearances: Sequence[Appearance],
+    player_rows: Sequence[dict[str, object]],
+) -> dict[str, object]:
+    visible_players = without_spotlight_excluded_players(player_rows)
+    player_stats = {
+        str(row.get("name", "")): {
+            "games": int(row.get("games", 0)),
+            "wins": int(row.get("wins", 0)),
+            "winrate": float(row.get("winrate", 0)),
+        }
+        for row in visible_players
+        if str(row.get("name", ""))
+    }
+
+    grouped: dict[tuple[int, str], set[str]] = defaultdict(set)
+    for appearance in appearances:
+        if is_spotlight_excluded_player(appearance.name):
+            continue
+        grouped[(appearance.match_id, appearance.side)].add(appearance.name)
+
+    teammates_by_player: dict[str, set[str]] = defaultdict(set)
+    won_with_by_player: dict[str, set[str]] = defaultdict(set)
+    pair_stats: dict[tuple[str, str], dict[str, int]] = defaultdict(
+        lambda: {"games": 0, "wins": 0}
+    )
+
+    for (_match_id, side), names in grouped.items():
+        clean_names = sorted(name for name in names if name)
+        if len(clean_names) < 2:
+            continue
+        won = 1 if side == "win" else 0
+        for name in clean_names:
+            teammate_names = [other for other in clean_names if other != name]
+            teammates_by_player[name].update(teammate_names)
+            if won:
+                won_with_by_player[name].update(teammate_names)
+        for pair in combinations(clean_names, 2):
+            pair_stats[pair]["games"] += 1
+            pair_stats[pair]["wins"] += won
+
+    directed_rows = []
+    impacts_by_source: dict[str, list[dict[str, object]]] = defaultdict(list)
+    for pair, values in pair_stats.items():
+        games = int(values["games"])
+        wins = int(values["wins"])
+        if games <= 0:
+            continue
+        winrate = safe_div(wins, games)
+        pair_reliability = clamp((games / 8) ** 0.5)
+        for source, target in ((pair[0], pair[1]), (pair[1], pair[0])):
+            target_stats = player_stats.get(target, {})
+            target_games = int(target_stats.get("games", 0))
+            target_wins = int(target_stats.get("wins", 0))
+            without_games = max(0, target_games - games)
+            without_wins = max(0, target_wins - wins)
+            without_winrate = (
+                safe_div(without_wins, without_games)
+                if without_games
+                else float(target_stats.get("winrate", winrate))
+            )
+            comparison_reliability = clamp((without_games / 8) ** 0.5) if without_games else 0.35
+            reliability = pair_reliability * (0.55 + 0.45 * comparison_reliability)
+            lift = winrate - without_winrate
+            row = {
+                "name": source,
+                "source": source,
+                "target": target,
+                "label": f"{source} -> {target}",
+                "games": games,
+                "wins": wins,
+                "losses": games - wins,
+                "record": f"{wins}-{games - wins}",
+                "winrate": winrate,
+                "without_games": without_games,
+                "without_winrate": without_winrate,
+                "lift": lift,
+                "lift_points": lift * 100,
+                "adjusted_lift": lift * reliability,
+                "adjusted_lift_points": lift * reliability * 100,
+                "reliability": reliability,
+            }
+            directed_rows.append(row)
+            impacts_by_source[source].append(row)
+
+    player_vibe_rows = []
+    all_names = sorted(set(player_stats) | set(teammates_by_player))
+    for name in all_names:
+        stats = player_stats.get(name, {})
+        games = int(stats.get("games", 0))
+        wins = int(stats.get("wins", 0))
+        teammates = teammates_by_player.get(name, set())
+        won_with = won_with_by_player.get(name, set())
+        impacts = impacts_by_source.get(name, [])
+        weighted_total = sum(
+            int(row.get("games", 0)) * float(row.get("reliability", 0))
+            for row in impacts
+        )
+        vibe_lift = safe_div(
+            sum(
+                float(row.get("lift", 0))
+                * int(row.get("games", 0))
+                * float(row.get("reliability", 0))
+                for row in impacts
+            ),
+            weighted_total,
+        )
+        adjusted_vibe_lift = safe_div(
+            sum(
+                float(row.get("adjusted_lift", 0)) * int(row.get("games", 0))
+                for row in impacts
+            ),
+            sum(int(row.get("games", 0)) for row in impacts),
+        )
+        best_target = find_first(
+            sorted(
+                impacts,
+                key=lambda row: (
+                    -float(row.get("adjusted_lift_points", 0)),
+                    -int(row.get("games", 0)),
+                    str(row.get("target", "")),
+                ),
+            )
+        )
+        worst_target = find_first(
+            sorted(
+                impacts,
+                key=lambda row: (
+                    float(row.get("adjusted_lift_points", 0)),
+                    -int(row.get("games", 0)),
+                    str(row.get("target", "")),
+                ),
+            )
+        )
+        best_points = float(best_target.get("adjusted_lift_points", 0)) if best_target else 0
+        worst_points = float(worst_target.get("adjusted_lift_points", 0)) if worst_target else 0
+        player_vibe_rows.append(
+            {
+                "name": name,
+                "games": games,
+                "wins": wins,
+                "losses": games - wins,
+                "winrate": safe_div(wins, games),
+                "unique_teammates": len(teammates),
+                "won_with_unique_teammates": len(won_with),
+                "win_coverage": safe_div(len(won_with), len(teammates)),
+                "vibe_lift_points": vibe_lift * 100,
+                "adjusted_vibe_points": adjusted_vibe_lift * 100,
+                "positive_targets": sum(1 for row in impacts if float(row.get("lift", 0)) > 0),
+                "negative_targets": sum(1 for row in impacts if float(row.get("lift", 0)) < 0),
+                "interaction_games": sum(int(row.get("games", 0)) for row in impacts),
+                "best_target": (
+                    f"{best_target.get('target', '-')} ({format_vibe_points(best_points)})"
+                    if best_target
+                    else "-"
+                ),
+                "worst_target": (
+                    f"{worst_target.get('target', '-')} ({format_vibe_points(worst_points)})"
+                    if worst_target
+                    else "-"
+                ),
+                "vibe_range_points": best_points - worst_points,
+            }
+        )
+
+    player_vibe_rows = sorted(
+        player_vibe_rows,
+        key=lambda row: (
+            float(row.get("adjusted_vibe_points", 0)),
+            -int(row.get("games", 0)),
+            str(row.get("name", "")),
+        ),
+    )
+    highlight_player_rows = [
+        row for row in player_vibe_rows if int(row.get("games", 0)) >= 5
+    ] or list(player_vibe_rows)
+    buff_rows = sorted(
+        highlight_player_rows,
+        key=lambda row: (
+            -float(row.get("adjusted_vibe_points", 0)),
+            -int(row.get("games", 0)),
+            str(row.get("name", "")),
+        ),
+    )
+    spread_rows = sorted(
+        highlight_player_rows,
+        key=lambda row: (
+            -float(row.get("win_coverage", 0)),
+            -int(row.get("won_with_unique_teammates", 0)),
+            -int(row.get("games", 0)),
+            str(row.get("name", "")),
+        ),
+    )
+    volatile_rows = sorted(
+        highlight_player_rows,
+        key=lambda row: (
+            -float(row.get("vibe_range_points", 0)),
+            -int(row.get("games", 0)),
+            str(row.get("name", "")),
+        ),
+    )
+    worst_interactions = sorted(
+        directed_rows,
+        key=lambda row: (
+            float(row.get("adjusted_lift_points", 0)),
+            -int(row.get("games", 0)),
+            str(row.get("label", "")),
+        ),
+    )
+    best_interactions = sorted(
+        directed_rows,
+        key=lambda row: (
+            -float(row.get("adjusted_lift_points", 0)),
+            -int(row.get("games", 0)),
+            str(row.get("label", "")),
+        ),
+    )
+    return {
+        "player_rows": player_vibe_rows,
+        "buff_rows": buff_rows,
+        "debuff_rows": highlight_player_rows,
+        "spread_rows": spread_rows,
+        "volatile_rows": volatile_rows,
+        "worst_interactions": worst_interactions,
+        "best_interactions": best_interactions,
+    }
+
+
 def experimental_upset_rows(
     appearances: Sequence[Appearance],
     player_rows: Sequence[dict[str, object]],
@@ -5548,6 +5783,122 @@ def render_upset_detector_section(data: dict[str, list[dict[str, object]]], main
     """
 
 
+def render_vibe_highlight_card(
+    title: str,
+    row: dict[str, object],
+    mood: str,
+    fallback: str,
+    detail: str,
+) -> str:
+    if not row:
+        return f"""
+        <article class="vibe-card vibe-{html_attr(mood)}">
+          <span>{escape(title)}</span>
+          <strong>{escape(fallback)}</strong>
+          <small>Needs more shared-team samples.</small>
+        </article>
+        """
+    return f"""
+    <article class="vibe-card vibe-{html_attr(mood)}">
+      <span>{escape(title)}</span>
+      <strong>{escape(str(row.get('name', '-')))}</strong>
+      <b>{format_vibe_points(row.get('adjusted_vibe_points', 0))}</b>
+      <small>{escape(detail)}</small>
+    </article>
+    """
+
+
+def render_vibe_interaction_list(
+    title: str, rows: Sequence[dict[str, object]], mood: str
+) -> str:
+    items = []
+    for row in rows[:8]:
+        items.append(
+            f"""
+            <li class="vibe-interaction vibe-{html_attr(mood)}">
+              <strong>{escape(str(row.get('label', '-')))}</strong>
+              <span>{escape(str(row.get('record', '-')))} together, {pct(float(row.get('winrate', 0)))} WR</span>
+              <small>{pct(float(row.get('winrate', 0)))} with {escape(str(row.get('source', '-')))} vs {pct(float(row.get('without_winrate', 0)))} without them - {format_vibe_points(row.get('adjusted_lift_points', 0))}</small>
+            </li>
+            """
+        )
+    if not items:
+        items.append(
+            '<li class="vibe-interaction"><strong>No sample yet</strong><span>Needs shared games.</span></li>'
+        )
+    return f"""
+    <article class="vibe-panel">
+      <h3>{escape(title)}</h3>
+      <ul>{"".join(items)}</ul>
+    </article>
+    """
+
+
+def render_vibes_section(data: dict[str, object]) -> str:
+    rows = list(data.get("player_rows", []))
+    buff = find_first(data.get("buff_rows", []))
+    debuff = find_first(data.get("debuff_rows", []))
+    spread = find_first(data.get("spread_rows", []))
+    volatile = find_first(data.get("volatile_rows", []))
+    columns: list[Column] = [
+        ("Player", "name", str, "text"),
+        ("Games", "games", integer, "number"),
+        ("WR", "winrate", lambda value: pct(float(value)), "number"),
+        ("Unique Teammates", "unique_teammates", integer, "number"),
+        ("Won With", "won_with_unique_teammates", integer, "number"),
+        ("Win Spread", "win_coverage", lambda value: pct(float(value)), "number"),
+        ("Vibe Impact", "adjusted_vibe_points", format_vibe_points, "number"),
+        ("Debuff Targets", "negative_targets", integer, "number"),
+        ("Worst Hit", "worst_target", str, "text"),
+        ("Best Link", "best_target", str, "text"),
+    ]
+    debuff_detail = (
+        f"{integer(debuff.get('negative_targets', 0))} teammate links trend down. "
+        f"Worst hit: {debuff.get('worst_target', '-')}."
+        if debuff
+        else ""
+    )
+    buff_detail = (
+        f"{integer(buff.get('positive_targets', 0))} teammate links trend up. "
+        f"Best link: {buff.get('best_target', '-')}."
+        if buff
+        else ""
+    )
+    spread_detail = (
+        f"Won with {integer(spread.get('won_with_unique_teammates', 0))} of "
+        f"{integer(spread.get('unique_teammates', 0))} unique teammates."
+        if spread
+        else ""
+    )
+    volatile_detail = (
+        f"Biggest gap between best and worst teammate effects: "
+        f"{format_vibe_points(volatile.get('vibe_range_points', 0))}."
+        if volatile
+        else ""
+    )
+    return f"""
+    <section id="vibes" class="section">
+      <div class="section-title">
+        <div>
+          <h2>Vibes</h2>
+          <p class="note">A player-centered chemistry model. For each teammate, it compares their winrate with this player against their winrate without this player, then sample-weights the swing. Win Spread is unique teammates won with divided by unique teammates played with. One-game links count, small samples are dampened, and headline cards prefer 5+ game players.</p>
+        </div>
+      </div>
+      <div class="vibe-highlight-grid">
+        {render_vibe_highlight_card("Biggest Vibes Debuff", debuff, "bad", "No debuff yet", debuff_detail)}
+        {render_vibe_highlight_card("Biggest Vibes Buff", buff, "good", "No buff yet", buff_detail)}
+        {render_vibe_highlight_card("Best Win Spread", spread, "good", "No spread yet", spread_detail)}
+        {render_vibe_highlight_card("Most Volatile Aura", volatile, "neutral", "No volatility yet", volatile_detail)}
+      </div>
+      <div class="vibe-board-grid">
+        {render_vibe_interaction_list("Hardest Teammate Debuffs", data.get("worst_interactions", []), "bad")}
+        {render_vibe_interaction_list("Strongest Teammate Buffs", data.get("best_interactions", []), "good")}
+      </div>
+      {render_table("vibes-summary", "Vibes Summary", rows, columns)}
+    </section>
+    """
+
+
 def render_champion_ownership_section(rows: Sequence[dict[str, object]]) -> str:
     cards = []
     for row in rows:
@@ -5890,6 +6241,8 @@ def render_experimental_css() -> str:
     .chemistry-panel,
     .chemistry-callout,
     .upset-column,
+    .vibe-card,
+    .vibe-panel,
     .ownership-card {
       background: linear-gradient(180deg, #121d2a, #0d1620);
       border: 1px solid var(--line);
@@ -6087,6 +6440,83 @@ def render_experimental_css() -> str:
       line-height: 1.4;
       margin-top: 7px;
     }
+    .vibe-highlight-grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-bottom: 16px;
+    }
+    .vibe-card {
+      border-left: 4px solid #62a8ff;
+      min-height: 148px;
+      padding: 14px;
+    }
+    .vibe-card span,
+    .vibe-card strong,
+    .vibe-card b,
+    .vibe-card small {
+      display: block;
+    }
+    .vibe-card span {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 950;
+      text-transform: uppercase;
+    }
+    .vibe-card strong {
+      font-size: 1.35rem;
+      margin-top: 8px;
+    }
+    .vibe-card b {
+      color: var(--gold);
+      margin-top: 6px;
+    }
+    .vibe-card small {
+      color: var(--muted);
+      line-height: 1.4;
+      margin-top: 8px;
+    }
+    .vibe-board-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin-bottom: 16px;
+    }
+    .vibe-panel {
+      padding: 16px;
+    }
+    .vibe-panel h3 {
+      margin: 0 0 12px;
+    }
+    .vibe-panel ul {
+      display: grid;
+      gap: 10px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .vibe-interaction {
+      background: #101b28;
+      border-left: 4px solid #62a8ff;
+      border-radius: 7px;
+      display: grid;
+      gap: 3px;
+      padding: 10px;
+    }
+    .vibe-interaction strong,
+    .vibe-interaction span,
+    .vibe-interaction small {
+      display: block;
+    }
+    .vibe-interaction span,
+    .vibe-interaction small {
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.35;
+    }
+    .vibe-good { border-left-color: #4fc48b; }
+    .vibe-bad { border-left-color: #ff6f81; }
+    .vibe-neutral { border-left-color: #f0c96a; }
     .ownership-grid {
       display: grid;
       gap: 16px;
@@ -6146,6 +6576,7 @@ def render_experimental_css() -> str:
       .form-highlight-grid,
       .form-grid,
       .lab-award-grid,
+      .vibe-highlight-grid,
       .upset-grid,
       .ownership-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6163,6 +6594,8 @@ def render_experimental_css() -> str:
       .form-grid,
       .lab-award-grid,
       .chemistry-list-grid,
+      .vibe-highlight-grid,
+      .vibe-board-grid,
       .upset-grid,
       .ownership-grid {
         grid-template-columns: 1fr;
@@ -6191,6 +6624,7 @@ def render_experimental_page(
     hall_rows: Sequence[dict[str, object]],
     chemistry_data: dict[str, object],
     upset_data: dict[str, list[dict[str, object]]],
+    vibes_data: dict[str, object],
     ownership_rows: Sequence[dict[str, object]],
     generated_at: str,
     main_page_name: str,
@@ -6225,7 +6659,7 @@ def render_experimental_page(
     <div class="topline">
       <div>
         <h1>LoL Experimental Stats</h1>
-        <p>Custom meta tiering, recent form, hall-of-fame awards, team chemistry, upset detection, and champion ownership experiments.</p>
+        <p>Custom meta tiering, recent form, hall-of-fame awards, team chemistry, vibes, upset detection, and champion ownership experiments.</p>
       </div>
       {render_refresh_control(generated_at)}
     </div>
@@ -6273,6 +6707,7 @@ def render_experimental_page(
     {render_hall_of_fame_section(hall_rows, main_page_name)}
     {render_team_chemistry_section(chemistry_data)}
     {render_upset_detector_section(upset_data, main_page_name)}
+    {render_vibes_section(vibes_data)}
     {render_champion_ownership_section(ownership_rows)}
   </main>
   <script>{shared_script}</script>
@@ -9616,6 +10051,7 @@ def build_dashboard(
         role_score_rows,
         display_player_champion_role_rows,
     )
+    vibes_data = experimental_vibes_data(visible_appearances, display_player_rows)
     ownership_rows = champion_ownership_rows(
         visible_appearances,
         experimental_champion_rows,
@@ -12224,6 +12660,7 @@ def build_dashboard(
         hall_rows=hall_rows,
         chemistry_data=chemistry_data,
         upset_data=upset_data,
+        vibes_data=vibes_data,
         ownership_rows=ownership_rows,
         generated_at=generated_at,
         main_page_name=main_page_name,
