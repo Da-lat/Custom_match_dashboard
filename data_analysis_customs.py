@@ -6368,6 +6368,133 @@ def render_ban_planner_css() -> str:
       font-weight: 950;
       letter-spacing: 0;
     }
+    .draft-coach-panel {
+      border-top: 1px solid var(--line);
+      display: grid;
+      gap: 14px;
+      padding: 0 16px 16px;
+    }
+    .draft-coach-panel .section-heading {
+      padding-left: 0;
+      padding-right: 0;
+      border-bottom: 0;
+    }
+    .draft-coach-summary {
+      color: var(--muted);
+      font-size: 0.86rem;
+      font-weight: 800;
+    }
+    .draft-turn-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .draft-turn-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background:
+        linear-gradient(135deg, rgba(98, 168, 255, 0.08), rgba(17, 25, 35, 0) 46%),
+        #0f1721;
+      overflow: hidden;
+      min-width: 0;
+    }
+    .draft-turn-card[data-side="red"] {
+      background:
+        linear-gradient(135deg, rgba(255, 111, 129, 0.09), rgba(17, 25, 35, 0) 46%),
+        #0f1721;
+    }
+    .draft-turn-card[data-action="ban"] {
+      border-color: rgba(255, 111, 129, 0.28);
+    }
+    .draft-turn-card[data-action="pick"] {
+      border-color: rgba(101, 220, 154, 0.26);
+    }
+    .draft-turn-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid #202b39;
+      color: var(--muted);
+      font-size: 0.74rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+    .draft-turn-main {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px;
+    }
+    .draft-turn-main img {
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      border: 1px solid rgba(240, 201, 106, 0.3);
+      object-fit: cover;
+      display: block;
+    }
+    .draft-turn-copy {
+      display: grid;
+      gap: 3px;
+      min-width: 0;
+    }
+    .draft-turn-copy strong,
+    .draft-turn-copy span,
+    .draft-turn-copy small {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .draft-turn-copy span {
+      color: var(--blue);
+      font-weight: 900;
+      font-size: 0.86rem;
+    }
+    .draft-turn-card[data-side="red"] .draft-turn-copy span {
+      color: var(--red);
+    }
+    .draft-turn-score {
+      color: var(--gold);
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+    }
+    .draft-tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 0 12px 12px;
+    }
+    .draft-tag {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #0b1119;
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 900;
+      padding: 4px 7px;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .draft-tag-safe {
+      color: var(--green);
+      border-color: rgba(101, 220, 154, 0.32);
+    }
+    .draft-tag-ceiling {
+      color: var(--blue);
+      border-color: rgba(98, 168, 255, 0.32);
+    }
+    .draft-tag-trap {
+      color: var(--red);
+      border-color: rgba(255, 111, 129, 0.32);
+    }
+    .draft-tag-counter {
+      color: var(--gold);
+      border-color: rgba(240, 201, 106, 0.34);
+    }
     .ban-results-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6488,6 +6615,9 @@ def render_ban_planner_css() -> str:
         grid-template-columns: 1fr;
       }
       .draft-board {
+        grid-template-columns: 1fr;
+      }
+      .draft-turn-list {
         grid-template-columns: 1fr;
       }
       .draft-vs {
@@ -6648,6 +6778,16 @@ def render_target_ban_section(
           <div class="draft-vs">VS</div>
           {render_draft_side("red", "Red Team")}
         </div>
+        <section class="draft-coach-panel">
+          <div class="section-heading">
+            <div>
+              <h3>Draft Coach 2.0</h3>
+              <small>Tournament order: Blue/Red alternating bans, then B1, R1+R2, B2+B3, R3+R4, B4+B5, R5. Main cards show the likely simulation; Ideal tags show first choice before earlier blocks.</small>
+            </div>
+          </div>
+          <div class="draft-coach-summary" data-draft-coach-summary>Enter teams and a champion pool to simulate the draft.</div>
+          <div class="draft-turn-list" data-draft-coach-turns></div>
+        </section>
         <div class="ban-results-grid">
           <section class="ban-result-panel ban-result-blue">
             <div class="ban-result-heading">
@@ -6708,6 +6848,7 @@ def render_ban_planner_script(
     target_ban_rows: Sequence[dict[str, object]],
     target_pick_rows: Sequence[dict[str, object]],
     player_rows: Sequence[dict[str, object]],
+    champion_matchup_rows: Sequence[dict[str, object]],
 ) -> str:
     target_data = []
     for row in target_ban_rows:
@@ -6766,15 +6907,30 @@ def render_ban_planner_script(
         }
         for champion in CHAMPION_ROSTER
     ]
+    matchup_data = []
+    for row in champion_matchup_rows:
+        matchup_data.append(
+            {
+                "role": str(row.get("role", "")),
+                "champion": str(row.get("champion", "")),
+                "opponentChampion": str(row.get("opponent_champion", "")),
+                "games": int(row.get("games", 0)),
+                "winrate": round(float(row.get("winrate", 0)), 4),
+                "kdaEdge": round(float(row.get("kda_edge", 0)), 2),
+                "record": str(row.get("record", "")),
+            }
+        )
     player_names = sorted(str(row.get("name", "")) for row in player_rows)
     target_json = json.dumps(target_data, ensure_ascii=True).replace("</", "<\\/")
     pick_json = json.dumps(pick_data, ensure_ascii=True).replace("</", "<\\/")
     champion_json = json.dumps(champion_data, ensure_ascii=True).replace("</", "<\\/")
+    matchup_json = json.dumps(matchup_data, ensure_ascii=True).replace("</", "<\\/")
     player_json = json.dumps(player_names, ensure_ascii=True).replace("</", "<\\/")
     script = """
     const banTargetData = __BAN_TARGET_DATA__;
     const pickTargetData = __PICK_TARGET_DATA__;
     const championRosterData = __CHAMPION_ROSTER_DATA__;
+    const championMatchupData = __CHAMPION_MATCHUP_DATA__;
     const banPlayerNames = __BAN_PLAYER_NAMES__;
     const draftInputs = Array.from(document.querySelectorAll("[data-draft-team]"));
     const draftImportText = document.querySelector("[data-draft-import-text]");
@@ -6784,6 +6940,8 @@ def render_ban_planner_script(
     const championPoolStatus = document.querySelector("[data-champion-pool-status]");
     const championPoolList = document.querySelector("[data-champion-pool-list]");
     const championPoolClear = document.querySelector("[data-champion-pool-clear]");
+    const draftCoachSummary = document.querySelector("[data-draft-coach-summary]");
+    const draftCoachTurns = document.querySelector("[data-draft-coach-turns]");
 
     function formatBanPercent(value) {
       return `${(Number(value) * 100).toFixed(1)}%`;
@@ -6824,6 +6982,49 @@ def render_ban_planner_script(
       }
       roleEligibleChampions.get(row.role).add(row.champion);
     });
+    const roleMetaAccumulator = new Map();
+    pickTargetData.forEach(row => {
+      const key = `${row.role}|||${row.champion}`;
+      if (!roleMetaAccumulator.has(key)) {
+        roleMetaAccumulator.set(key, {
+          role: row.role,
+          champion: row.champion,
+          championIcon: row.championIcon,
+          games: 0,
+          wins: 0,
+          weightedKda: 0,
+          score: 0,
+          pilots: new Set()
+        });
+      }
+      const entry = roleMetaAccumulator.get(key);
+      const games = Number(row.games) || 0;
+      entry.games += games;
+      entry.wins += Number(row.wins) || 0;
+      entry.weightedKda += (Number(row.kda) || 0) * games;
+      entry.score = Math.max(entry.score, Number(row.score) || 0);
+      entry.pilots.add(row.player);
+    });
+    const roleMetaData = Array.from(roleMetaAccumulator.values()).map(row => ({
+      player: "Role meta",
+      champion: row.champion,
+      championIcon: row.championIcon,
+      role: row.role,
+      roles: row.role,
+      games: row.games,
+      wins: row.wins,
+      winrate: row.games ? row.wins / row.games : 0,
+      kda: row.games ? row.weightedKda / row.games : 0,
+      avgKills: 0,
+      avgDeaths: 0,
+      avgAssists: 0,
+      score: Math.max(35, row.score - 8),
+      lift: 0,
+      playerWinrate: 0,
+      mvpScore: 0,
+      playerThreat: 0,
+      confidence: `${row.pilots.size} pilots`
+    }));
 
     function canonicalPlayerName(value) {
       const term = String(value || "").trim().toLowerCase();
@@ -6915,10 +7116,6 @@ def render_ban_planner_script(
         });
     }
 
-    function selectedDraftPlayers(team) {
-      return selectedDraftEntries(team).map(entry => entry.player);
-    }
-
     function banCandidatesForEntry(entry) {
       const exactRows = pickTargetData
         .filter(row => row.player === entry.player && row.role === entry.role)
@@ -6944,35 +7141,353 @@ def render_ban_planner_script(
       return exactRows.concat(fallbackRows);
     }
 
-    function chooseTargetBans(targetEntries, pool, limit = 3) {
-      if (!targetEntries.length) return [];
-      const candidates = targetEntries
+    function championDraftKey(champion) {
+      return String(champion || "").toLowerCase();
+    }
+
+    function sideName(team) {
+      return team === "blue" ? "Blue" : "Red";
+    }
+
+    function opponentTeam(team) {
+      return team === "blue" ? "red" : "blue";
+    }
+
+    function entriesForSide(team, blueEntries, redEntries) {
+      return team === "blue" ? blueEntries : redEntries;
+    }
+
+    function picksForSide(team, state) {
+      return team === "blue" ? state.bluePicks : state.redPicks;
+    }
+
+    function bansForSide(team, state) {
+      return team === "blue" ? state.blueBans : state.redBans;
+    }
+
+    function championMatchupSignal(champion, opponentChampion, role) {
+      if (!champion || !opponentChampion || !role) {
+        return { bonus: 0, label: "" };
+      }
+      const matchup = championMatchupData.find(row =>
+        row.role === role &&
+        (
+          (row.champion === champion && row.opponentChampion === opponentChampion) ||
+          (row.champion === opponentChampion && row.opponentChampion === champion)
+        )
+      );
+      if (!matchup) {
+        return { bonus: 0, label: "" };
+      }
+      const direct = matchup.champion === champion;
+      const winrate = direct ? Number(matchup.winrate) : 1 - Number(matchup.winrate);
+      const kdaEdge = direct ? Number(matchup.kdaEdge) : -Number(matchup.kdaEdge);
+      const games = Number(matchup.games) || 0;
+      const bonus = ((winrate - 0.5) * 24) + (Math.max(-3, Math.min(3, kdaEdge)) * 2) + Math.min(games, 4);
+      const edge = kdaEdge >= 0 ? `+${kdaEdge.toFixed(1)}` : kdaEdge.toFixed(1);
+      return {
+        bonus,
+        label: `Counter ${opponentChampion}: ${formatBanPercent(winrate)}, ${games}g, KDA ${edge}`
+      };
+    }
+
+    function pickCandidatesForEntry(entry, pool, unavailableChampions, opponentPicks = []) {
+      const unavailable = unavailableChampions || new Set();
+      const sameRoleOpponent = opponentPicks.find(row => row.assignedRole === entry.role);
+      const decorate = (row, roleMatched, metaFallback = false) => {
+        const matchup = championMatchupSignal(row.champion, sameRoleOpponent?.champion || "", entry.role);
+        const sampleBonus = Math.min(Number(row.games) || 0, 8) * 0.8;
+        const roleBonus = roleMatched ? 8 : -4;
+        const historyPenalty = metaFallback ? -18 : 0;
+        const comfortBonus =
+          (Number(row.winrate) * 8) +
+          (Math.min(Number(row.kda) || 0, 6) * 2) +
+          Math.max(-4, Math.min(8, Number(row.lift || 0) * 50));
+        return {
+          ...row,
+          player: entry.player,
+          assignedRole: entry.role,
+          fit: entry.fit,
+          roleMatched,
+          metaFallback,
+          matchupBonus: matchup.bonus,
+          matchupLabel: matchup.label,
+          pickScore: Number(row.score || 0) + roleBonus + sampleBonus + comfortBonus + matchup.bonus + historyPenalty
+        };
+      };
+      const exactRows = pickTargetData
+        .filter(row => row.player === entry.player && row.role === entry.role)
+        .map(row => decorate(row, true));
+      const exactChampions = new Set(exactRows.map(row => championDraftKey(row.champion)));
+      const fallbackRows = banTargetData
+        .filter(row => row.player === entry.player)
+        .filter(row => championHasRole(row.champion, entry.role))
+        .filter(row => !exactChampions.has(championDraftKey(row.champion)))
+        .map(row => decorate(row, false));
+      const personalChampions = new Set(
+        exactRows.concat(fallbackRows).map(row => championDraftKey(row.champion))
+      );
+      const metaRows = roleMetaData
+        .filter(row => row.role === entry.role)
+        .filter(row => !personalChampions.has(championDraftKey(row.champion)))
+        .map(row => decorate(row, true, true));
+      const seen = new Set();
+      return exactRows.concat(fallbackRows, metaRows)
+        .filter(row => rowInChampionPool(row, pool))
+        .filter(row => !unavailable.has(championDraftKey(row.champion)))
+        .filter(row => {
+          const key = championDraftKey(row.champion);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .sort((left, right) =>
+          Number(right.pickScore) - Number(left.pickScore) ||
+          Number(right.score) - Number(left.score) ||
+          Number(right.winrate) - Number(left.winrate) ||
+          Number(right.games) - Number(left.games)
+        );
+    }
+
+    function denyCandidatesForEntries(entries, pool, unavailableChampions, existingBans = []) {
+      const unavailable = unavailableChampions || new Set();
+      const targetCounts = new Map();
+      existingBans.forEach(row => {
+        targetCounts.set(row.player, (targetCounts.get(row.player) || 0) + 1);
+      });
+      return entries
         .flatMap(entry => banCandidatesForEntry(entry))
         .filter(row => rowInChampionPool(row, pool))
+        .filter(row => !unavailable.has(championDraftKey(row.champion)))
+        .map(row => ({
+          ...row,
+          denyScore: Number(row.draftScore || row.score || 0) - ((targetCounts.get(row.player) || 0) * 9)
+        }))
         .sort((left, right) =>
-          right.draftScore - left.draftScore ||
-          right.score - left.score ||
-          right.winrate - left.winrate ||
-          right.games - left.games
+          Number(right.denyScore) - Number(left.denyScore) ||
+          Number(right.draftScore) - Number(left.draftScore) ||
+          Number(right.winrate) - Number(left.winrate) ||
+          Number(right.games) - Number(left.games)
         );
-      const picks = [];
-      const usedChampions = new Set();
-      const pickCountsByPlayer = new Map();
-      const addCandidate = (candidate, requireFreshPlayer, minimumScore) => {
-        if (picks.length >= limit) return;
-        if (candidate.draftScore < minimumScore) return;
-        const championKey = candidate.champion.toLowerCase();
-        if (usedChampions.has(championKey)) return;
-        if (requireFreshPlayer && picks.some(row => row.player === candidate.player)) return;
-        if ((pickCountsByPlayer.get(candidate.player) || 0) >= 2) return;
-        usedChampions.add(championKey);
-        pickCountsByPlayer.set(candidate.player, (pickCountsByPlayer.get(candidate.player) || 0) + 1);
-        picks.push(candidate);
-      };
+    }
 
-      candidates.forEach(candidate => addCandidate(candidate, true, 50));
-      candidates.forEach(candidate => addCandidate(candidate, false, 45));
-      return picks;
+    function bestSafePick(candidates) {
+      return candidates
+        .filter(row => !row.metaFallback && Number(row.games) >= 3 && Number(row.winrate) >= 0.5)
+        .sort((left, right) =>
+          Number(right.games) - Number(left.games) ||
+          Number(right.pickScore) - Number(left.pickScore)
+        )[0] || candidates.find(row => !row.metaFallback && Number(row.games) >= 2) || null;
+    }
+
+    function highCeilingPick(candidates) {
+      return candidates
+        .slice()
+        .sort((left, right) =>
+          ((Number(right.kda) || 0) * 8 + Number(right.winrate) * 35 + Number(right.score)) -
+          ((Number(left.kda) || 0) * 8 + Number(left.winrate) * 35 + Number(left.score))
+        )[0] || null;
+    }
+
+    function trapPick(candidates) {
+      return candidates
+        .filter(row => !row.metaFallback && Number(row.games) >= 2 && (Number(row.winrate) < 0.42 || Number(row.lift || 0) < -0.08))
+        .sort((left, right) =>
+          Number(left.winrate) - Number(right.winrate) ||
+          Number(left.score) - Number(right.score) ||
+          Number(right.games) - Number(left.games)
+        )[0] || null;
+    }
+
+    function opponentContestScore(champion, opponentEntries, pool, unavailableChampions) {
+      return Math.max(0, ...opponentEntries.map(entry => {
+        const rows = pickCandidatesForEntry(entry, pool, unavailableChampions, []);
+        const match = rows.find(row => row.champion === champion);
+        return match ? Number(match.pickScore) : 0;
+      }));
+    }
+
+    function chooseNextPickForTeam(team, blueEntries, redEntries, pool, state, unavailableChampions) {
+      const ownEntries = entriesForSide(team, blueEntries, redEntries);
+      const enemyEntries = entriesForSide(opponentTeam(team), blueEntries, redEntries);
+      const ownPicks = picksForSide(team, state);
+      const enemyPicks = picksForSide(opponentTeam(team), state);
+      const pickedPlayers = new Set(ownPicks.map(row => row.player));
+      const options = ownEntries
+        .filter(entry => !pickedPlayers.has(entry.player))
+        .map(entry => {
+          const candidates = pickCandidatesForEntry(entry, pool, unavailableChampions, enemyPicks);
+          const pick = candidates[0];
+          if (!pick) return null;
+          const ideal = pickCandidatesForEntry(entry, pool, new Set(), [])[0] || null;
+          const safe = bestSafePick(candidates);
+          const ceiling = highCeilingPick(candidates);
+          const trap = trapPick(candidates);
+          const contested = opponentContestScore(pick.champion, enemyEntries, pool, unavailableChampions);
+          const idealStillAvailable = ideal && championDraftKey(ideal.champion) === championDraftKey(pick.champion);
+          const priority =
+            Number(pick.pickScore) +
+            Math.min(contested / 10, 8) +
+            (idealStillAvailable ? 5 : 0) +
+            (Number(pick.matchupBonus) > 0 ? 5 : 0);
+          return { entry, pick, ideal, safe, ceiling, trap, contested, priority };
+        })
+        .filter(Boolean)
+        .sort((left, right) =>
+          Number(right.priority) - Number(left.priority) ||
+          Number(right.pick.pickScore) - Number(left.pick.pickScore) ||
+          Number(right.pick.games) - Number(left.pick.games)
+        );
+      return options[0] || null;
+    }
+
+    function runTournamentDraft(blueEntries, redEntries, pool) {
+      const state = {
+        blueBans: [],
+        redBans: [],
+        bluePicks: [],
+        redPicks: [],
+        turns: []
+      };
+      const unavailable = new Set();
+      const banOrder = ["blue", "red", "blue", "red", "blue", "red"];
+      banOrder.forEach((team, index) => {
+        const targetEntries = entriesForSide(opponentTeam(team), blueEntries, redEntries);
+        const ownBans = bansForSide(team, state);
+        const ideal = denyCandidatesForEntries(targetEntries, pool, new Set(), [])[0] || null;
+        const candidate = denyCandidatesForEntries(targetEntries, pool, unavailable, ownBans)[0] || null;
+        if (candidate) {
+          unavailable.add(championDraftKey(candidate.champion));
+          ownBans.push({ ...candidate, draftTurn: index + 1, action: "ban", team });
+        }
+        state.turns.push({
+          number: index + 1,
+          phase: "Bans",
+          action: "ban",
+          team,
+          targetEntries,
+          candidate,
+          ideal
+        });
+      });
+
+      const pickGroups = [
+        { team: "blue", count: 1, label: "B1" },
+        { team: "red", count: 2, label: "R1+R2" },
+        { team: "blue", count: 2, label: "B2+B3" },
+        { team: "red", count: 2, label: "R3+R4" },
+        { team: "blue", count: 2, label: "B4+B5" },
+        { team: "red", count: 1, label: "R5" }
+      ];
+      let turnNumber = banOrder.length + 1;
+      pickGroups.forEach(group => {
+        for (let slot = 0; slot < group.count; slot += 1) {
+          const choice = chooseNextPickForTeam(group.team, blueEntries, redEntries, pool, state, unavailable);
+          const pick = choice?.pick || null;
+          if (pick) {
+            unavailable.add(championDraftKey(pick.champion));
+            picksForSide(group.team, state).push({
+              ...pick,
+              draftTurn: turnNumber,
+              action: "pick",
+              team: group.team
+            });
+          }
+          state.turns.push({
+            number: turnNumber,
+            phase: group.label,
+            action: "pick",
+            team: group.team,
+            candidate: pick,
+            choice,
+            ideal: choice?.ideal || null
+          });
+          turnNumber += 1;
+        }
+      });
+      return state;
+    }
+
+    function draftTag(className, text) {
+      if (!text) return "";
+      return `<span class="draft-tag ${className}">${escapeBanHtml(text)}</span>`;
+    }
+
+    function renderDraftTurn(turn) {
+      const row = turn.candidate;
+      const actionLabel = turn.action === "ban" ? "Ban" : "Pick";
+      if (!row) {
+        const emptyText = turn.action === "ban"
+          ? "No eligible deny ban available."
+          : "No eligible pick available for remaining players.";
+        return `
+          <article class="draft-turn-card" data-side="${turn.team}" data-action="${turn.action}">
+            <div class="draft-turn-top"><span>Turn ${turn.number} - ${sideName(turn.team)} ${actionLabel}</span><span>${escapeBanHtml(turn.phase)}</span></div>
+            <div class="ban-empty">${emptyText}</div>
+          </article>
+        `;
+      }
+      const isPick = turn.action === "pick";
+      const roleNote = row.roleMatched ? row.assignedRole : `${row.assignedRole} eligible`;
+      const mainLine = isPick
+        ? `${row.player} - ${roleNote}${row.fit ? `, ${row.fit}` : ""}${row.metaFallback ? ", role meta fallback" : ""}`
+        : `Deny ${row.player} - ${row.assignedRole}`;
+      const detail = row.metaFallback
+        ? `${row.games} role games, ${formatBanPercent(row.winrate)} role WR, ${Number(row.kda).toFixed(2)} role KDA, no player sample`
+        : `${row.games}g, ${formatBanPercent(row.winrate)} WR, ${Number(row.kda).toFixed(2)} KDA, ${Number(row.mvpScore).toFixed(1)} MVP`;
+      const scoreValue = Number(isPick ? row.pickScore : row.denyScore || row.draftScore || row.score);
+      const ideal = turn.ideal;
+      const tags = [];
+      if (ideal && championDraftKey(ideal.champion) !== championDraftKey(row.champion)) {
+        tags.push(draftTag("draft-tag-counter", `Ideal: ${ideal.champion}`));
+      } else if (ideal) {
+        tags.push(draftTag("draft-tag-counter", "Ideal available"));
+      }
+      if (isPick && turn.choice) {
+        const safe = turn.choice.safe;
+        const ceiling = turn.choice.ceiling;
+        const trap = turn.choice.trap;
+        if (row.metaFallback) tags.push(draftTag("draft-tag-trap", "No player sample"));
+        if (safe) tags.push(draftTag("draft-tag-safe", `Safe: ${safe.champion}`));
+        if (ceiling) tags.push(draftTag("draft-tag-ceiling", `Ceiling: ${ceiling.champion}`));
+        if (row.matchupLabel) tags.push(draftTag("draft-tag-counter", row.matchupLabel));
+        if (trap) tags.push(draftTag("draft-tag-trap", `Trap: ${trap.champion}`));
+      } else {
+        tags.push(draftTag("draft-tag-trap", `${formatSignedBanPercent(row.lift)} vs baseline`));
+      }
+      return `
+        <article class="draft-turn-card" data-side="${turn.team}" data-action="${turn.action}">
+          <div class="draft-turn-top"><span>Turn ${turn.number} - ${sideName(turn.team)} ${actionLabel}</span><span>${escapeBanHtml(turn.phase)}</span></div>
+          <div class="draft-turn-main">
+            <img src="${escapeBanHtml(row.championIcon)}" alt="${escapeBanHtml(row.champion)}">
+            <div class="draft-turn-copy">
+              <strong>${escapeBanHtml(row.champion)}</strong>
+              <span>${escapeBanHtml(mainLine)}</span>
+              <small>${escapeBanHtml(detail)}</small>
+            </div>
+            <b class="draft-turn-score">${scoreValue.toFixed(1)}</b>
+          </div>
+          <div class="draft-tag-row">${tags.join("")}</div>
+        </article>
+      `;
+    }
+
+    function renderDraftCoach(simulation, blueEntries, redEntries, pool) {
+      if (!draftCoachSummary || !draftCoachTurns) return;
+      if (!blueEntries.length && !redEntries.length) {
+        draftCoachSummary.textContent = "Enter teams and a champion pool to simulate the tournament draft order.";
+        draftCoachTurns.innerHTML = "";
+        return;
+      }
+      const poolText = pool.limited
+        ? `${pool.names.length} champion pool`
+        : "all champions";
+      const pickedCount = simulation.bluePicks.length + simulation.redPicks.length;
+      const banCount = simulation.blueBans.length + simulation.redBans.length;
+      draftCoachSummary.textContent =
+        `Simulating ${poolText}: ${banCount}/6 bans and ${pickedCount}/10 picks. ` +
+        "Role-specific comfort is used first, champion matchup bonuses apply after a lane opponent is visible, and class needs will need champion tags later.";
+      draftCoachTurns.innerHTML = simulation.turns.map(renderDraftTurn).join("");
     }
 
     function renderBanResults(team, picks, targetEntries) {
@@ -7009,38 +7524,6 @@ def render_ban_planner_script(
       `).join("");
     }
 
-    function bestPickForEntry(entry, usedChampions, pool) {
-      const sortRows = rows => rows
-        .filter(row => rowInChampionPool(row, pool))
-        .filter(row => !usedChampions.has(row.champion.toLowerCase()))
-        .sort((left, right) => right.score - left.score || right.winrate - left.winrate || right.games - left.games);
-      const roleRows = sortRows(pickTargetData.filter(row => row.player === entry.player && row.role === entry.role));
-      const fallbackRows = sortRows(
-        banTargetData.filter(row => row.player === entry.player && championHasRole(row.champion, entry.role))
-      );
-      const pick = roleRows[0] || fallbackRows[0];
-      if (!pick) return null;
-      usedChampions.add(pick.champion.toLowerCase());
-      return {
-        ...pick,
-        assignedRole: entry.role,
-        fit: entry.fit,
-        roleMatched: Boolean(roleRows[0]),
-        roleEligibleFallback: !roleRows[0]
-      };
-    }
-
-    function chooseTeamPicks(entries, pool, limit = 5) {
-      const usedChampions = new Set();
-      const picks = [];
-      entries.forEach(entry => {
-        if (picks.length >= limit) return;
-        const pick = bestPickForEntry(entry, usedChampions, pool);
-        if (pick) picks.push(pick);
-      });
-      return picks;
-    }
-
     function renderPickResults(team, picks, entries) {
       const list = document.querySelector(`[data-pick-results="${team}"]`);
       const count = document.querySelector(`[data-pick-count="${team}"]`);
@@ -7064,16 +7547,19 @@ def render_ban_planner_script(
       list.innerHTML = picks.map((row, index) => {
         const roleNote = row.roleMatched ? row.assignedRole : `${row.assignedRole} eligible`;
         const fitNote = row.fit ? `, ${escapeBanHtml(row.fit)}` : "";
+        const sampleNote = row.metaFallback
+          ? `${row.games} role games, ${formatBanPercent(row.winrate)} role WR, no player sample`
+          : `${row.games}g, ${formatBanPercent(row.winrate)} WR, ${Number(row.kda).toFixed(2)} KDA, ${Number(row.mvpScore).toFixed(1)} MVP`;
         return `
           <article class="ban-pick-row">
             <b>${index + 1}</b>
             <img src="${escapeBanHtml(row.championIcon)}" alt="${escapeBanHtml(row.champion)}">
             <div class="ban-pick-copy">
               <strong>${escapeBanHtml(row.champion)}</strong>
-              <span>${escapeBanHtml(row.player)} - ${escapeBanHtml(roleNote)}${fitNote}</span>
-              <small>${row.games}g, ${formatBanPercent(row.winrate)} WR, ${Number(row.kda).toFixed(2)} KDA, ${Number(row.mvpScore).toFixed(1)} MVP</small>
+              <span>${escapeBanHtml(row.player)} - ${escapeBanHtml(roleNote)}${fitNote}${row.metaFallback ? ", role meta" : ""}</span>
+              <small>${sampleNote}</small>
             </div>
-            <em>${Number(row.score).toFixed(1)}</em>
+            <em>${Number(row.pickScore || row.score).toFixed(1)}</em>
           </article>
         `;
       }).join("");
@@ -7137,10 +7623,12 @@ def render_ban_planner_script(
       updateChampionPoolDisplay(pool);
       const blueEntries = selectedDraftEntries("blue");
       const redEntries = selectedDraftEntries("red");
-      renderBanResults("blue", chooseTargetBans(redEntries, pool), redEntries);
-      renderPickResults("blue", chooseTeamPicks(blueEntries, pool), blueEntries);
-      renderBanResults("red", chooseTargetBans(blueEntries, pool), blueEntries);
-      renderPickResults("red", chooseTeamPicks(redEntries, pool), redEntries);
+      const simulation = runTournamentDraft(blueEntries, redEntries, pool);
+      renderDraftCoach(simulation, blueEntries, redEntries, pool);
+      renderBanResults("blue", simulation.blueBans, redEntries);
+      renderPickResults("blue", simulation.bluePicks, blueEntries);
+      renderBanResults("red", simulation.redBans, blueEntries);
+      renderPickResults("red", simulation.redPicks, redEntries);
     }
 
     if (draftInputs.length) {
@@ -7187,6 +7675,7 @@ def render_ban_planner_script(
         script.replace("__BAN_TARGET_DATA__", target_json)
         .replace("__PICK_TARGET_DATA__", pick_json)
         .replace("__CHAMPION_ROSTER_DATA__", champion_json)
+        .replace("__CHAMPION_MATCHUP_DATA__", matchup_json)
         .replace("__BAN_PLAYER_NAMES__", player_json)
     )
 
@@ -11425,7 +11914,7 @@ def build_dashboard(
     {render_target_ban_section(display_target_ban_rows, display_practice_pick_rows, display_player_rows)}
     {render_scoring_formula_explainer(mvp_rows, role_score_rows, display_player_rows, display_player_role_rows)}
   </main>
-  <script>{shared_script}{render_ban_planner_script(display_target_ban_rows, display_target_pick_rows, display_player_rows)}</script>
+  <script>{shared_script}{render_ban_planner_script(display_target_ban_rows, display_target_pick_rows, display_player_rows, champion_h2h_rows)}</script>
 </body>
 </html>
 """
