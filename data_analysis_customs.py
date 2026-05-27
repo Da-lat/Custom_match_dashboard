@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 from collections import Counter, defaultdict
 from dataclasses import dataclass
@@ -252,6 +253,10 @@ def showcases_page_path(output_path: Path) -> Path:
 
 def head_to_head_page_path(output_path: Path) -> Path:
     return output_path.with_name(f"{output_path.stem}_head_to_head{output_path.suffix}")
+
+
+def experimental_page_path(output_path: Path) -> Path:
+    return output_path.with_name(f"{output_path.stem}_experimental{output_path.suffix}")
 
 
 @dataclass(frozen=True)
@@ -1000,6 +1005,257 @@ def build_tiered_teams(
             }
         )
     return teams, sorted(all_players - selected_names)
+
+
+def meta_tier_label(value: float) -> str:
+    if value >= 78:
+        return "S"
+    if value >= 68:
+        return "A"
+    if value >= 58:
+        return "B"
+    if value >= 48:
+        return "C"
+    return "D"
+
+
+def format_meta_pilot(row: dict[str, object] | None) -> str:
+    if not row:
+        return "-"
+    return (
+        f"{row.get('name', '-')} "
+        f"({pct(float(row.get('winrate', 0)))}, {integer(row.get('games', 0))}g)"
+    )
+
+
+def custom_meta_tier_rows(
+    champion_role_rows: Sequence[dict[str, object]],
+    player_champion_role_rows: Sequence[dict[str, object]],
+    *,
+    minimum_games: int = 2,
+) -> list[dict[str, object]]:
+    visible_player_combo_rows = without_spotlight_excluded_players(player_champion_role_rows)
+    pilot_rows_by_pair: dict[tuple[str, str], list[dict[str, object]]] = defaultdict(list)
+    for row in visible_player_combo_rows:
+        role = str(row.get("role", ""))
+        if role in ROLE_ORDER:
+            pilot_rows_by_pair[(str(row.get("champion", "")), role)].append(row)
+
+    visible_champion_role_rows = [
+        row
+        for row in champion_role_rows
+        if str(row.get("role", "")) in ROLE_ORDER
+        and int(row.get("games", 0)) >= minimum_games
+    ]
+    max_games_by_role: dict[str, int] = defaultdict(int)
+    max_pilots_by_role: dict[str, int] = defaultdict(int)
+    for row in visible_champion_role_rows:
+        role = str(row.get("role", ""))
+        games = int(row.get("games", 0))
+        pilots = len(pilot_rows_by_pair.get((str(row.get("champion", "")), role), []))
+        max_games_by_role[role] = max(max_games_by_role[role], games)
+        max_pilots_by_role[role] = max(max_pilots_by_role[role], pilots)
+
+    kda_low, kda_high = metric_bounds(visible_champion_role_rows, "kda_ratio")
+    rows = []
+    for row in visible_champion_role_rows:
+        champion = str(row.get("champion", ""))
+        role = str(row.get("role", ""))
+        games = int(row.get("games", 0))
+        winrate = float(row.get("winrate", 0))
+        reliability = clamp(games / 8)
+        adjusted_winrate = 0.5 + ((winrate - 0.5) * reliability)
+        pilots = pilot_rows_by_pair.get((champion, role), [])
+        unique_players = len(pilots)
+        presence_score = (
+            0.65 * safe_div(games, max_games_by_role[role])
+            + 0.35 * safe_div(unique_players, max_pilots_by_role[role])
+        )
+        kda_score = normalized_metric(float(row.get("kda_ratio", 0)), kda_low, kda_high)
+        contested_score = 100 * (
+            (0.45 * presence_score)
+            + (0.35 * adjusted_winrate)
+            + (0.20 * kda_score)
+        )
+
+        pilot_pool = [pilot for pilot in pilots if int(pilot.get("games", 0)) >= 2] or list(pilots)
+        best_pilot = find_first(
+            sorted(
+                pilot_pool,
+                key=lambda pilot: (
+                    -float(pilot.get("winrate", 0)),
+                    -int(pilot.get("wins", 0)),
+                    -float(pilot.get("kda_ratio", 0)),
+                    -int(pilot.get("games", 0)),
+                    str(pilot.get("name", "")),
+                ),
+            )
+        )
+        worst_pilot = (
+            find_first(
+                sorted(
+                    pilot_pool,
+                    key=lambda pilot: (
+                        float(pilot.get("winrate", 0)),
+                        -int(pilot.get("losses", 0)),
+                        -int(pilot.get("games", 0)),
+                        str(pilot.get("name", "")),
+                    ),
+                )
+            )
+            if len(pilot_pool) > 1
+            else {}
+        )
+        output_row = dict(row)
+        output_row.update(
+            {
+                "tier": meta_tier_label(contested_score),
+                "unique_players": unique_players,
+                "presence_score": presence_score,
+                "adjusted_winrate": adjusted_winrate,
+                "contested_score": contested_score,
+                "best_pilot": format_meta_pilot(best_pilot),
+                "worst_pilot": format_meta_pilot(worst_pilot),
+            }
+        )
+        rows.append(output_row)
+    return sorted(
+        rows,
+        key=lambda row: (
+            role_sort(str(row.get("role", ""))),
+            -float(row.get("contested_score", 0)),
+            -int(row.get("games", 0)),
+            str(row.get("champion", "")),
+        ),
+    )
+
+
+def population_std(values: Sequence[float]) -> float:
+    if len(values) < 2:
+        return 0.0
+    mean = sum(values) / len(values)
+    variance = sum((value - mean) ** 2 for value in values) / len(values)
+    return variance ** 0.5
+
+
+def fingerprint_score_label(value: float) -> str:
+    return score(value * 100)
+
+
+def player_fingerprint_rows(
+    appearances: Sequence[Appearance],
+    player_rows: Sequence[dict[str, object]],
+    player_champion_role_rows: Sequence[dict[str, object]],
+) -> list[dict[str, object]]:
+    visible_player_rows = without_spotlight_excluded_players(player_rows)
+    visible_combo_rows = without_spotlight_excluded_players(player_champion_role_rows)
+    appearances_by_player: dict[str, list[Appearance]] = defaultdict(list)
+    for appearance in appearances:
+        if not is_spotlight_excluded_player(appearance.name):
+            appearances_by_player[appearance.name].append(appearance)
+
+    kills_low, kills_high = metric_bounds(visible_player_rows, "avg_kills")
+    kda_low, kda_high = metric_bounds(visible_player_rows, "kda_ratio")
+    kp_low, kp_high = metric_bounds(visible_player_rows, "kill_participation")
+    deaths_low, deaths_high = metric_bounds(visible_player_rows, "avg_deaths")
+    combo_kda_low, combo_kda_high = metric_bounds(visible_combo_rows, "kda_ratio")
+
+    combos_by_player: dict[str, list[dict[str, object]]] = defaultdict(list)
+    for row in visible_combo_rows:
+        combos_by_player[str(row.get("name", ""))].append(row)
+
+    rows = []
+    for player in visible_player_rows:
+        name = str(player.get("name", ""))
+        games = int(player.get("games", 0))
+        carry_score = (
+            0.5 * normalized_metric(float(player.get("avg_kills", 0)), kills_low, kills_high)
+            + 0.5 * normalized_metric(float(player.get("kda_ratio", 0)), kda_low, kda_high)
+        )
+        teamfight_score = normalized_metric(
+            float(player.get("kill_participation", 0)), kp_low, kp_high
+        )
+        survivability_score = normalized_metric(
+            float(player.get("avg_deaths", 0)), deaths_low, deaths_high, invert=True
+        )
+        versatility_score = (
+            0.75 * (float(player.get("champion_pool_rate", 0)) ** 0.5)
+            + 0.25 * safe_div(float(player.get("unique_roles", 0)), len(ROLE_ORDER))
+        )
+
+        player_appearances = appearances_by_player.get(name, [])
+        kp_values = [appearance.kill_participation for appearance in player_appearances]
+        consistency_score = 1.0 - clamp(population_std(kp_values) / 0.25)
+        reliability_score = (
+            0.65 * game_sample_score(games)
+            + 0.35 * consistency_score
+        )
+
+        player_combos = combos_by_player.get(name, [])
+        combo_pool = [
+            combo for combo in player_combos if int(combo.get("games", 0)) >= 2
+        ] or list(player_combos)
+        best_combo: dict[str, object] = {}
+        best_combo_score = 0.0
+        for combo in combo_pool:
+            combo_games = int(combo.get("games", 0))
+            combo_reliability = clamp(combo_games / 6)
+            combo_adjusted_winrate = 0.5 + (
+                (float(combo.get("winrate", 0)) - 0.5) * combo_reliability
+            )
+            combo_score = 100 * (
+                0.50 * combo_adjusted_winrate
+                + 0.30
+                * normalized_metric(
+                    float(combo.get("kda_ratio", 0)), combo_kda_low, combo_kda_high
+                )
+                + 0.20 * game_sample_score(combo_games)
+            )
+            if combo_score > best_combo_score:
+                best_combo_score = combo_score
+                best_combo = combo
+        comfort_score = safe_div(best_combo_score, 100)
+        comfort_label = (
+            f"{best_combo.get('champion', '-')} {best_combo.get('role', '-')}"
+            f" ({integer(best_combo.get('games', 0))}g, {pct(float(best_combo.get('winrate', 0)))})"
+            if best_combo
+            else "-"
+        )
+
+        fingerprint_score = (
+            carry_score
+            + teamfight_score
+            + survivability_score
+            + versatility_score
+            + reliability_score
+            + comfort_score
+        ) / 6
+        rows.append(
+            {
+                "name": name,
+                "games": games,
+                "fingerprint_score": fingerprint_score,
+                "carry_score": carry_score,
+                "teamfight_score": teamfight_score,
+                "survivability_score": survivability_score,
+                "versatility_score": versatility_score,
+                "reliability_score": reliability_score,
+                "comfort_score": comfort_score,
+                "comfort_label": comfort_label,
+                "search_text": (
+                    f"{name} {player.get('most_played_champion', '')} "
+                    f"{player.get('top_roles', '')} {comfort_label}"
+                ),
+            }
+        )
+    return sorted(
+        rows,
+        key=lambda row: (
+            -float(row.get("fingerprint_score", 0)),
+            -int(row.get("games", 0)),
+            str(row.get("name", "")),
+        ),
+    )
 
 
 def target_ban_score_rows(
@@ -3232,6 +3488,7 @@ def render_head_to_head_page(
     main_page_name: str,
     teams_page_name: str,
     showcases_page_name: str,
+    experimental_page_name: str,
 ) -> str:
     player_counts: Counter[str] = Counter()
     for row in rows:
@@ -3368,6 +3625,7 @@ def render_head_to_head_page(
     <a href="{html_attr(teams_page_name)}#teams">Teams</a>
     <a href="{html_attr(teams_page_name)}#target-bans">Bans</a>
     <a href="{html_attr(showcases_page_name)}">Showcases</a>
+    <a href="{html_attr(experimental_page_name)}#custom-meta">Experimental</a>
     <a href="{html_attr(main_page_name)}#deep-dive">Deep Dive</a>
   </nav>
   <main>
@@ -3401,6 +3659,443 @@ def render_head_to_head_page(
     </section>
   </main>
   <script>{render_head_to_head_script()}{render_refresh_script()}</script>
+</body>
+</html>
+"""
+
+
+FINGERPRINT_METRICS: tuple[tuple[str, str], ...] = (
+    ("Carry", "carry_score"),
+    ("Teamfight", "teamfight_score"),
+    ("Survive", "survivability_score"),
+    ("Versatile", "versatility_score"),
+    ("Reliable", "reliability_score"),
+    ("Comfort", "comfort_score"),
+)
+
+
+def radar_points(values: Sequence[float], *, center: float = 96, radius: float = 70) -> str:
+    points = []
+    for index, value in enumerate(values):
+        angle = (-90 + (360 / len(values)) * index) * math.pi / 180
+        distance = radius * clamp(value)
+        x = center + (math.cos(angle) * distance)
+        y = center + (math.sin(angle) * distance)
+        points.append(f"{x:.1f},{y:.1f}")
+    return " ".join(points)
+
+
+def radar_grid_points(level: float, *, center: float = 96, radius: float = 70) -> str:
+    return radar_points([level] * len(FINGERPRINT_METRICS), center=center, radius=radius)
+
+
+def render_fingerprint_radar(row: dict[str, object]) -> str:
+    values = [float(row.get(key, 0)) for _label, key in FINGERPRINT_METRICS]
+    axes = []
+    labels = []
+    center = 96
+    radius = 70
+    for index, (label, _key) in enumerate(FINGERPRINT_METRICS):
+        angle = (-90 + (360 / len(FINGERPRINT_METRICS)) * index) * math.pi / 180
+        x = center + (math.cos(angle) * radius)
+        y = center + (math.sin(angle) * radius)
+        label_x = center + (math.cos(angle) * (radius + 18))
+        label_y = center + (math.sin(angle) * (radius + 18))
+        anchor = "middle"
+        if label_x < center - 10:
+            anchor = "end"
+        elif label_x > center + 10:
+            anchor = "start"
+        axes.append(
+            f'<line x1="{center}" y1="{center}" x2="{x:.1f}" y2="{y:.1f}" />'
+        )
+        labels.append(
+            f'<text x="{label_x:.1f}" y="{label_y:.1f}" text-anchor="{anchor}">{escape(label)}</text>'
+        )
+
+    rings = "\n".join(
+        f'<polygon points="{radar_grid_points(level)}" />'
+        for level in (0.25, 0.50, 0.75, 1.0)
+    )
+    return f"""
+    <svg class="fingerprint-radar" viewBox="0 0 192 192" role="img" aria-label="{html_attr(row.get('name', 'Player'))} fingerprint radar">
+      <g class="radar-grid">{rings}</g>
+      <g class="radar-axis">{"".join(axes)}</g>
+      <polygon class="radar-fill" points="{radar_points(values)}" />
+      <g class="radar-labels">{"".join(labels)}</g>
+    </svg>
+    """
+
+
+def render_fingerprint_cards(rows: Sequence[dict[str, object]]) -> str:
+    cards = []
+    for row in rows:
+        metric_rows = []
+        for label, key in FINGERPRINT_METRICS:
+            value = float(row.get(key, 0))
+            metric_rows.append(
+                f"""
+                <div class="fingerprint-metric">
+                  <span>{escape(label)}</span>
+                  <div class="fingerprint-track"><div style="width: {max(3.0, value * 100):.2f}%"></div></div>
+                  <b>{fingerprint_score_label(value)}</b>
+                </div>
+                """
+            )
+        cards.append(
+            f"""
+            <article class="fingerprint-card" data-card-text="{html_attr(row.get('search_text', ''))}">
+              <div class="fingerprint-card-heading">
+                <div>
+                  <h3>{escape(str(row.get('name', '-')))}</h3>
+                  <small>{integer(row.get('games', 0))} games</small>
+                </div>
+                <strong>{fingerprint_score_label(float(row.get('fingerprint_score', 0)))}</strong>
+              </div>
+              {render_fingerprint_radar(row)}
+              <p class="fingerprint-comfort"><b>Comfort pick</b>{escape(str(row.get('comfort_label', '-')))}</p>
+              <div class="fingerprint-metric-list">{"".join(metric_rows)}</div>
+            </article>
+            """
+        )
+    return "".join(cards)
+
+
+def render_meta_spotlights(rows: Sequence[dict[str, object]]) -> str:
+    cards = []
+    for role in ROLE_ORDER:
+        row = find_first(
+            sorted(
+                [item for item in rows if str(item.get("role", "")) == role],
+                key=lambda item: (
+                    -float(item.get("contested_score", 0)),
+                    -int(item.get("games", 0)),
+                    str(item.get("champion", "")),
+                ),
+            )
+        )
+        if not row:
+            continue
+        champion = str(row.get("champion", "-"))
+        cards.append(
+            f"""
+            <article class="meta-spotlight-card tier-{html_attr(str(row.get('tier', 'd')).lower())}">
+              <span>{escape(role)}</span>
+              <img src="{html_attr(champion_icon_url(champion))}" alt="{html_attr(champion)}">
+              <strong>{escape(champion)}</strong>
+              <b>{escape(str(row.get('tier', '-')))} Tier / {score(float(row.get('contested_score', 0)))}</b>
+              <small>{integer(row.get('games', 0))} games, {pct(float(row.get('winrate', 0)))} WR, best pilot {escape(str(row.get('best_pilot', '-')))}</small>
+            </article>
+            """
+        )
+    return f'<div class="meta-spotlight-grid">{"".join(cards)}</div>'
+
+
+def render_experimental_css() -> str:
+    return """
+    .experimental-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.8fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+    .experiment-note {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+    .experiment-note span {
+      color: var(--gold);
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+    .experiment-note strong {
+      display: block;
+      font-size: 1.35rem;
+      margin-top: 6px;
+    }
+    .experiment-note small {
+      color: var(--muted);
+      display: block;
+      line-height: 1.45;
+      margin-top: 8px;
+    }
+    .meta-spotlight-grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      margin-bottom: 16px;
+    }
+    .meta-spotlight-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      min-height: 230px;
+      padding: 14px;
+    }
+    .meta-spotlight-card span {
+      color: var(--muted);
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 950;
+    }
+    .meta-spotlight-card img {
+      border-radius: 8px;
+      display: block;
+      height: 56px;
+      margin: 12px 0;
+      width: 56px;
+    }
+    .meta-spotlight-card strong,
+    .meta-spotlight-card b,
+    .meta-spotlight-card small {
+      display: block;
+    }
+    .meta-spotlight-card b {
+      color: var(--gold);
+      margin-top: 8px;
+    }
+    .meta-spotlight-card small {
+      color: var(--muted);
+      line-height: 1.4;
+      margin-top: 8px;
+    }
+    .tier-s { border-top-color: #f0c96a; }
+    .tier-a { border-top-color: #4fc48b; }
+    .tier-b { border-top-color: #62a8ff; }
+    .tier-c { border-top-color: #b596ff; }
+    .tier-d { border-top-color: #ff6f81; }
+    .fingerprint-toolbar {
+      align-items: center;
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .fingerprint-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .fingerprint-card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+    .fingerprint-card-heading {
+      align-items: start;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .fingerprint-card-heading h3 {
+      margin: 0;
+    }
+    .fingerprint-card-heading small,
+    .fingerprint-comfort {
+      color: var(--muted);
+    }
+    .fingerprint-card-heading strong {
+      color: var(--gold);
+      font-size: 1.55rem;
+      line-height: 1;
+    }
+    .fingerprint-radar {
+      display: block;
+      margin: 8px auto 4px;
+      max-width: 260px;
+      width: 100%;
+    }
+    .radar-grid polygon {
+      fill: none;
+      stroke: #26374d;
+      stroke-width: 1;
+    }
+    .radar-axis line {
+      stroke: #2f4056;
+      stroke-width: 1;
+    }
+    .radar-fill {
+      fill: rgba(79, 196, 139, 0.28);
+      stroke: #4fc48b;
+      stroke-width: 2.5;
+    }
+    .radar-labels text {
+      fill: var(--muted);
+      font-size: 0.58rem;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+    .fingerprint-comfort {
+      border-top: 1px solid var(--line);
+      line-height: 1.4;
+      margin: 8px 0 12px;
+      padding-top: 10px;
+    }
+    .fingerprint-comfort b {
+      color: var(--ink);
+      display: block;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+    }
+    .fingerprint-metric-list {
+      display: grid;
+      gap: 8px;
+    }
+    .fingerprint-metric {
+      align-items: center;
+      display: grid;
+      gap: 8px;
+      grid-template-columns: 76px minmax(0, 1fr) 42px;
+    }
+    .fingerprint-metric span {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 850;
+    }
+    .fingerprint-track {
+      background: #223044;
+      border-radius: 999px;
+      height: 8px;
+      overflow: hidden;
+    }
+    .fingerprint-track div {
+      background: linear-gradient(90deg, #62a8ff, #4fc48b, #f0c96a);
+      border-radius: inherit;
+      height: 100%;
+    }
+    .fingerprint-metric b {
+      font-size: 0.82rem;
+      text-align: right;
+    }
+    @media (max-width: 1100px) {
+      .meta-spotlight-grid,
+      .fingerprint-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .experimental-hero {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (max-width: 720px) {
+      .meta-spotlight-grid,
+      .fingerprint-grid {
+        grid-template-columns: 1fr;
+      }
+      .fingerprint-toolbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+    }
+    """
+
+
+def render_experimental_page(
+    *,
+    shared_style: str,
+    shared_script: str,
+    meta_rows: Sequence[dict[str, object]],
+    fingerprint_rows: Sequence[dict[str, object]],
+    generated_at: str,
+    main_page_name: str,
+    teams_page_name: str,
+    showcases_page_name: str,
+    head_to_head_page_name: str,
+) -> str:
+    meta_columns: list[Column] = [
+        ("Tier", "tier", str, "text"),
+        ("Champion", "champion", str, "text"),
+        ("Role", "role", str, "text"),
+        ("Games", "games", integer, "number"),
+        ("Winrate", "winrate", lambda value: pct(float(value)), "number"),
+        ("KDA", "kda_ratio", lambda value: two_decimal(float(value)), "number"),
+        ("Unique Players", "unique_players", integer, "number"),
+        ("Best Pilot", "best_pilot", str, "text"),
+        ("Worst Pilot", "worst_pilot", str, "text"),
+        ("Contested Score", "contested_score", lambda value: score(float(value)), "number"),
+    ]
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LoL Experimental Stats</title>
+  <style>{shared_style}{render_experimental_css()}</style>
+</head>
+<body>
+  {render_hidden_head_to_head_link(head_to_head_page_name)}
+  <header>
+    <div class="topline">
+      <div>
+        <h1>LoL Experimental Stats</h1>
+        <p>Custom meta tiering and player fingerprints inspired by League stat sites, adapted to your custom-games dataset.</p>
+      </div>
+      {render_refresh_control(generated_at)}
+    </div>
+  </header>
+  <nav>
+    <a href="{html_attr(main_page_name)}#overview">Overview</a>
+    <a href="{html_attr(main_page_name)}#awards">Awards</a>
+    <a href="{html_attr(main_page_name)}#match-history">Matches</a>
+    <a href="{html_attr(main_page_name)}#players">Players</a>
+    <a href="{html_attr(main_page_name)}#champion-pools">Champion Pools</a>
+    <a href="{html_attr(main_page_name)}#champions">Champions</a>
+    <a href="{html_attr(main_page_name)}#role-pools">Role Pools</a>
+    <a href="{html_attr(main_page_name)}#combos">Combos</a>
+    <a href="{html_attr(teams_page_name)}#teams">Teams</a>
+    <a href="{html_attr(teams_page_name)}#target-bans">Bans</a>
+    <a href="{html_attr(showcases_page_name)}">Showcases</a>
+    <a href="#custom-meta">Experimental</a>
+    <a href="{html_attr(main_page_name)}#deep-dive">Deep Dive</a>
+  </nav>
+  <main>
+    <section class="section experimental-hero">
+      <div class="section-title">
+        <div>
+          <h2>Experimental Lab</h2>
+          <p class="note">These models use only the current custom-game fields: result, role, champion, KDA, kill participation, and player history.</p>
+        </div>
+      </div>
+      <article class="experiment-note">
+        <span>Current limits</span>
+        <strong>No CS, gold, vision, damage, or objectives yet</strong>
+        <small>The scoring leans into what the API currently provides. If those fields are added later, this page can evolve into deeper OP.GG-style post-game analysis.</small>
+      </article>
+    </section>
+    <section id="custom-meta" class="section">
+      <div class="section-title">
+        <div>
+          <h2>Custom Meta Tier List</h2>
+          <p class="note">Champion-role strength ranked by games, winrate, KDA, unique pilots, and custom presence. Minimum sample: 2 games.</p>
+        </div>
+      </div>
+      {render_meta_spotlights(meta_rows)}
+      {render_table("custom-meta-tier-list", "Champion Role Meta", meta_rows, meta_columns, controls_html=role_filter_control("custom-meta-tier-list"))}
+    </section>
+    <section id="player-fingerprints" class="section">
+      <div class="section-title">
+        <div>
+          <h2>Player Fingerprints</h2>
+          <p class="note">Radar scores compare players inside this dataset. Carry blends kills and KDA; Reliability blends games with game-to-game KP consistency.</p>
+        </div>
+      </div>
+      <div class="fingerprint-toolbar">
+        <input class="card-search" type="search" placeholder="Search player, role, or comfort pick" data-card-filter="fingerprints">
+        <span class="pool-count">{len(fingerprint_rows)} fingerprints</span>
+      </div>
+      <div class="fingerprint-grid" data-card-container="fingerprints">
+        {render_fingerprint_cards(fingerprint_rows)}
+      </div>
+    </section>
+  </main>
+  <script>{shared_script}</script>
 </body>
 </html>
 """
@@ -5174,6 +5869,7 @@ def render_player_showcase_page(
     main_page_name: str,
     teams_page_name: str,
     head_to_head_page_name: str,
+    experimental_page_name: str,
 ) -> str:
     showcase_player_rows = without_spotlight_excluded_players(player_rows)
     showcase_player_names = {str(row.get("name", "")) for row in showcase_player_rows}
@@ -5633,6 +6329,7 @@ def render_player_showcase_page(
     <a href="{html_attr(teams_page_name)}#teams">Teams</a>
     <a href="{html_attr(teams_page_name)}#target-bans">Bans</a>
     <a href="#{html_attr(first_slug)}">Showcases</a>
+    <a href="{html_attr(experimental_page_name)}#custom-meta">Experimental</a>
   </nav>
   <main>
     <div class="showcase-toolbar">
@@ -6093,6 +6790,11 @@ def build_dashboard(
     five_rows = team_combo_rows(appearances, 5, TEAM_COMBO_MIN_GAMES[5])
     h2h_rows = head_to_head_rows(appearances)
     add_player_role_breakdowns(player_rows, player_role_rows)
+    visible_appearances = [
+        appearance
+        for appearance in appearances
+        if not is_spotlight_excluded_player(appearance.name)
+    ]
     display_player_rows = without_spotlight_excluded_players(player_rows)
     display_player_role_rows = without_spotlight_excluded_players(player_role_rows)
     display_player_champion_rows = without_spotlight_excluded_players(
@@ -6116,6 +6818,20 @@ def build_dashboard(
     best_mvp = find_first(mvp_rows)
     role_score_rows = player_role_score_rows(player_rows, player_role_rows, mvp_rows)
     tiered_teams, unused_team_players = build_tiered_teams(player_rows, role_score_rows)
+    experimental_champion_role_rows = sorted(
+        aggregate(visible_appearances, ("champion", "role")),
+        key=lambda row: (
+            str(row["champion"]),
+            role_sort(str(row["role"])),
+            -int(row["games"]),
+        ),
+    )
+    custom_meta_rows = custom_meta_tier_rows(
+        experimental_champion_role_rows, display_player_champion_role_rows
+    )
+    fingerprint_rows = player_fingerprint_rows(
+        visible_appearances, display_player_rows, display_player_champion_role_rows
+    )
     awards = build_awards(
         appearances,
         player_rows,
@@ -6134,10 +6850,12 @@ def build_dashboard(
     teams_output_path = teams_page_path(output_path)
     showcase_output_path = showcases_page_path(output_path)
     head_to_head_output_path = head_to_head_page_path(output_path)
+    experimental_output_path = experimental_page_path(output_path)
     main_page_name = output_path.name
     teams_page_name = teams_output_path.name
     showcases_page_name = showcase_output_path.name
     head_to_head_page_name = head_to_head_output_path.name
+    experimental_page_name = experimental_output_path.name
 
     metric_cards = "".join(
         [
@@ -8097,6 +8815,7 @@ def build_dashboard(
     <a href="{html_attr(teams_page_name)}#teams">Teams</a>
     <a href="{html_attr(teams_page_name)}#target-bans">Bans</a>
     <a href="{html_attr(showcases_page_name)}">Showcases</a>
+    <a href="{html_attr(experimental_page_name)}#custom-meta">Experimental</a>
     <a href="#deep-dive">Deep Dive</a>
   </nav>
   <main>
@@ -8602,6 +9321,7 @@ def build_dashboard(
     <a href="#teams">Teams</a>
     <a href="#target-bans">Bans</a>
     <a href="{html_attr(showcases_page_name)}">Showcases</a>
+    <a href="{html_attr(experimental_page_name)}#custom-meta">Experimental</a>
     <a href="{html_attr(main_page_name)}#deep-dive">Deep Dive</a>
   </nav>
   <main>
@@ -8646,6 +9366,7 @@ def build_dashboard(
         main_page_name=main_page_name,
         teams_page_name=teams_page_name,
         head_to_head_page_name=head_to_head_page_name,
+        experimental_page_name=experimental_page_name,
     )
 
     head_to_head_html = render_head_to_head_page(
@@ -8655,6 +9376,19 @@ def build_dashboard(
         main_page_name=main_page_name,
         teams_page_name=teams_page_name,
         showcases_page_name=showcases_page_name,
+        experimental_page_name=experimental_page_name,
+    )
+
+    experimental_html = render_experimental_page(
+        shared_style=shared_style,
+        shared_script=shared_script,
+        meta_rows=custom_meta_rows,
+        fingerprint_rows=fingerprint_rows,
+        generated_at=generated_at,
+        main_page_name=main_page_name,
+        teams_page_name=teams_page_name,
+        showcases_page_name=showcases_page_name,
+        head_to_head_page_name=head_to_head_page_name,
     )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -8662,6 +9396,7 @@ def build_dashboard(
     teams_output_path.write_text(teams_html, encoding="utf-8")
     showcase_output_path.write_text(showcase_html, encoding="utf-8")
     head_to_head_output_path.write_text(head_to_head_html, encoding="utf-8")
+    experimental_output_path.write_text(experimental_html, encoding="utf-8")
 
 
 def serve_dashboard(output_path: Path, host: str, port: int) -> None:
@@ -8708,6 +9443,7 @@ def main() -> None:
     print(f"Wrote {teams_page_path(output_path).resolve()}")
     print(f"Wrote {showcases_page_path(output_path).resolve()}")
     print(f"Wrote {head_to_head_page_path(output_path).resolve()}")
+    print(f"Wrote {experimental_page_path(output_path).resolve()}")
     if args.serve:
         serve_dashboard(output_path, args.host, args.port)
 
