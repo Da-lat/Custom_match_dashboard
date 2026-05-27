@@ -7,13 +7,11 @@ import os
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime
+from functools import lru_cache
 from html import escape
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from itertools import combinations
 from pathlib import Path
 from typing import Callable, Iterable, Sequence
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
 
@@ -63,6 +61,19 @@ ANONYMOUS_PLAYER_PREFIXES = ("anonymous", "anon")
 MOST_CONTESTED_EXCLUDED_CHAMPIONS = {"qiyana"}
 TEAM_TIERS = ("S", "A", "B", "C", "D", "F")
 CHAMPION_ROSTER_VERSION = "16.10.1"
+CHAMPION_ASSET_OVERRIDES = {
+    "Bel'Veth": "Belveth",
+    "Cho'Gath": "Chogath",
+    "Fiddlesticks": "FiddleSticks",
+    "Kai'Sa": "Kaisa",
+    "Kha'Zix": "Khazix",
+    "K'Sante": "KSante",
+    "LeBlanc": "Leblanc",
+    "Nunu & Willump": "Nunu",
+    "Renata Glasc": "Renata",
+    "Vel'Koz": "Velkoz",
+    "Wukong": "MonkeyKing",
+}
 CHAMPION_ROSTER_SOURCE_URL = (
     f"https://ddragon.leagueoflegends.com/cdn/{CHAMPION_ROSTER_VERSION}/"
     "data/en_US/champion.json"
@@ -359,6 +370,9 @@ def format_refresh_timestamp(moment: datetime) -> str:
 
 
 def load_matches_from_api(url: str, api_key: str) -> list[dict]:
+    from urllib.error import HTTPError, URLError
+    from urllib.request import Request, urlopen
+
     request = Request(
         url,
         headers={
@@ -539,6 +553,7 @@ def role_fit_score(rank: int) -> float:
     }.get(rank, 0.02)
 
 
+@lru_cache(maxsize=None)
 def champion_key(name: str) -> str:
     value = name.casefold().replace("&", "and")
     return "".join(character for character in value if character.isalnum())
@@ -548,25 +563,14 @@ def is_most_contested_excluded_champion(name: object) -> bool:
     return champion_key(str(name)) in MOST_CONTESTED_EXCLUDED_CHAMPIONS
 
 
+@lru_cache(maxsize=None)
 def champion_asset_id(name: str) -> str:
-    overrides = {
-        "Bel'Veth": "Belveth",
-        "Cho'Gath": "Chogath",
-        "Fiddlesticks": "FiddleSticks",
-        "Kai'Sa": "Kaisa",
-        "Kha'Zix": "Khazix",
-        "K'Sante": "KSante",
-        "LeBlanc": "Leblanc",
-        "Nunu & Willump": "Nunu",
-        "Renata Glasc": "Renata",
-        "Vel'Koz": "Velkoz",
-        "Wukong": "MonkeyKing",
-    }
-    if name in overrides:
-        return overrides[name]
+    if name in CHAMPION_ASSET_OVERRIDES:
+        return CHAMPION_ASSET_OVERRIDES[name]
     return "".join(character for character in name if character.isalnum())
 
 
+@lru_cache(maxsize=None)
 def champion_icon_url(name: str) -> str:
     asset_id = champion_asset_id(name)
     return (
@@ -2000,76 +2004,6 @@ def champion_ownership_rows(
     )
 
 
-def highest_value_next_build_rows(
-    player_champion_role_rows: Sequence[dict[str, object]],
-    role_score_rows: Sequence[dict[str, object]],
-    meta_rows: Sequence[dict[str, object]],
-) -> list[dict[str, object]]:
-    role_score_by_key = {
-        (str(row.get("name", "")), str(row.get("role", ""))): row
-        for row in role_score_rows
-    }
-    meta_by_key = {
-        (str(row.get("champion", "")), str(row.get("role", ""))): row for row in meta_rows
-    }
-    candidate_rows = [
-        row
-        for row in player_champion_role_rows
-        if 1 <= int(row.get("games", 0)) <= 4 and str(row.get("role", "")) in ROLE_ORDER
-    ]
-    kda_low, kda_high = metric_bounds(candidate_rows, "kda_ratio")
-    rows = []
-    for row in candidate_rows:
-        name = str(row.get("name", ""))
-        champion = str(row.get("champion", ""))
-        role = str(row.get("role", ""))
-        games = int(row.get("games", 0))
-        winrate = float(row.get("winrate", 0))
-        reliability = clamp(games / 4)
-        adjusted_winrate = 0.5 + ((winrate - 0.5) * reliability)
-        role_score = float(role_score_by_key.get((name, role), {}).get("role_score", 50))
-        meta_score = float(
-            meta_by_key.get((champion, role), {}).get("contested_score", 45)
-        )
-        kda_score = normalized_metric(float(row.get("kda_ratio", 0)), kda_low, kda_high)
-        upside = 100 * (
-            0.34 * adjusted_winrate
-            + 0.24 * clamp(role_score / 100)
-            + 0.20 * clamp(meta_score / 100)
-            + 0.14 * kda_score
-            + 0.08 * (1 - reliability)
-        )
-        rows.append(
-            {
-                "name": name,
-                "champion": champion,
-                "role": role,
-                "games": games,
-                "wins": int(row.get("wins", 0)),
-                "losses": int(row.get("losses", 0)),
-                "winrate": winrate,
-                "kda_ratio": float(row.get("kda_ratio", 0)),
-                "role_score": role_score,
-                "meta_score": meta_score,
-                "upside_score": upside,
-                "detail": (
-                    f"{integer(row.get('wins', 0))}-{integer(row.get('losses', 0))}, "
-                    f"{games} games, {two_decimal(float(row.get('kda_ratio', 0)))} KDA, "
-                    f"{score(role_score)} role score."
-                ),
-            }
-        )
-    return sorted(
-        rows,
-        key=lambda row: (
-            -float(row.get("upside_score", 0)),
-            -float(row.get("winrate", 0)),
-            int(row.get("games", 0)),
-            str(row.get("name", "")),
-        ),
-    )
-
-
 def target_ban_score_rows(
     player_champion_rows: Sequence[dict[str, object]],
     player_rows: Sequence[dict[str, object]],
@@ -2340,10 +2274,11 @@ def qualify(rows: Iterable[dict[str, object]], minimum_games: int) -> list[dict[
     return [row for row in rows if int(row.get("games", 0)) >= minimum_games]
 
 
-def spotlight_exclusion_tokens(value: object) -> list[str]:
+@lru_cache(maxsize=None)
+def spotlight_exclusion_tokens(value: str) -> tuple[str, ...]:
     tokens = []
     current = []
-    for character in str(value).casefold():
+    for character in value.casefold():
         if character.isalnum():
             current.append(character)
         elif current:
@@ -2351,19 +2286,24 @@ def spotlight_exclusion_tokens(value: object) -> list[str]:
             current = []
     if current:
         tokens.append("".join(current))
-    return tokens
+    return tuple(tokens)
 
 
 def is_anonymous_player_token(token: str) -> bool:
     return any(token.startswith(prefix) for prefix in ANONYMOUS_PLAYER_PREFIXES)
 
 
-def is_spotlight_excluded_player(name: object) -> bool:
+@lru_cache(maxsize=None)
+def is_spotlight_excluded_player_name(name: str) -> bool:
     tokens = spotlight_exclusion_tokens(name)
     return any(
         token in SPOTLIGHT_EXCLUDED_PLAYERS or is_anonymous_player_token(token)
         for token in tokens
     )
+
+
+def is_spotlight_excluded_player(name: object) -> bool:
+    return is_spotlight_excluded_player_name(str(name))
 
 
 def text_mentions_spotlight_excluded_player(value: object) -> bool:
@@ -4542,40 +4482,6 @@ def render_fingerprint_radar(row: dict[str, object], *, large: bool = False) -> 
     """
 
 
-def render_fingerprint_cards(rows: Sequence[dict[str, object]]) -> str:
-    cards = []
-    for row in rows:
-        metric_rows = []
-        for label, key in FINGERPRINT_METRICS:
-            value = float(row.get(key, 0))
-            metric_rows.append(
-                f"""
-                <div class="fingerprint-metric">
-                  <span>{escape(label)}</span>
-                  <div class="fingerprint-track"><div style="width: {max(3.0, value * 100):.2f}%"></div></div>
-                  <b>{fingerprint_score_label(value)}</b>
-                </div>
-                """
-            )
-        cards.append(
-            f"""
-            <article class="fingerprint-card" data-card-text="{html_attr(row.get('search_text', ''))}">
-              <div class="fingerprint-card-heading">
-                <div>
-                  <h3>{escape(str(row.get('name', '-')))}</h3>
-                  <small>{integer(row.get('games', 0))} games</small>
-                </div>
-                <strong>{fingerprint_score_label(float(row.get('fingerprint_score', 0)))}</strong>
-              </div>
-              {render_fingerprint_radar(row)}
-              <p class="fingerprint-comfort"><b>Comfort pick</b>{escape(str(row.get('comfort_label', '-')))}</p>
-              <div class="fingerprint-metric-list">{"".join(metric_rows)}</div>
-            </article>
-            """
-        )
-    return "".join(cards)
-
-
 def render_showcase_fingerprint(row: dict[str, object] | None) -> str:
     if not row:
         return ""
@@ -5043,36 +4949,6 @@ def render_champion_ownership_section(rows: Sequence[dict[str, object]]) -> str:
     """
 
 
-def render_next_builds_section(rows: Sequence[dict[str, object]]) -> str:
-    cards = []
-    for row in rows[:12]:
-        champion = str(row.get("champion", "-"))
-        cards.append(
-            f"""
-            <article class="next-build-card">
-              <img src="{html_attr(champion_icon_url(champion))}" alt="{html_attr(champion)}">
-              <div>
-                <span>{escape(str(row.get('role', '-')))} build</span>
-                <strong>{escape(str(row.get('name', '-')))} {escape(champion)}</strong>
-                <b>{score(float(row.get('upside_score', 0)))} upside</b>
-                <small>{escape(str(row.get('detail', '-')))}</small>
-              </div>
-            </article>
-            """
-        )
-    return f"""
-    <section id="next-builds" class="section">
-      <div class="section-title">
-        <div>
-          <h2>Highest-Value Next Builds</h2>
-          <p class="note">Small-sample player/champion/role combos with enough upside to deliberately develop next.</p>
-        </div>
-      </div>
-      <div class="next-build-grid">{"".join(cards)}</div>
-    </section>
-    """
-
-
 def render_experimental_css() -> str:
     return """
     .experimental-hero {
@@ -5205,8 +5081,7 @@ def render_experimental_css() -> str:
     }
     .lab-award-card span,
     .chemistry-callout span,
-    .ownership-heading span,
-    .next-build-card span {
+    .ownership-heading span {
       color: var(--muted);
       display: block;
       font-size: 0.78rem;
@@ -5374,8 +5249,7 @@ def render_experimental_css() -> str:
     .chemistry-panel,
     .chemistry-callout,
     .upset-column,
-    .ownership-card,
-    .next-build-card {
+    .ownership-card {
       background: linear-gradient(180deg, #121d2a, #0d1620);
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -5581,49 +5455,13 @@ def render_experimental_css() -> str:
     .ownership-recent {
       margin-top: 12px;
     }
-    .next-build-grid {
-      display: grid;
-      gap: 16px;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-    .next-build-card {
-      align-items: center;
-      display: grid;
-      gap: 12px;
-      grid-template-columns: 52px minmax(0, 1fr);
-      padding: 14px;
-    }
-    .next-build-card img {
-      border-radius: 8px;
-      height: 52px;
-      object-fit: cover;
-      width: 52px;
-    }
-    .next-build-card strong,
-    .next-build-card b,
-    .next-build-card small {
-      display: block;
-    }
-    .next-build-card strong {
-      margin-top: 3px;
-    }
-    .next-build-card b {
-      color: var(--gold);
-      margin-top: 4px;
-    }
-    .next-build-card small {
-      color: var(--muted);
-      line-height: 1.35;
-      margin-top: 6px;
-    }
     @media (max-width: 1100px) {
       .meta-spotlight-grid,
       .form-highlight-grid,
       .form-grid,
       .lab-award-grid,
       .upset-grid,
-      .ownership-grid,
-      .next-build-grid {
+      .ownership-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
       .experimental-hero {
@@ -5640,8 +5478,7 @@ def render_experimental_css() -> str:
       .lab-award-grid,
       .chemistry-list-grid,
       .upset-grid,
-      .ownership-grid,
-      .next-build-grid {
+      .ownership-grid {
         grid-template-columns: 1fr;
       }
       .form-toolbar {
@@ -5662,7 +5499,6 @@ def render_experimental_page(
     chemistry_data: dict[str, object],
     upset_data: dict[str, list[dict[str, object]]],
     ownership_rows: Sequence[dict[str, object]],
-    next_build_rows: Sequence[dict[str, object]],
     generated_at: str,
     main_page_name: str,
     teams_page_name: str,
@@ -5744,7 +5580,6 @@ def render_experimental_page(
     {render_team_chemistry_section(chemistry_data)}
     {render_upset_detector_section(upset_data, main_page_name)}
     {render_champion_ownership_section(ownership_rows)}
-    {render_next_builds_section(next_build_rows)}
   </main>
   <script>{shared_script}</script>
 </body>
@@ -8602,9 +8437,6 @@ def build_dashboard(
         display_player_champion_rows,
         display_target_ban_rows,
     )
-    next_build_rows = highest_value_next_build_rows(
-        display_player_champion_role_rows, role_score_rows, custom_meta_rows
-    )
     awards = build_awards(
         appearances,
         player_rows,
@@ -11032,8 +10864,6 @@ def build_dashboard(
       rebuildPoolPicker(poolCards[0].dataset.playerPoolId);
     }}
 
-    {render_ban_planner_script(display_target_ban_rows, display_target_pick_rows, display_player_rows)}
-
     document.querySelectorAll("[data-role-tab]").forEach(button => {{
       button.addEventListener("click", () => {{
         const role = button.dataset.roleTab;
@@ -11120,7 +10950,7 @@ def build_dashboard(
     {render_target_ban_section(display_target_ban_rows, display_practice_pick_rows, display_player_rows)}
     {render_scoring_formula_explainer(mvp_rows, role_score_rows, display_player_rows, display_player_role_rows)}
   </main>
-  <script>{shared_script}</script>
+  <script>{shared_script}{render_ban_planner_script(display_target_ban_rows, display_target_pick_rows, display_player_rows)}</script>
 </body>
 </html>
 """
@@ -11162,7 +10992,6 @@ def build_dashboard(
         chemistry_data=chemistry_data,
         upset_data=upset_data,
         ownership_rows=ownership_rows,
-        next_build_rows=next_build_rows,
         generated_at=generated_at,
         main_page_name=main_page_name,
         teams_page_name=teams_page_name,
@@ -11179,6 +11008,8 @@ def build_dashboard(
 
 
 def serve_dashboard(output_path: Path, host: str, port: int) -> None:
+    from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+
     class Handler(SimpleHTTPRequestHandler):
         def log_message(self, format: str, *args: object) -> None:
             return
