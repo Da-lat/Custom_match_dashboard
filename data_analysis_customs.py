@@ -3689,6 +3689,223 @@ def head_to_head_rows(
     )
 
 
+def champion_head_to_head_rows(
+    appearances: Sequence[Appearance], minimum_games: int = 2
+) -> list[dict[str, object]]:
+    grouped: dict[int, list[Appearance]] = defaultdict(list)
+    for appearance in appearances:
+        if is_spotlight_excluded_player(appearance.name):
+            continue
+        grouped[appearance.match_id].append(appearance)
+
+    stats: dict[tuple[str, str, str], dict[str, object]] = {}
+    for rows in grouped.values():
+        rows_by_role: dict[str, dict[str, list[Appearance]]] = {
+            role: {"win": [], "lose": []} for role in ROLE_ORDER
+        }
+        for row in rows:
+            if row.role in ROLE_ORDER:
+                rows_by_role[row.role][row.side].append(row)
+
+        for role, sides in rows_by_role.items():
+            for win_row in sides["win"]:
+                for lose_row in sides["lose"]:
+                    champions = tuple(sorted([win_row.champion, lose_row.champion]))
+                    if champions[0] == champions[1]:
+                        continue
+                    key = (role, champions[0], champions[1])
+                    if key not in stats:
+                        stats[key] = {
+                            "role": role,
+                            "champions": champions,
+                            "games": 0,
+                            "wins": Counter(),
+                            "kills": Counter(),
+                            "deaths": Counter(),
+                            "assists": Counter(),
+                            "pilots": defaultdict(Counter),
+                            "match_ids": [],
+                        }
+                    entry = stats[key]
+                    entry["games"] = int(entry["games"]) + 1
+                    entry["wins"][win_row.champion] += 1
+                    entry["match_ids"].append(win_row.match_id)
+                    for champion_row in (win_row, lose_row):
+                        champion = champion_row.champion
+                        entry["kills"][champion] += champion_row.kills
+                        entry["deaths"][champion] += champion_row.deaths
+                        entry["assists"][champion] += champion_row.assists
+                        entry["pilots"][champion][champion_row.name] += 1
+
+    output_rows = []
+    for entry in stats.values():
+        games = int(entry["games"])
+        if games < minimum_games:
+            continue
+        champion_a, champion_b = entry["champions"]
+        a_wins = int(entry["wins"][champion_a])
+        b_wins = int(entry["wins"][champion_b])
+        if (b_wins, champion_a) > (a_wins, champion_b):
+            leader, opponent = champion_b, champion_a
+            wins, losses = b_wins, a_wins
+        else:
+            leader, opponent = champion_a, champion_b
+            wins, losses = a_wins, b_wins
+
+        leader_kills = int(entry["kills"][leader])
+        leader_deaths = int(entry["deaths"][leader])
+        leader_assists = int(entry["assists"][leader])
+        opponent_kills = int(entry["kills"][opponent])
+        opponent_deaths = int(entry["deaths"][opponent])
+        opponent_assists = int(entry["assists"][opponent])
+        leader_kda = safe_div(leader_kills + leader_assists, max(1, leader_deaths))
+        opponent_kda = safe_div(
+            opponent_kills + opponent_assists, max(1, opponent_deaths)
+        )
+        winrate = safe_div(wins, games)
+        output_rows.append(
+            {
+                "role": str(entry["role"]),
+                "champion": leader,
+                "opponent_champion": opponent,
+                "matchup": f"{leader} vs {opponent}",
+                "chart_label": (
+                    f"{leader} over {opponent}"
+                    if wins != losses
+                    else f"{leader} vs {opponent}"
+                ),
+                "games": games,
+                "wins": wins,
+                "losses": losses,
+                "record": f"{wins}-{losses}",
+                "winrate": winrate,
+                "dominance": abs(winrate - 0.5),
+                "champion_kda": leader_kda,
+                "opponent_kda": opponent_kda,
+                "kda_edge": leader_kda - opponent_kda,
+                "champion_line": (
+                    f"{one_decimal(safe_div(leader_kills, games))} / "
+                    f"{one_decimal(safe_div(leader_deaths, games))} / "
+                    f"{one_decimal(safe_div(leader_assists, games))}"
+                ),
+                "opponent_line": (
+                    f"{one_decimal(safe_div(opponent_kills, games))} / "
+                    f"{one_decimal(safe_div(opponent_deaths, games))} / "
+                    f"{one_decimal(safe_div(opponent_assists, games))}"
+                ),
+                "champion_pilots": top_counter(entry["pilots"][leader]),
+                "opponent_pilots": top_counter(entry["pilots"][opponent]),
+                "match_ids": ", ".join(str(match_id) for match_id in entry["match_ids"]),
+            }
+        )
+
+    return sorted(
+        output_rows,
+        key=lambda row: (
+            -int(row["games"]),
+            -float(row["dominance"]),
+            -float(row["kda_edge"]),
+            str(row["role"]),
+            str(row["matchup"]),
+        ),
+    )
+
+
+def pilot_champion_head_to_head_rows(
+    appearances: Sequence[Appearance], minimum_games: int = 2
+) -> list[dict[str, object]]:
+    grouped: dict[int, list[Appearance]] = defaultdict(list)
+    for appearance in appearances:
+        if is_spotlight_excluded_player(appearance.name):
+            continue
+        grouped[appearance.match_id].append(appearance)
+
+    stats: dict[tuple[str, str, str], dict[str, object]] = {}
+    for rows in grouped.values():
+        rows_by_role: dict[str, dict[str, list[Appearance]]] = {
+            role: {"win": [], "lose": []} for role in ROLE_ORDER
+        }
+        for row in rows:
+            if row.role in ROLE_ORDER:
+                rows_by_role[row.role][row.side].append(row)
+
+        for role, sides in rows_by_role.items():
+            for win_row in sides["win"]:
+                for lose_row in sides["lose"]:
+                    win_entity = f"{win_row.name} on {win_row.champion}"
+                    lose_entity = f"{lose_row.name} on {lose_row.champion}"
+                    entities = tuple(sorted([win_entity, lose_entity]))
+                    key = (role, entities[0], entities[1])
+                    if key not in stats:
+                        stats[key] = {
+                            "role": role,
+                            "entities": entities,
+                            "games": 0,
+                            "wins": Counter(),
+                            "kills": Counter(),
+                            "deaths": Counter(),
+                            "assists": Counter(),
+                            "match_ids": [],
+                        }
+                    entry = stats[key]
+                    entry["games"] = int(entry["games"]) + 1
+                    entry["wins"][win_entity] += 1
+                    entry["match_ids"].append(win_row.match_id)
+                    for entity, row in ((win_entity, win_row), (lose_entity, lose_row)):
+                        entry["kills"][entity] += row.kills
+                        entry["deaths"][entity] += row.deaths
+                        entry["assists"][entity] += row.assists
+
+    output_rows = []
+    for entry in stats.values():
+        games = int(entry["games"])
+        if games < minimum_games:
+            continue
+        entity_a, entity_b = entry["entities"]
+        a_wins = int(entry["wins"][entity_a])
+        b_wins = int(entry["wins"][entity_b])
+        if (b_wins, entity_a) > (a_wins, entity_b):
+            leader, opponent = entity_b, entity_a
+            wins, losses = b_wins, a_wins
+        else:
+            leader, opponent = entity_a, entity_b
+            wins, losses = a_wins, b_wins
+        leader_kda = safe_div(
+            int(entry["kills"][leader]) + int(entry["assists"][leader]),
+            max(1, int(entry["deaths"][leader])),
+        )
+        opponent_kda = safe_div(
+            int(entry["kills"][opponent]) + int(entry["assists"][opponent]),
+            max(1, int(entry["deaths"][opponent])),
+        )
+        output_rows.append(
+            {
+                "role": str(entry["role"]),
+                "entity": leader,
+                "opponent_entity": opponent,
+                "games": games,
+                "wins": wins,
+                "losses": losses,
+                "record": f"{wins}-{losses}",
+                "winrate": safe_div(wins, games),
+                "kda_edge": leader_kda - opponent_kda,
+                "entity_kda": leader_kda,
+                "opponent_kda": opponent_kda,
+                "match_ids": ", ".join(str(match_id) for match_id in entry["match_ids"]),
+            }
+        )
+    return sorted(
+        output_rows,
+        key=lambda row: (
+            -int(row["games"]),
+            -float(row["winrate"]),
+            -float(row["kda_edge"]),
+            str(row["role"]),
+            str(row["entity"]),
+        ),
+    )
+
+
 def worst_combo_rows(rows: Sequence[dict[str, object]]) -> list[dict[str, object]]:
     return sorted(
         rows,
@@ -3838,6 +4055,16 @@ def render_head_to_head_css() -> str:
       font-size: 1.1rem;
       margin-top: 8px;
     }
+    .h2h-highlight-card strong .h2h-champion-label {
+      display: inline-flex;
+      margin: 0 3px 0 0;
+      vertical-align: middle;
+    }
+    .h2h-highlight-card em {
+      color: var(--muted);
+      font-style: normal;
+      margin: 0 4px;
+    }
     .h2h-highlight-card b {
       color: var(--gold);
       display: block;
@@ -3948,6 +4175,24 @@ def render_head_to_head_css() -> str:
     .h2h-table-player {
       min-width: 120px;
     }
+    .h2h-champion-label {
+      align-items: center;
+      display: inline-flex;
+      gap: 7px;
+      min-width: 0;
+    }
+    .h2h-champion-label img {
+      border-radius: 6px;
+      height: 28px;
+      object-fit: cover;
+      width: 28px;
+    }
+    .h2h-champion-label span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     @media (max-width: 1040px) {
       .h2h-highlight-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3977,6 +4222,8 @@ def render_head_to_head_script() -> str:
     return """
     const h2hState = { role: "all", player: "all" };
     const h2hItems = Array.from(document.querySelectorAll("[data-h2h-item]"));
+    const h2hChampionItems = Array.from(document.querySelectorAll("[data-h2h-champion-item]"));
+    const h2hPilotChampionItems = Array.from(document.querySelectorAll("[data-h2h-pilot-champion-item]"));
     const h2hHeatmapRows = Array.from(document.querySelectorAll("[data-h2h-heatmap-row]"));
     const h2hCount = document.querySelector("[data-h2h-count]");
     const h2hEmpty = document.querySelector("[data-h2h-empty]");
@@ -3999,6 +4246,15 @@ def render_head_to_head_script() -> str:
         const roleMatches = h2hState.role === "all" || row.dataset.h2hRole === h2hState.role;
         const playerMatches = h2hState.player === "all" || row.dataset.h2hHeatmapPlayer === h2hState.player;
         row.style.display = roleMatches && playerMatches ? "" : "none";
+      });
+      h2hChampionItems.forEach(item => {
+        const roleMatches = h2hState.role === "all" || item.dataset.h2hRole === h2hState.role;
+        item.style.display = roleMatches ? "" : "none";
+      });
+      h2hPilotChampionItems.forEach(item => {
+        const roleMatches = h2hState.role === "all" || item.dataset.h2hRole === h2hState.role;
+        const playerMatches = h2hState.player === "all" || (item.dataset.h2hPlayers || "").split("|").includes(h2hState.player);
+        item.style.display = roleMatches && playerMatches ? "" : "none";
       });
       document.querySelectorAll("[data-h2h-role-filter]").forEach(button => {
         button.classList.toggle("active", button.dataset.h2hRoleFilter === h2hState.role);
@@ -4073,6 +4329,37 @@ def h2h_filter_attrs(role: object, players: Iterable[object]) -> str:
 def h2h_item_attrs(row: dict[str, object]) -> str:
     return h2h_filter_attrs(
         row.get("role", ""), [row.get("player", ""), row.get("opponent", "")]
+    )
+
+
+def h2h_champion_item_attrs(row: dict[str, object]) -> str:
+    return (
+        f'data-h2h-champion-item data-h2h-role="{html_attr(row.get("role", ""))}"'
+    )
+
+
+def h2h_pilot_champion_item_attrs(row: dict[str, object]) -> str:
+    players = sorted(
+        {
+            str(row.get("entity", "")).split(" on ", 1)[0],
+            str(row.get("opponent_entity", "")).split(" on ", 1)[0],
+        }
+    )
+    return (
+        f'data-h2h-pilot-champion-item data-h2h-role="{html_attr(row.get("role", ""))}" '
+        f'data-h2h-players="{html_attr("|".join(players))}"'
+    )
+
+
+def render_h2h_champion_label(champion: object) -> str:
+    champion_name = str(champion or "-")
+    if champion_name == "-":
+        return "-"
+    return (
+        f'<span class="h2h-champion-label">'
+        f'<img src="{html_attr(champion_icon_url(champion_name))}" alt="{html_attr(champion_name)}">'
+        f'<span>{escape(champion_name)}</span>'
+        f"</span>"
     )
 
 
@@ -4232,10 +4519,223 @@ def render_head_to_head_table(rows: Sequence[dict[str, object]]) -> str:
     """
 
 
+def render_champion_head_to_head_highlight(
+    title: str, row: dict[str, object], detail: str
+) -> str:
+    return f"""
+    <article class="h2h-highlight-card" {h2h_champion_item_attrs(row)}>
+      <span>{escape(title)}</span>
+      <strong>{render_h2h_champion_label(row.get("champion", "-"))} <em>vs</em> {render_h2h_champion_label(row.get("opponent_champion", "-"))}</strong>
+      <b>{escape(str(row.get("record", "-")))}</b>
+      <small>{escape(detail)}</small>
+    </article>
+    """
+
+
+def render_champion_head_to_head_table(rows: Sequence[dict[str, object]]) -> str:
+    body = []
+    for row in rows:
+        winrate = float(row.get("winrate", 0))
+        kda_edge = float(row.get("kda_edge", 0))
+        body.append(
+            f"""
+            <tr {h2h_champion_item_attrs(row)} data-h2h-champion-table-row>
+              <td data-sort="{html_attr(row.get('role', ''))}"><span class="role-pill">{escape(str(row.get('role', '')))}</span></td>
+              <td data-sort="{html_attr(row.get('champion', ''))}">{render_h2h_champion_label(row.get('champion', '-'))}</td>
+              <td data-sort="{html_attr(row.get('opponent_champion', ''))}">{render_h2h_champion_label(row.get('opponent_champion', '-'))}</td>
+              <td class="number-cell" data-sort="{int(row.get('games', 0))}">{integer(row.get('games', 0))}</td>
+              <td class="number-cell" data-sort="{int(row.get('wins', 0))}">{escape(str(row.get('record', '')))}</td>
+              {heat_table_cell(pct(winrate), winrate, winrate)}
+              <td class="number-cell" data-sort="{kda_edge:.4f}">{score(kda_edge)}</td>
+              <td class="number-cell" data-sort="{float(row.get('champion_kda', 0))}">{two_decimal(float(row.get('champion_kda', 0)))}</td>
+              <td class="number-cell" data-sort="{float(row.get('opponent_kda', 0))}">{two_decimal(float(row.get('opponent_kda', 0)))}</td>
+              <td data-sort="{html_attr(row.get('champion_pilots', ''))}">{escape(str(row.get('champion_pilots', '-')))}</td>
+              <td data-sort="{html_attr(row.get('opponent_pilots', ''))}">{escape(str(row.get('opponent_pilots', '-')))}</td>
+            </tr>
+            """
+        )
+    if not body:
+        return """
+        <section class="table-panel">
+          <div class="empty-state">No champion lane matchups have repeated enough yet.</div>
+        </section>
+        """
+    return f"""
+    <section class="table-panel">
+      <div class="section-heading">
+        <h3>All Champion Lane Matchups</h3>
+        <small>Champion-vs-champion pairs in the same role with at least 2 games</small>
+      </div>
+      <div class="table-wrap">
+        <table class="h2h-sortable sortable-table">
+          <thead>
+            <tr>
+              <th data-type="text">Role</th>
+              <th data-type="text">Champion</th>
+              <th data-type="text">Opponent</th>
+              <th data-type="number">Games</th>
+              <th data-type="number">W-L</th>
+              <th data-type="number">Winrate</th>
+              <th data-type="number">KDA Edge</th>
+              <th data-type="number">Champion KDA</th>
+              <th data-type="number">Opponent KDA</th>
+              <th data-type="text">Pilots</th>
+              <th data-type="text">Opponent Pilots</th>
+            </tr>
+          </thead>
+          <tbody>{''.join(body)}</tbody>
+        </table>
+      </div>
+    </section>
+    """
+
+
+def render_pilot_champion_head_to_head_table(rows: Sequence[dict[str, object]]) -> str:
+    body = []
+    for row in rows[:40]:
+        winrate = float(row.get("winrate", 0))
+        body.append(
+            f"""
+            <tr {h2h_pilot_champion_item_attrs(row)}>
+              <td data-sort="{html_attr(row.get('role', ''))}"><span class="role-pill">{escape(str(row.get('role', '')))}</span></td>
+              <td data-sort="{html_attr(row.get('entity', ''))}">{escape(str(row.get('entity', '-')))}</td>
+              <td data-sort="{html_attr(row.get('opponent_entity', ''))}">{escape(str(row.get('opponent_entity', '-')))}</td>
+              <td class="number-cell" data-sort="{int(row.get('games', 0))}">{integer(row.get('games', 0))}</td>
+              <td class="number-cell" data-sort="{int(row.get('wins', 0))}">{escape(str(row.get('record', '-')))}</td>
+              {heat_table_cell(pct(winrate), winrate, winrate)}
+              <td class="number-cell" data-sort="{float(row.get('kda_edge', 0))}">{score(float(row.get('kda_edge', 0)))}</td>
+              <td data-sort="{html_attr(row.get('match_ids', ''))}">{escape(str(row.get('match_ids', '-')))}</td>
+            </tr>
+            """
+        )
+    if not body:
+        body.append(
+            """
+            <tr><td colspan="8" class="empty-cell">No exact player/champion lane matchup has repeated twice yet.</td></tr>
+            """
+        )
+    return f"""
+    <section class="table-panel">
+      <div class="section-heading">
+        <h3>Pilot-Specific Champion Duels</h3>
+        <small>Exact player/champion vs player/champion pairs are sparse, so this table starts at 2 games and should be treated as anecdotal.</small>
+      </div>
+      <div class="table-wrap">
+        <table class="h2h-sortable sortable-table">
+          <thead>
+            <tr>
+              <th data-type="text">Role</th>
+              <th data-type="text">Player Champion</th>
+              <th data-type="text">Opponent Champion</th>
+              <th data-type="number">Games</th>
+              <th data-type="number">W-L</th>
+              <th data-type="number">Winrate</th>
+              <th data-type="number">KDA Edge</th>
+              <th data-type="text">Matches</th>
+            </tr>
+          </thead>
+          <tbody>{''.join(body)}</tbody>
+        </table>
+      </div>
+    </section>
+    """
+
+
+def render_champion_head_to_head_section(
+    rows: Sequence[dict[str, object]],
+    pilot_rows: Sequence[dict[str, object]],
+) -> str:
+    most_repeated = find_first(
+        sorted(rows, key=lambda row: (-int(row.get("games", 0)), -float(row.get("dominance", 0))))
+    )
+    strongest = find_first(
+        sorted(rows, key=lambda row: (-float(row.get("dominance", 0)), -int(row.get("games", 0))))
+    )
+    kda_edge = find_first(
+        sorted(rows, key=lambda row: (-float(row.get("kda_edge", 0)), -int(row.get("games", 0))))
+    )
+    nemesis = find_first(
+        sorted(
+            [row for row in rows if int(row.get("wins", 0)) > int(row.get("losses", 0))],
+            key=lambda row: (-float(row.get("dominance", 0)), -int(row.get("games", 0))),
+        )
+    )
+    highlight_rows = [
+        (
+            "Most Repeated Lane Matchup",
+            most_repeated,
+            f"{most_repeated.get('role', '-')} lane, {most_repeated.get('record', '-')} over {most_repeated.get('games', 0)} games.",
+        ),
+        (
+            "Strongest Champion Counter",
+            strongest,
+            f"{strongest.get('role', '-')} lane, {pct(float(strongest.get('winrate', 0)))} winrate.",
+        ),
+        (
+            "Biggest KDA Edge",
+            kda_edge,
+            f"{two_decimal(float(kda_edge.get('champion_kda', 0)))} KDA vs {two_decimal(float(kda_edge.get('opponent_kda', 0)))}.",
+        ),
+        (
+            "Nemesis Champion",
+            nemesis,
+            f"{nemesis.get('champion', '-')} is {nemesis.get('record', '-')} into {nemesis.get('opponent_champion', '-')} in {nemesis.get('role', '-')}.",
+        ),
+    ]
+    highlights = "".join(
+        render_champion_head_to_head_highlight(title, row, detail)
+        for title, row, detail in highlight_rows
+        if row
+    )
+    chart_rows = sorted(
+        rows,
+        key=lambda row: (
+            -int(row.get("games", 0)),
+            -float(row.get("dominance", 0)),
+            -float(row.get("kda_edge", 0)),
+        ),
+    )[:18]
+    chart_html = []
+    for row in chart_rows:
+        winrate = float(row.get("winrate", 0))
+        chart_html.append(
+            f"""
+            <div class="h2h-chart-row" {h2h_champion_item_attrs(row)}>
+              <div class="h2h-chart-label">
+                <strong>{escape(str(row.get("chart_label", "-")))}</strong>
+                <small>{escape(str(row.get("role", "-")))} lane · {escape(str(row.get("record", "-")))} over {integer(row.get("games", 0))} games · KDA edge {score(float(row.get("kda_edge", 0)))}</small>
+              </div>
+              <div class="h2h-track"><div class="h2h-fill" style="width: {max(3.0, winrate * 100):.2f}%"></div></div>
+              <b>{escape(pct(winrate))}</b>
+            </div>
+            """
+        )
+
+    return f"""
+    <section id="champion-head-to-head" class="section">
+      <div class="section-title">
+        <div>
+          <h2>Champion Vs Champion Within Role</h2>
+          <p class="note">Aggregated lane matchups such as Viktor vs Ziggs or Renekton vs Ornn. Role filters above also apply here; player filters only affect the player head-to-head section.</p>
+        </div>
+      </div>
+      <div class="h2h-highlight-grid">{highlights}</div>
+      <section class="chart-panel">
+        <h3>Most Repeated Champion Lane Matchups</h3>
+        <div class="h2h-chart">{"".join(chart_html)}</div>
+      </section>
+      {render_champion_head_to_head_table(rows)}
+      {render_pilot_champion_head_to_head_table(pilot_rows)}
+    </section>
+    """
+
+
 def render_head_to_head_page(
     *,
     shared_style: str,
     rows: Sequence[dict[str, object]],
+    champion_rows: Sequence[dict[str, object]],
+    pilot_champion_rows: Sequence[dict[str, object]],
     generated_at: str,
     main_page_name: str,
     teams_page_name: str,
@@ -4409,6 +4909,7 @@ def render_head_to_head_page(
       </section>
       {render_head_to_head_table(rows)}
     </section>
+    {render_champion_head_to_head_section(champion_rows, pilot_champion_rows)}
   </main>
   <script>{render_head_to_head_script()}{render_refresh_script()}</script>
 </body>
@@ -8367,6 +8868,8 @@ def build_dashboard(
     four_rows = team_combo_rows(appearances, 4, TEAM_COMBO_MIN_GAMES[4])
     five_rows = team_combo_rows(appearances, 5, TEAM_COMBO_MIN_GAMES[5])
     h2h_rows = head_to_head_rows(appearances)
+    champion_h2h_rows = champion_head_to_head_rows(appearances)
+    pilot_champion_h2h_rows = pilot_champion_head_to_head_rows(appearances)
     add_player_role_breakdowns(player_rows, player_role_rows)
     visible_appearances = [
         appearance
@@ -10976,6 +11479,8 @@ def build_dashboard(
     head_to_head_html = render_head_to_head_page(
         shared_style=shared_style,
         rows=h2h_rows,
+        champion_rows=champion_h2h_rows,
+        pilot_champion_rows=pilot_champion_h2h_rows,
         generated_at=generated_at,
         main_page_name=main_page_name,
         teams_page_name=teams_page_name,
