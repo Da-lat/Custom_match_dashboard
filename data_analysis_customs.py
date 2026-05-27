@@ -8161,9 +8161,9 @@ def build_dashboard(
         </div>
       </div>
       <div class="player-pool-browser">
-        <button type="button" data-pool-prev>Previous</button>
+        <button type="button" data-pool-prev aria-label="Previous player champion pool" title="Previous player champion pool">&larr;</button>
         <select id="player-pool-picker" aria-label="Select player champion pool"></select>
-        <button type="button" data-pool-next>Next</button>
+        <button type="button" data-pool-next aria-label="Next player champion pool" title="Next player champion pool">&rarr;</button>
         <input class="card-search" type="search" placeholder="Search players or champions" data-pool-search>
         <span class="pool-count" data-pool-count></span>
         <button type="button" class="orientation-button active" data-pool-orientation="horizontal">Horizontal</button>
