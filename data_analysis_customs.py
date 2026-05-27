@@ -55,8 +55,7 @@ ROLE_SCORE_WEIGHTS = {
     "Role Kill Participation": 0.10,
     "Role Champion Pool": 0.05,
     "Role Games": 0.05,
-    "Role Fit": 0.25,
-    "Overall MVP": 0.30,
+    "Overall MVP": 0.55,
 }
 SPOTLIGHT_EXCLUDED_PLAYERS: set[str] = set()
 ANONYMOUS_PLAYER_PREFIXES = ("anonymous", "anon")
@@ -736,8 +735,8 @@ def player_role_score_rows(
             rows,
             key=lambda row: (
                 -int(row.get("games", 0)),
+                -float(row.get("winrate", 0)),
                 -int(row.get("net_wins", 0)),
-                -int(row.get("wins", 0)),
                 role_sort(str(row.get("role", ""))),
             ),
         )
@@ -783,7 +782,6 @@ def player_role_score_rows(
             + ROLE_SCORE_WEIGHTS["Role Kill Participation"] * role_kp_score
             + ROLE_SCORE_WEIGHTS["Role Champion Pool"] * role_pool_score
             + ROLE_SCORE_WEIGHTS["Role Games"] * role_games_score
-            + ROLE_SCORE_WEIGHTS["Role Fit"] * role_fit_component
             + ROLE_SCORE_WEIGHTS["Overall MVP"] * overall_mvp_score
         )
         row = dict(role_row)
@@ -808,8 +806,8 @@ def player_role_score_rows(
         rows,
         key=lambda row: (
             role_sort(str(row["role"])),
-            int(row["role_rank"]),
             -float(row["role_score"]),
+            int(row["role_rank"]),
             -int(row["games"]),
             str(row["name"]),
         ),
@@ -5894,12 +5892,12 @@ def render_scoring_formula_explainer(
             f"Role games also pull role-only KDA, KP, and champion pool metrics toward neutral until that role reaches {ROLE_RELIABILITY_GAMES} games.",
         ),
         (
-            "Role Fit",
-            "Each player's roles are ranked by games played. Their most-played role is Primary, then the team builder steps down that list only when needed to complete teams.",
+            "Role Preference",
+            "Role fit does not add score points. The team builder ranks each player's roles by games played, then role winrate, and only steps down that list when needed to complete teams.",
         ),
         (
             "Overall MVP",
-            "The player's overall MVP score divided by 100. It is the largest team role-score component, so stronger players are prioritized before role-only stats break ties.",
+            "The player's overall MVP score divided by 100. It now carries most of the team role score, so stronger players are prioritized while role-only stats break ties.",
         ),
     ]
     definition_html = "\n".join(
@@ -5916,7 +5914,6 @@ def render_scoring_formula_explainer(
         role_kp_score = float(role_example.get("role_kp_score", 0))
         role_pool_score = float(role_example.get("role_pool_score", 0))
         role_games_score = float(role_example.get("role_games_score", 0))
-        role_fit_component = float(role_example.get("role_fit_score", 0))
         overall_mvp_score = float(role_example.get("overall_mvp_score", 0))
         role_games = int(role_example.get("games", 0))
         role_wins = int(role_example.get("wins", 0))
@@ -5976,14 +5973,6 @@ def render_scoring_formula_explainer(
                 weighted_points(role_games_score, ROLE_SCORE_WEIGHTS["Role Games"]),
             ),
             (
-                "Role Fit",
-                "A player's most-played role is Primary, then the score steps down through their role list by games played.",
-                f"{role} is {escape(str(role_example.get('role_fit', '')))} for {example_name} (role rank {int(role_example.get('role_rank', 0))})",
-                pct(role_fit_component),
-                pct(ROLE_SCORE_WEIGHTS["Role Fit"]),
-                weighted_points(role_fit_component, ROLE_SCORE_WEIGHTS["Role Fit"]),
-            ),
-            (
                 "Overall MVP",
                 "The largest role-score component, using the player's overall MVP score.",
                 f"{example_name} MVP score {score(float(player_example.get('mvp_score', 0)))} / 100",
@@ -6028,7 +6017,7 @@ def render_scoring_formula_explainer(
           <div class="formula-copy">
             <p><b>MVP score</b> = 100 x ({escape(weighted_formula(MVP_WEIGHTS))}).</p>
             <p><b>Team role score</b> = 100 x ({escape(weighted_formula(ROLE_SCORE_WEIGHTS))}).</p>
-            <p>Overall MVP only includes players with at least {MIN_PLAYER_GAMES} games. After that, games add a small capped 5% sample score and can also help through positive net wins. Role Share does not score directly. Role games score 5% directly and also affect role-metric reliability, which reaches full strength at {ROLE_RELIABILITY_GAMES} games.</p>
+            <p>Overall MVP only includes players with at least {MIN_PLAYER_GAMES} games. After that, games add a small capped 5% sample score and can also help through positive net wins. Role Share does not score directly. Role games score 5% directly and also affect role-metric reliability, which reaches full strength at {ROLE_RELIABILITY_GAMES} games. Role preference is assignment-only and does not add visible score points.</p>
           </div>
         </section>
       </div>
@@ -8621,7 +8610,7 @@ def build_dashboard(
       <div class="section-title">
         <div>
           <h2>MVP & Drafted Teams</h2>
-          <p class="note">MVP formula: {escape(weight_summary(MVP_WEIGHTS))}. MVP board requires at least {MIN_PLAYER_GAMES} games; after that, games add a small capped sample score and can also help through positive net wins. Team role score: {escape(weight_summary(ROLE_SCORE_WEIGHTS))}. Each player's most-played role is Primary, then teams step down their role list only when needed. Role Share does not score directly; role games score 5% directly and also affect role-metric reliability. Drafted teams use one TOP, JUNGLE, MID, BOT, and SUPP, without reusing players.</p>
+          <p class="note">MVP formula: {escape(weight_summary(MVP_WEIGHTS))}. MVP board requires at least {MIN_PLAYER_GAMES} games; after that, games add a small capped sample score and can also help through positive net wins. Team role score: {escape(weight_summary(ROLE_SCORE_WEIGHTS))}. Role preference does not add score points; the builder still tries each player's most-played role first, ranked by games then role winrate, and only steps down that list when needed. Role Share does not score directly; role games score 5% directly and also affect role-metric reliability. Drafted teams use one TOP, JUNGLE, MID, BOT, and SUPP, without reusing players.</p>
         </div>
       </div>
       <div class="mvp-team-grid">
