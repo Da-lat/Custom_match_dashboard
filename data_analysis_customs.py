@@ -1262,6 +1262,257 @@ def player_fingerprint_rows(
     )
 
 
+def op_grade_label(value: float) -> str:
+    if value >= 72:
+        return "S"
+    if value >= 62:
+        return "A"
+    if value >= 48:
+        return "B"
+    return "C"
+
+
+def op_grade_rows(appearances: Sequence[Appearance]) -> list[dict[str, object]]:
+    visible = [
+        appearance
+        for appearance in appearances
+        if not is_spotlight_excluded_player(appearance.name)
+    ]
+    metric_rows = [
+        {
+            "kills": appearance.kills,
+            "assists": appearance.assists,
+            "deaths": appearance.deaths,
+            "kda_ratio": appearance.kda_ratio,
+            "kill_participation": appearance.kill_participation,
+        }
+        for appearance in visible
+    ]
+    kills_low, kills_high = metric_bounds(metric_rows, "kills")
+    assists_low, assists_high = metric_bounds(metric_rows, "assists")
+    deaths_low, deaths_high = metric_bounds(metric_rows, "deaths")
+    kda_low, kda_high = metric_bounds(metric_rows, "kda_ratio")
+    kp_low, kp_high = metric_bounds(metric_rows, "kill_participation")
+
+    by_match: dict[int, list[Appearance]] = defaultdict(list)
+    for appearance in visible:
+        by_match[appearance.match_id].append(appearance)
+
+    rows = []
+    for appearance in visible:
+        match_rows = by_match[appearance.match_id]
+        max_kills = max((row.kills for row in match_rows), default=0)
+        max_assists = max((row.assists for row in match_rows), default=0)
+        max_deaths = max((row.deaths for row in match_rows), default=0)
+        win_score = 1.0 if appearance.win else 0.28
+        kda_score = normalized_metric(appearance.kda_ratio, kda_low, kda_high)
+        kp_score = normalized_metric(appearance.kill_participation, kp_low, kp_high)
+        kill_score = normalized_metric(float(appearance.kills), kills_low, kills_high)
+        assist_score = normalized_metric(float(appearance.assists), assists_low, assists_high)
+        low_death_score = normalized_metric(
+            float(appearance.deaths), deaths_low, deaths_high, invert=True
+        )
+        op_score = 100 * (
+            0.18 * win_score
+            + 0.24 * kda_score
+            + 0.22 * kp_score
+            + 0.18 * kill_score
+            + 0.10 * assist_score
+            + 0.08 * low_death_score
+        )
+        tags = []
+        if appearance.win and appearance.kills >= max(8, max_kills) and op_score >= 70:
+            tags.append("Carry Performance")
+        if (
+            appearance.win
+            and appearance.kills <= 4
+            and appearance.kill_participation >= 0.58
+            and appearance.kda_ratio >= 3
+        ):
+            tags.append("Quiet MVP")
+        if appearance.kill_participation >= 0.72 or appearance.assists >= 12:
+            tags.append("Teamfight Engine")
+        if appearance.kills >= 8 and appearance.deaths >= 6:
+            tags.append("Glass Cannon")
+        if op_score < 44 or (
+            not appearance.win and appearance.deaths >= 7 and appearance.kda_ratio < 1.35
+        ):
+            tags.append("Rough One")
+        if appearance.deaths <= 2 and appearance.kda_ratio >= 5:
+            tags.append("KDA Merchant")
+        if appearance.deaths >= 8 or (
+            appearance.deaths == max_deaths and appearance.deaths >= 6
+        ):
+            tags.append("Death Magnet")
+        if appearance.assists >= 12 or (
+            appearance.assists == max_assists and appearance.assists >= 9
+        ):
+            tags.append("Assist Machine")
+        if not tags:
+            tags.append("Solid Shift" if op_score >= 55 else "Standard Game")
+
+        rows.append(
+            {
+                "match_id": appearance.match_id,
+                "date_label": appearance.date_label,
+                "weekday": appearance.weekday_label,
+                "result": appearance.result,
+                "side": appearance.side,
+                "name": appearance.name,
+                "player": appearance.player,
+                "role": appearance.role,
+                "champion": appearance.champion,
+                "kills": appearance.kills,
+                "deaths": appearance.deaths,
+                "assists": appearance.assists,
+                "kda_line": f"{appearance.kills}/{appearance.deaths}/{appearance.assists}",
+                "kda_ratio": appearance.kda_ratio,
+                "kill_participation": appearance.kill_participation,
+                "op_score": op_score,
+                "grade": op_grade_label(op_score),
+                "tags": tags[:3],
+                "tag_text": ", ".join(tags[:3]),
+            }
+        )
+    return sorted(
+        rows,
+        key=lambda row: (
+            -int(row["match_id"]),
+            -float(row["op_score"]),
+            str(row["name"]),
+        ),
+    )
+
+
+def recent_form_rows(
+    appearances: Sequence[Appearance],
+    player_rows: Sequence[dict[str, object]],
+    mvp_rows: Sequence[dict[str, object]],
+    *,
+    limit: int = 10,
+) -> list[dict[str, object]]:
+    visible_players = without_spotlight_excluded_players(player_rows)
+    player_by_name = {str(row.get("name", "")): row for row in visible_players}
+    mvp_by_name = {str(row.get("name", "")): row for row in mvp_rows}
+    records_by_name: dict[str, list[Appearance]] = defaultdict(list)
+    for appearance in appearances:
+        if appearance.name in player_by_name and not is_spotlight_excluded_player(appearance.name):
+            records_by_name[appearance.name].append(appearance)
+    for records in records_by_name.values():
+        records.sort(key=lambda row: (row.timestamp, row.match_id))
+
+    raw_rows = []
+    for name, player in player_by_name.items():
+        records = records_by_name.get(name, [])
+        recent = records[-limit:]
+        if not recent:
+            continue
+        wins = sum(row.win for row in recent)
+        losses = len(recent) - wins
+        kills = sum(row.kills for row in recent)
+        deaths = sum(row.deaths for row in recent)
+        assists = sum(row.assists for row in recent)
+        recent_kda = safe_div(kills + assists, max(1, deaths))
+        recent_kp = safe_div(sum(row.kill_participation for row in recent), len(recent))
+        recent_winrate = safe_div(wins, len(recent))
+        streaks = player_streaks(records)
+        active_result = str(streaks.get("active_result", ""))
+        active_length = int(streaks.get("active_length", 0))
+        raw_rows.append(
+            {
+                "name": name,
+                "games": int(player.get("games", 0)),
+                "recent_games": len(recent),
+                "recent_wins": wins,
+                "recent_losses": losses,
+                "recent_record": f"{wins}-{losses}",
+                "recent_winrate": recent_winrate,
+                "overall_winrate": float(player.get("winrate", 0)),
+                "recent_kda": recent_kda,
+                "overall_kda": float(player.get("kda_ratio", 0)),
+                "recent_kp": recent_kp,
+                "active_result": active_result,
+                "active_length": active_length,
+                "streak_label": (
+                    f"{active_length} {active_result.lower()} streak"
+                    if active_length
+                    else "No streak"
+                ),
+                "season_score": float(
+                    mvp_by_name.get(name, {}).get(
+                        "mvp_score", float(player.get("winrate", 0.5)) * 100
+                    )
+                ),
+                "timeline": [
+                    {
+                        "match_id": row.match_id,
+                        "result": row.result,
+                        "champion": row.champion,
+                        "role": row.role,
+                        "kda": f"{row.kills}/{row.deaths}/{row.assists}",
+                    }
+                    for row in recent
+                ],
+                "search_text": (
+                    f"{name} {player.get('most_played_champion', '')} "
+                    f"{player.get('top_roles', '')}"
+                ),
+            }
+        )
+
+    kda_low, kda_high = metric_bounds(raw_rows, "recent_kda")
+    kp_low, kp_high = metric_bounds(raw_rows, "recent_kp")
+    rows = []
+    for row in raw_rows:
+        active_result = str(row.get("active_result", ""))
+        active_length = int(row.get("active_length", 0))
+        streak_score = 0.5
+        if active_result == "Win":
+            streak_score = 0.5 + clamp(active_length / 6) * 0.5
+        elif active_result == "Loss":
+            streak_score = 0.5 - clamp(active_length / 6) * 0.5
+        sample_score = clamp(int(row.get("recent_games", 0)) / limit)
+        recent_score = 100 * (
+            0.35 * float(row.get("recent_winrate", 0))
+            + 0.25
+            * normalized_metric(float(row.get("recent_kda", 0)), kda_low, kda_high)
+            + 0.20
+            * normalized_metric(float(row.get("recent_kp", 0)), kp_low, kp_high)
+            + 0.10 * streak_score
+            + 0.10 * sample_score
+        )
+        movement = recent_score - float(row.get("season_score", 0))
+        if int(row.get("recent_games", 0)) < 4:
+            status = "Small Sample"
+        elif movement >= 8:
+            status = "Heating Up"
+        elif movement <= -8:
+            status = "Cooling Down"
+        elif float(row.get("recent_winrate", 0)) >= 0.7:
+            status = "Hot Form"
+        elif float(row.get("recent_winrate", 0)) <= 0.3:
+            status = "Cold Spell"
+        else:
+            status = "Stable"
+        updated = dict(row)
+        updated.update(
+            {
+                "recent_score": recent_score,
+                "mvp_movement": movement,
+                "status": status,
+            }
+        )
+        rows.append(updated)
+    return sorted(
+        rows,
+        key=lambda row: (
+            -float(row.get("recent_score", 0)),
+            -int(row.get("recent_games", 0)),
+            str(row.get("name", "")),
+        ),
+    )
+
+
 def target_ban_score_rows(
     player_champion_rows: Sequence[dict[str, object]],
     player_rows: Sequence[dict[str, object]],
@@ -3827,6 +4078,243 @@ def render_meta_spotlights(rows: Sequence[dict[str, object]]) -> str:
     return f'<div class="meta-spotlight-grid">{"".join(cards)}</div>'
 
 
+def render_grade_badge(grade: object) -> str:
+    grade_value = str(grade or "C")
+    return f'<span class="grade-badge grade-{html_attr(grade_value.lower())}">{escape(grade_value)}</span>'
+
+
+def render_match_grade_browser(rows: Sequence[dict[str, object]]) -> str:
+    by_match: dict[int, list[dict[str, object]]] = defaultdict(list)
+    for row in rows:
+        by_match[int(row.get("match_id", 0))].append(row)
+    match_ids = sorted(by_match, reverse=True)
+    options = []
+    match_cards = []
+    for index, match_id in enumerate(match_ids):
+        match_rows = sorted(
+            by_match[match_id],
+            key=lambda row: (
+                -float(row.get("op_score", 0)),
+                str(row.get("name", "")),
+            ),
+        )
+        if not match_rows:
+            continue
+        first = match_rows[0]
+        label = f"Match {match_id} - {first.get('weekday', '')} {first.get('date_label', '')}"
+        options.append(
+            f'<option value="{match_id}"{" selected" if index == 0 else ""}>{escape(label)}</option>'
+        )
+        grade_items = []
+        for row in match_rows:
+            tags = "".join(
+                f'<span>{escape(str(tag))}</span>' for tag in row.get("tags", [])
+            )
+            grade_items.append(
+                f"""
+                <article class="match-grade-player grade-card-{html_attr(str(row.get('grade', 'c')).lower())}">
+                  <div class="match-grade-topline">
+                    {render_grade_badge(row.get('grade', 'C'))}
+                    <strong>{score(float(row.get('op_score', 0)))}</strong>
+                  </div>
+                  <h4>{escape(str(row.get('name', '-')))}</h4>
+                  <small>{escape(str(row.get('role', '-')))} - {escape(str(row.get('champion', '-')))} - {escape(str(row.get('result', '-')))}</small>
+                  <b>{escape(str(row.get('kda_line', '-')))} KDA</b>
+                  <small>{pct(float(row.get('kill_participation', 0)))} KP</small>
+                  <div class="match-grade-tags">{tags}</div>
+                </article>
+                """
+            )
+        active_class = " active" if index == 0 else ""
+        match_cards.append(
+            f"""
+            <section class="match-grade-card{active_class}" data-grade-card data-grade-match-id="{match_id}">
+              <div class="section-heading">
+                <h3>{escape(label)}</h3>
+                <small>Top grade: {escape(str(first.get('name', '-')))} {escape(str(first.get('grade', '-')))} / {score(float(first.get('op_score', 0)))}</small>
+              </div>
+              <div class="match-grade-grid">{"".join(grade_items)}</div>
+            </section>
+            """
+        )
+    return f"""
+    <section id="match-grades" class="section">
+      <div class="section-title">
+        <div>
+          <h2>Custom OP Score / Match Grades</h2>
+          <p class="note">Every player-game gets an OP-style grade from result, KDA, kill participation, kills, assists, and deaths, plus performance tags.</p>
+        </div>
+      </div>
+      <div class="match-grade-browser">
+        <button type="button" data-grade-prev aria-label="Previous graded match" title="Previous graded match">&larr;</button>
+        <select data-grade-picker aria-label="Select graded match">{"".join(options)}</select>
+        <button type="button" data-grade-next aria-label="Next graded match" title="Next graded match">&rarr;</button>
+      </div>
+      <div class="match-grade-stack">{"".join(match_cards)}</div>
+    </section>
+    """
+
+
+def form_status_class(status: object) -> str:
+    return str(status).lower().replace(" ", "-")
+
+
+def render_form_highlight(title: str, row: dict[str, object], detail: str) -> str:
+    return f"""
+    <article class="form-highlight-card status-{html_attr(form_status_class(row.get('status', 'stable')))}">
+      <span>{escape(title)}</span>
+      <strong>{escape(str(row.get('name', '-')))}</strong>
+      <b>{score(float(row.get('recent_score', 0)))} form</b>
+      <small>{escape(detail)}</small>
+    </article>
+    """
+
+
+def render_recent_form_section(rows: Sequence[dict[str, object]]) -> str:
+    eligible = [row for row in rows if int(row.get("recent_games", 0)) >= 4]
+    best_form = find_first(
+        sorted(eligible, key=lambda row: (-float(row.get("recent_score", 0)), str(row.get("name", ""))))
+    )
+    heating = find_first(
+        sorted(eligible, key=lambda row: (-float(row.get("mvp_movement", 0)), str(row.get("name", ""))))
+    )
+    cooling = find_first(
+        sorted(eligible, key=lambda row: (float(row.get("mvp_movement", 0)), str(row.get("name", ""))))
+    )
+    streak = find_first(
+        sorted(
+            eligible,
+            key=lambda row: (
+                str(row.get("active_result", "")) != "Win",
+                -int(row.get("active_length", 0)),
+                -float(row.get("recent_score", 0)),
+            ),
+        )
+    )
+    highlights = []
+    if best_form:
+        highlights.append(
+            render_form_highlight(
+                "Best Current Form",
+                best_form,
+                f"{best_form.get('recent_record', '-')} over last {best_form.get('recent_games', 0)}, {two_decimal(float(best_form.get('recent_kda', 0)))} recent KDA.",
+            )
+        )
+    if heating:
+        highlights.append(
+            render_form_highlight(
+                "Heating Up",
+                heating,
+                f"{signed_integer(round(float(heating.get('mvp_movement', 0))))} vs season MVP baseline.",
+            )
+        )
+    if cooling:
+        highlights.append(
+            render_form_highlight(
+                "Biggest Slump",
+                cooling,
+                f"{signed_integer(round(float(cooling.get('mvp_movement', 0))))} vs season MVP baseline.",
+            )
+        )
+    if streak:
+        highlights.append(
+            render_form_highlight(
+                "Current Streak",
+                streak,
+                str(streak.get("streak_label", "No streak")),
+            )
+        )
+
+    cards = []
+    for row in rows:
+        timeline = []
+        for item in row.get("timeline", []):
+            result_class = "win" if item.get("result") == "Win" else "loss"
+            timeline.append(
+                f"""
+                <span class="form-pill {result_class}" title="Match {html_attr(item.get('match_id', ''))}: {html_attr(item.get('champion', ''))} {html_attr(item.get('role', ''))} {html_attr(item.get('kda', ''))}">
+                  {escape(str(item.get("result", "-"))[0])}
+                </span>
+                """
+            )
+        movement = float(row.get("mvp_movement", 0))
+        cards.append(
+            f"""
+            <article class="form-card status-{html_attr(form_status_class(row.get('status', 'stable')))}" data-card-text="{html_attr(row.get('search_text', ''))}">
+              <div class="form-card-heading">
+                <div>
+                  <span>{escape(str(row.get('status', '-')))}</span>
+                  <h3>{escape(str(row.get('name', '-')))}</h3>
+                </div>
+                <strong>{score(float(row.get('recent_score', 0)))}</strong>
+              </div>
+              <div class="form-timeline">{"".join(timeline)}</div>
+              <div class="form-stat-grid">
+                <div><span>Last {integer(row.get('recent_games', 0))}</span><b>{escape(str(row.get('recent_record', '-')))}</b></div>
+                <div><span>Recent WR</span><b>{pct(float(row.get('recent_winrate', 0)))}</b></div>
+                <div><span>KDA Trend</span><b>{two_decimal(float(row.get('recent_kda', 0)))} vs {two_decimal(float(row.get('overall_kda', 0)))}</b></div>
+                <div><span>MVP Move</span><b>{signed_integer(round(movement))}</b></div>
+              </div>
+              <small>{escape(str(row.get('streak_label', 'No streak')))}</small>
+            </article>
+            """
+        )
+
+    return f"""
+    <section id="recent-form" class="section">
+      <div class="section-title">
+        <div>
+          <h2>Recent Form</h2>
+          <p class="note">Last 10 games per player, with current streak, recent KDA/KP trends, and an approximate MVP movement against season baseline.</p>
+        </div>
+      </div>
+      <div class="form-highlight-grid">{"".join(highlights)}</div>
+      <div class="form-toolbar">
+        <input class="card-search" type="search" placeholder="Search recent form" data-card-filter="recent-form">
+        <span class="pool-count">{len(rows)} form cards</span>
+      </div>
+      <div class="form-grid" data-card-container="recent-form">{"".join(cards)}</div>
+    </section>
+    """
+
+
+def render_experimental_script() -> str:
+    return """
+    function initMatchGradeBrowser() {
+      const cards = Array.from(document.querySelectorAll("[data-grade-card]"));
+      const picker = document.querySelector("[data-grade-picker]");
+      const previous = document.querySelector("[data-grade-prev]");
+      const next = document.querySelector("[data-grade-next]");
+      if (!cards.length || !picker) {
+        return;
+      }
+      const ids = cards.map(card => card.dataset.gradeMatchId);
+      let currentId = picker.value || ids[0];
+
+      function showGradeCard(id) {
+        currentId = String(id);
+        cards.forEach(card => {
+          card.classList.toggle("active", card.dataset.gradeMatchId === currentId);
+        });
+        picker.value = currentId;
+      }
+
+      function moveGrade(offset) {
+        const index = ids.indexOf(currentId);
+        const nextIndex = (index + offset + ids.length) % ids.length;
+        showGradeCard(ids[nextIndex]);
+      }
+
+      picker.addEventListener("change", () => showGradeCard(picker.value));
+      previous?.addEventListener("click", () => moveGrade(-1));
+      next?.addEventListener("click", () => moveGrade(1));
+      showGradeCard(currentId);
+    }
+
+    initMatchGradeBrowser();
+    """
+
+
 def render_experimental_css() -> str:
     return """
     .experimental-hero {
@@ -3908,114 +4396,264 @@ def render_experimental_css() -> str:
     .tier-d { border-top-color: #f0a85a; }
     .tier-e { border-top-color: #ff6f81; }
     .tier-f { border-top-color: #8a94a6; }
-    .fingerprint-toolbar {
+    .form-toolbar {
       align-items: center;
       display: flex;
       gap: 10px;
       justify-content: space-between;
       margin-bottom: 14px;
     }
-    .fingerprint-grid {
+    .match-grade-browser {
+      align-items: center;
+      display: grid;
+      gap: 10px;
+      grid-template-columns: auto minmax(220px, 460px) auto;
+      margin-bottom: 14px;
+    }
+    .match-grade-browser button,
+    .match-grade-browser select {
+      background: #0d141d;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--ink);
+      min-height: 38px;
+      padding: 8px 11px;
+    }
+    .match-grade-browser button {
+      cursor: pointer;
+      font-weight: 950;
+      width: 42px;
+    }
+    .match-grade-stack {
+      min-height: 360px;
+    }
+    .match-grade-card {
+      display: none;
+    }
+    .match-grade-card.active {
+      display: block;
+    }
+    .section-heading {
+      align-items: end;
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .section-heading h3 {
+      margin: 0;
+    }
+    .section-heading small {
+      color: var(--muted);
+      font-weight: 850;
+    }
+    .match-grade-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+    .match-grade-player {
+      background: linear-gradient(180deg, #121d2a, #0e1721);
+      border: 1px solid var(--line);
+      border-left-width: 4px;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      min-height: 214px;
+      padding: 13px;
+    }
+    .grade-card-s { border-left-color: #f0c96a; }
+    .grade-card-a { border-left-color: #4fc48b; }
+    .grade-card-b { border-left-color: #62a8ff; }
+    .grade-card-c { border-left-color: #ff6f81; }
+    .match-grade-topline {
+      align-items: center;
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+    }
+    .match-grade-topline strong {
+      color: var(--gold);
+      font-size: 1.05rem;
+    }
+    .grade-badge {
+      align-items: center;
+      border: 1px solid currentColor;
+      border-radius: 999px;
+      display: inline-flex;
+      font-size: 0.86rem;
+      font-weight: 950;
+      height: 34px;
+      justify-content: center;
+      width: 34px;
+    }
+    .grade-s { color: #f0c96a; }
+    .grade-a { color: #4fc48b; }
+    .grade-b { color: #62a8ff; }
+    .grade-c { color: #ff6f81; }
+    .match-grade-player h4 {
+      font-size: 1rem;
+      margin: 12px 0 5px;
+    }
+    .match-grade-player small,
+    .match-grade-player b {
+      display: block;
+    }
+    .match-grade-player small {
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .match-grade-player b {
+      color: var(--ink);
+      margin-top: 10px;
+    }
+    .match-grade-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+    .match-grade-tags span {
+      background: #203049;
+      border: 1px solid rgba(98, 168, 255, 0.28);
+      border-radius: 999px;
+      color: #d6e5ff;
+      font-size: 0.78rem;
+      font-weight: 850;
+      padding: 4px 8px;
+    }
+    .form-highlight-grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      margin-bottom: 16px;
+    }
+    .form-highlight-card,
+    .form-card {
+      background: linear-gradient(180deg, #121d2a, #0d1620);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+    .form-highlight-card {
+      border-top: 4px solid #62a8ff;
+      min-height: 142px;
+      padding: 14px;
+    }
+    .form-highlight-card span,
+    .form-card-heading span {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 950;
+      text-transform: uppercase;
+    }
+    .form-highlight-card strong,
+    .form-highlight-card b,
+    .form-highlight-card small {
+      display: block;
+    }
+    .form-highlight-card strong {
+      font-size: 1.3rem;
+      margin-top: 8px;
+    }
+    .form-highlight-card b {
+      color: var(--gold);
+      margin-top: 6px;
+    }
+    .form-highlight-card small {
+      color: var(--muted);
+      line-height: 1.4;
+      margin-top: 8px;
+    }
+    .form-grid {
       display: grid;
       gap: 16px;
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
-    .fingerprint-card {
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      box-shadow: var(--shadow);
-      padding: 16px;
+    .form-card {
+      border-top: 4px solid #8a94a6;
+      padding: 15px;
     }
-    .fingerprint-card-heading {
+    .form-card-heading {
       align-items: start;
       display: flex;
-      justify-content: space-between;
       gap: 12px;
+      justify-content: space-between;
     }
-    .fingerprint-card-heading h3 {
-      margin: 0;
+    .form-card-heading h3 {
+      margin: 4px 0 0;
     }
-    .fingerprint-card-heading small,
-    .fingerprint-comfort {
-      color: var(--muted);
-    }
-    .fingerprint-card-heading strong {
+    .form-card-heading strong {
       color: var(--gold);
-      font-size: 1.55rem;
+      font-size: 1.45rem;
       line-height: 1;
     }
-    .fingerprint-radar {
-      display: block;
-      margin: 8px auto 4px;
-      max-width: 260px;
-      width: 100%;
+    .form-timeline {
+      display: flex;
+      gap: 6px;
+      margin: 13px 0;
     }
-    .radar-grid polygon {
-      fill: none;
-      stroke: #26374d;
-      stroke-width: 1;
-    }
-    .radar-axis line {
-      stroke: #2f4056;
-      stroke-width: 1;
-    }
-    .radar-fill {
-      fill: rgba(79, 196, 139, 0.28);
-      stroke: #4fc48b;
-      stroke-width: 2.5;
-    }
-    .radar-labels text {
-      fill: var(--muted);
-      font-size: 0.58rem;
-      font-weight: 900;
-      letter-spacing: 0;
-    }
-    .fingerprint-comfort {
-      border-top: 1px solid var(--line);
-      line-height: 1.4;
-      margin: 8px 0 12px;
-      padding-top: 10px;
-    }
-    .fingerprint-comfort b {
-      color: var(--ink);
-      display: block;
-      font-size: 0.78rem;
-      text-transform: uppercase;
-    }
-    .fingerprint-metric-list {
-      display: grid;
-      gap: 8px;
-    }
-    .fingerprint-metric {
+    .form-pill {
       align-items: center;
+      border-radius: 999px;
+      display: inline-flex;
+      font-size: 0.72rem;
+      font-weight: 950;
+      height: 22px;
+      justify-content: center;
+      width: 22px;
+    }
+    .form-pill.win {
+      background: rgba(79, 196, 139, 0.18);
+      color: #78e0a8;
+    }
+    .form-pill.loss {
+      background: rgba(255, 111, 129, 0.16);
+      color: #ff9eab;
+    }
+    .form-stat-grid {
       display: grid;
       gap: 8px;
-      grid-template-columns: 76px minmax(0, 1fr) 42px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
-    .fingerprint-metric span {
+    .form-stat-grid div {
+      background: #101b28;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 7px;
+      padding: 8px;
+    }
+    .form-stat-grid span,
+    .form-card > small {
       color: var(--muted);
-      font-size: 0.78rem;
+      display: block;
+      font-size: 0.76rem;
       font-weight: 850;
     }
-    .fingerprint-track {
-      background: #223044;
-      border-radius: 999px;
-      height: 8px;
-      overflow: hidden;
+    .form-stat-grid b {
+      display: block;
+      margin-top: 3px;
     }
-    .fingerprint-track div {
-      background: linear-gradient(90deg, #62a8ff, #4fc48b, #f0c96a);
-      border-radius: inherit;
-      height: 100%;
+    .form-card > small {
+      margin-top: 12px;
     }
-    .fingerprint-metric b {
-      font-size: 0.82rem;
-      text-align: right;
+    .status-heating-up,
+    .status-hot-form {
+      border-top-color: #4fc48b;
+    }
+    .status-cooling-down,
+    .status-cold-spell {
+      border-top-color: #ff6f81;
+    }
+    .status-stable {
+      border-top-color: #62a8ff;
+    }
+    .status-small-sample {
+      border-top-color: #8a94a6;
     }
     @media (max-width: 1100px) {
       .meta-spotlight-grid,
-      .fingerprint-grid {
+      .match-grade-grid,
+      .form-highlight-grid,
+      .form-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
       .experimental-hero {
@@ -4024,10 +4662,15 @@ def render_experimental_css() -> str:
     }
     @media (max-width: 720px) {
       .meta-spotlight-grid,
-      .fingerprint-grid {
+      .match-grade-grid,
+      .form-highlight-grid,
+      .form-grid {
         grid-template-columns: 1fr;
       }
-      .fingerprint-toolbar {
+      .match-grade-browser {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+      }
+      .form-toolbar {
         align-items: stretch;
         flex-direction: column;
       }
@@ -4040,7 +4683,8 @@ def render_experimental_page(
     shared_style: str,
     shared_script: str,
     meta_rows: Sequence[dict[str, object]],
-    fingerprint_rows: Sequence[dict[str, object]],
+    grade_rows: Sequence[dict[str, object]],
+    form_rows: Sequence[dict[str, object]],
     generated_at: str,
     main_page_name: str,
     teams_page_name: str,
@@ -4073,7 +4717,7 @@ def render_experimental_page(
     <div class="topline">
       <div>
         <h1>LoL Experimental Stats</h1>
-        <p>Custom meta tiering and player fingerprints inspired by League stat sites, adapted to your custom-games dataset.</p>
+        <p>Custom meta tiering, OP-style match grades, and recent form tracking inspired by League stat sites, adapted to your custom-games dataset.</p>
       </div>
       {render_refresh_control(generated_at)}
     </div>
@@ -4117,23 +4761,10 @@ def render_experimental_page(
       {render_meta_spotlights(meta_rows)}
       {render_table("custom-meta-tier-list", "Champion Role Meta", meta_rows, meta_columns, controls_html=role_filter_control("custom-meta-tier-list"))}
     </section>
-    <section id="player-fingerprints" class="section">
-      <div class="section-title">
-        <div>
-          <h2>Player Fingerprints</h2>
-          <p class="note">Radar scores compare players inside this dataset. Carry blends kills and KDA; Reliability blends games with game-to-game KP consistency.</p>
-        </div>
-      </div>
-      <div class="fingerprint-toolbar">
-        <input class="card-search" type="search" placeholder="Search player, role, or comfort pick" data-card-filter="fingerprints">
-        <span class="pool-count">{len(fingerprint_rows)} fingerprints</span>
-      </div>
-      <div class="fingerprint-grid" data-card-container="fingerprints">
-        {render_fingerprint_cards(fingerprint_rows)}
-      </div>
-    </section>
+    {render_match_grade_browser(grade_rows)}
+    {render_recent_form_section(form_rows)}
   </main>
-  <script>{shared_script}</script>
+  <script>{shared_script}{render_experimental_script()}</script>
 </body>
 </html>
 """
@@ -6962,6 +7593,8 @@ def build_dashboard(
     fingerprint_rows = player_fingerprint_rows(
         visible_appearances, display_player_rows, display_player_champion_role_rows
     )
+    grade_rows = op_grade_rows(visible_appearances)
+    form_rows = recent_form_rows(visible_appearances, display_player_rows, mvp_rows)
     awards = build_awards(
         appearances,
         player_rows,
@@ -9514,7 +10147,8 @@ def build_dashboard(
         shared_style=shared_style,
         shared_script=shared_script,
         meta_rows=custom_meta_rows,
-        fingerprint_rows=fingerprint_rows,
+        grade_rows=grade_rows,
+        form_rows=form_rows,
         generated_at=generated_at,
         main_page_name=main_page_name,
         teams_page_name=teams_page_name,
