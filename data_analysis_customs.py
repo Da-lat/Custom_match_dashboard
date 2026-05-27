@@ -1262,128 +1262,6 @@ def player_fingerprint_rows(
     )
 
 
-def op_grade_label(value: float) -> str:
-    if value >= 72:
-        return "S"
-    if value >= 62:
-        return "A"
-    if value >= 48:
-        return "B"
-    return "C"
-
-
-def op_grade_rows(appearances: Sequence[Appearance]) -> list[dict[str, object]]:
-    visible = [
-        appearance
-        for appearance in appearances
-        if not is_spotlight_excluded_player(appearance.name)
-    ]
-    metric_rows = [
-        {
-            "kills": appearance.kills,
-            "assists": appearance.assists,
-            "deaths": appearance.deaths,
-            "kda_ratio": appearance.kda_ratio,
-            "kill_participation": appearance.kill_participation,
-        }
-        for appearance in visible
-    ]
-    kills_low, kills_high = metric_bounds(metric_rows, "kills")
-    assists_low, assists_high = metric_bounds(metric_rows, "assists")
-    deaths_low, deaths_high = metric_bounds(metric_rows, "deaths")
-    kda_low, kda_high = metric_bounds(metric_rows, "kda_ratio")
-    kp_low, kp_high = metric_bounds(metric_rows, "kill_participation")
-
-    by_match: dict[int, list[Appearance]] = defaultdict(list)
-    for appearance in visible:
-        by_match[appearance.match_id].append(appearance)
-
-    rows = []
-    for appearance in visible:
-        match_rows = by_match[appearance.match_id]
-        max_kills = max((row.kills for row in match_rows), default=0)
-        max_assists = max((row.assists for row in match_rows), default=0)
-        max_deaths = max((row.deaths for row in match_rows), default=0)
-        win_score = 1.0 if appearance.win else 0.28
-        kda_score = normalized_metric(appearance.kda_ratio, kda_low, kda_high)
-        kp_score = normalized_metric(appearance.kill_participation, kp_low, kp_high)
-        kill_score = normalized_metric(float(appearance.kills), kills_low, kills_high)
-        assist_score = normalized_metric(float(appearance.assists), assists_low, assists_high)
-        low_death_score = normalized_metric(
-            float(appearance.deaths), deaths_low, deaths_high, invert=True
-        )
-        op_score = 100 * (
-            0.18 * win_score
-            + 0.24 * kda_score
-            + 0.22 * kp_score
-            + 0.18 * kill_score
-            + 0.10 * assist_score
-            + 0.08 * low_death_score
-        )
-        tags = []
-        if appearance.win and appearance.kills >= max(8, max_kills) and op_score >= 70:
-            tags.append("Carry Performance")
-        if (
-            appearance.win
-            and appearance.kills <= 4
-            and appearance.kill_participation >= 0.58
-            and appearance.kda_ratio >= 3
-        ):
-            tags.append("Quiet MVP")
-        if appearance.kill_participation >= 0.72 or appearance.assists >= 12:
-            tags.append("Teamfight Engine")
-        if appearance.kills >= 8 and appearance.deaths >= 6:
-            tags.append("Glass Cannon")
-        if op_score < 44 or (
-            not appearance.win and appearance.deaths >= 7 and appearance.kda_ratio < 1.35
-        ):
-            tags.append("Rough One")
-        if appearance.deaths <= 2 and appearance.kda_ratio >= 5:
-            tags.append("KDA Merchant")
-        if appearance.deaths >= 8 or (
-            appearance.deaths == max_deaths and appearance.deaths >= 6
-        ):
-            tags.append("Death Magnet")
-        if appearance.assists >= 12 or (
-            appearance.assists == max_assists and appearance.assists >= 9
-        ):
-            tags.append("Assist Machine")
-        if not tags:
-            tags.append("Solid Shift" if op_score >= 55 else "Standard Game")
-
-        rows.append(
-            {
-                "match_id": appearance.match_id,
-                "date_label": appearance.date_label,
-                "weekday": appearance.weekday_label,
-                "result": appearance.result,
-                "side": appearance.side,
-                "name": appearance.name,
-                "player": appearance.player,
-                "role": appearance.role,
-                "champion": appearance.champion,
-                "kills": appearance.kills,
-                "deaths": appearance.deaths,
-                "assists": appearance.assists,
-                "kda_line": f"{appearance.kills}/{appearance.deaths}/{appearance.assists}",
-                "kda_ratio": appearance.kda_ratio,
-                "kill_participation": appearance.kill_participation,
-                "op_score": op_score,
-                "grade": op_grade_label(op_score),
-                "tags": tags[:3],
-                "tag_text": ", ".join(tags[:3]),
-            }
-        )
-    return sorted(
-        rows,
-        key=lambda row: (
-            -int(row["match_id"]),
-            -float(row["op_score"]),
-            str(row["name"]),
-        ),
-    )
-
-
 def recent_form_rows(
     appearances: Sequence[Appearance],
     player_rows: Sequence[dict[str, object]],
@@ -1508,6 +1386,685 @@ def recent_form_rows(
         key=lambda row: (
             -float(row.get("recent_score", 0)),
             -int(row.get("recent_games", 0)),
+            str(row.get("name", "")),
+        ),
+    )
+
+
+def appearance_match_label(appearance: Appearance) -> str:
+    return f"Match {appearance.match_id} - {appearance.weekday_label} {appearance.date_label}"
+
+
+def appearance_kda_line(appearance: Appearance) -> str:
+    return f"{appearance.kills}/{appearance.deaths}/{appearance.assists}"
+
+
+def experimental_hall_rows(
+    appearances: Sequence[Appearance],
+    champion_rows: Sequence[dict[str, object]],
+    player_role_rows: Sequence[dict[str, object]],
+    player_champion_rows: Sequence[dict[str, object]],
+    player_champion_role_rows: Sequence[dict[str, object]],
+) -> list[dict[str, object]]:
+    rows = [
+        appearance
+        for appearance in appearances
+        if not is_spotlight_excluded_player(appearance.name)
+    ]
+    hall_rows: list[dict[str, object]] = []
+
+    def add_appearance_award(
+        *,
+        title: str,
+        appearance: Appearance,
+        stat: str,
+        detail: str,
+        theme: str,
+        badge: str,
+    ) -> None:
+        hall_rows.append(
+            {
+                "title": title,
+                "winner": f"{appearance.name} on {appearance.champion}",
+                "stat": stat,
+                "detail": f"{appearance_match_label(appearance)}. {detail}",
+                "champion": appearance.champion,
+                "match_id": appearance.match_id,
+                "theme": theme,
+                "badge": badge,
+            }
+        )
+
+    if rows:
+        best_kda = max(
+            rows,
+            key=lambda row: (
+                row.kda_ratio,
+                row.takedowns,
+                row.kills,
+                row.kill_participation,
+                -row.deaths,
+            ),
+        )
+        add_appearance_award(
+            title="Best Single-Game KDA",
+            appearance=best_kda,
+            stat=f"{appearance_kda_line(best_kda)} ({two_decimal(best_kda.kda_ratio)} KDA)",
+            detail=f"{pct(best_kda.kill_participation)} KP.",
+            theme="gold",
+            badge="KDA",
+        )
+
+        loss_rows = [row for row in rows if not row.win]
+        if loss_rows:
+            tragic = max(
+                loss_rows,
+                key=lambda row: (
+                    row.kda_ratio * 7
+                    + row.kill_participation * 45
+                    + row.kills * 2.2
+                    + row.assists
+                    - row.deaths * 1.4,
+                    row.takedowns,
+                ),
+            )
+            add_appearance_award(
+                title="Most Tragic Loss Performance",
+                appearance=tragic,
+                stat=f"{appearance_kda_line(tragic)} in a loss",
+                detail=f"{pct(tragic.kill_participation)} KP and {tragic.takedowns} takedowns.",
+                theme="red",
+                badge="LOSS",
+            )
+            kp_loss = max(loss_rows, key=lambda row: (row.kill_participation, row.takedowns))
+            add_appearance_award(
+                title="Highest Kill Participation Loss",
+                appearance=kp_loss,
+                stat=f"{pct(kp_loss.kill_participation)} KP",
+                detail=f"{appearance_kda_line(kp_loss)} with {kp_loss.team_kills} team kills.",
+                theme="purple",
+                badge="KP",
+            )
+
+        win_rows = [row for row in rows if row.win]
+        if win_rows:
+            carry = max(
+                win_rows,
+                key=lambda row: (
+                    row.kill_participation * 55
+                    + row.kills * 4
+                    + row.assists * 1.8
+                    + row.kda_ratio * 3,
+                    row.takedowns,
+                ),
+            )
+            add_appearance_award(
+                title="Biggest Carry Win",
+                appearance=carry,
+                stat=f"{appearance_kda_line(carry)} win",
+                detail=f"{pct(carry.kill_participation)} KP on {carry.team_kills} team kills.",
+                theme="green",
+                badge="WIN",
+            )
+            death_win = max(
+                win_rows,
+                key=lambda row: (row.deaths, row.takedowns, row.kill_participation),
+            )
+            add_appearance_award(
+                title="Most Deaths In A Win",
+                appearance=death_win,
+                stat=f"{death_win.deaths} deaths and still won",
+                detail=f"{appearance_kda_line(death_win)} with {pct(death_win.kill_participation)} KP.",
+                theme="blue",
+                badge="D",
+            )
+
+    cursed_champion = find_first(
+        sorted(
+            [row for row in champion_rows if int(row.get("games", 0)) >= 5],
+            key=lambda row: (
+                float(row.get("winrate", 0)),
+                -int(row.get("losses", 0)),
+                -int(row.get("games", 0)),
+                str(row.get("champion", "")),
+            ),
+        )
+    )
+    if cursed_champion:
+        hall_rows.append(
+            {
+                "title": "Most Cursed Champion",
+                "winner": str(cursed_champion.get("champion", "-")),
+                "stat": f"{pct(float(cursed_champion.get('winrate', 0)))} WR",
+                "detail": (
+                    f"{integer(cursed_champion.get('wins', 0))}-"
+                    f"{integer(cursed_champion.get('losses', 0))}, "
+                    f"{integer(cursed_champion.get('games', 0))} games, "
+                    f"{two_decimal(float(cursed_champion.get('kda_ratio', 0)))} KDA."
+                ),
+                "champion": str(cursed_champion.get("champion", "")),
+                "theme": "red",
+                "badge": "CURSE",
+            }
+        )
+
+    pocket_pool = [
+        row
+        for row in player_champion_role_rows
+        if 2 <= int(row.get("games", 0)) <= 4 and str(row.get("role", "")) in ROLE_ORDER
+    ]
+    if not pocket_pool:
+        pocket_pool = [
+            row
+            for row in player_champion_role_rows
+            if 1 <= int(row.get("games", 0)) <= 5 and str(row.get("role", "")) in ROLE_ORDER
+        ]
+    pocket = find_first(
+        sorted(
+            pocket_pool,
+            key=lambda row: (
+                -float(row.get("winrate", 0)),
+                -int(row.get("wins", 0)),
+                -float(row.get("kda_ratio", 0)),
+                -int(row.get("games", 0)),
+                str(row.get("name", "")),
+            ),
+        )
+    )
+    if pocket:
+        hall_rows.append(
+            {
+                "title": "Best Pocket Pick",
+                "winner": f"{pocket.get('name', '-')} {pocket.get('champion', '-')}",
+                "stat": f"{pct(float(pocket.get('winrate', 0)))} WR",
+                "detail": (
+                    f"{pocket.get('role', '-')}, {integer(pocket.get('games', 0))} games, "
+                    f"{two_decimal(float(pocket.get('kda_ratio', 0)))} KDA."
+                ),
+                "champion": str(pocket.get("champion", "")),
+                "theme": "green",
+                "badge": "POCKET",
+            }
+        )
+
+    comfort = find_first(
+        sorted(
+            [row for row in player_champion_rows if int(row.get("games", 0)) >= 5],
+            key=lambda row: (
+                float(row.get("winrate", 0)),
+                -int(row.get("losses", 0)),
+                -int(row.get("games", 0)),
+                str(row.get("name", "")),
+            ),
+        )
+    )
+    if comfort:
+        hall_rows.append(
+            {
+                "title": "Worst Comfort Pick",
+                "winner": f"{comfort.get('name', '-')} {comfort.get('champion', '-')}",
+                "stat": f"{pct(float(comfort.get('winrate', 0)))} WR",
+                "detail": (
+                    f"{integer(comfort.get('wins', 0))}-{integer(comfort.get('losses', 0))}, "
+                    f"{integer(comfort.get('games', 0))} games, "
+                    f"{two_decimal(float(comfort.get('kda_ratio', 0)))} KDA."
+                ),
+                "champion": str(comfort.get("champion", "")),
+                "theme": "red",
+                "badge": "PAIN",
+            }
+        )
+
+    role_pool = [
+        row
+        for row in player_role_rows
+        if int(row.get("games", 0)) >= 4 and str(row.get("role", "")) in ROLE_ORDER
+    ]
+    terrorist = find_first(
+        sorted(
+            role_pool,
+            key=lambda row: (
+                float(row.get("winrate", 0)),
+                -float(row.get("avg_deaths", 0)),
+                -int(row.get("losses", 0)),
+                -int(row.get("games", 0)),
+                str(row.get("name", "")),
+            ),
+        )
+    )
+    if terrorist:
+        hall_rows.append(
+            {
+                "title": "Biggest Role Terrorist",
+                "winner": f"{terrorist.get('name', '-')} {terrorist.get('role', '-')}",
+                "stat": f"{pct(float(terrorist.get('winrate', 0)))} WR",
+                "detail": (
+                    f"{integer(terrorist.get('games', 0))} games, "
+                    f"{two_decimal(float(terrorist.get('avg_deaths', 0)))} deaths/game, "
+                    f"{two_decimal(float(terrorist.get('kda_ratio', 0)))} KDA."
+                ),
+                "theme": "purple",
+                "badge": "ROLE",
+            }
+        )
+
+    return hall_rows
+
+
+def team_side_sets(appearances: Sequence[Appearance]) -> dict[tuple[int, str], set[str]]:
+    grouped: dict[tuple[int, str], set[str]] = defaultdict(set)
+    for appearance in appearances:
+        if not is_spotlight_excluded_player(appearance.name):
+            grouped[(appearance.match_id, appearance.side)].add(appearance.name)
+    return grouped
+
+
+def experimental_chemistry_data(
+    appearances: Sequence[Appearance],
+    player_rows: Sequence[dict[str, object]],
+) -> dict[str, object]:
+    visible_players = without_spotlight_excluded_players(player_rows)
+    player_stats = {
+        str(row.get("name", "")): {
+            "games": int(row.get("games", 0)),
+            "wins": int(row.get("wins", 0)),
+            "winrate": float(row.get("winrate", 0)),
+        }
+        for row in visible_players
+    }
+    grouped = team_side_sets(appearances)
+    pair_stats: dict[tuple[str, str], dict[str, int]] = defaultdict(
+        lambda: {"games": 0, "wins": 0}
+    )
+    for (_match_id, side), names in grouped.items():
+        if len(names) < 2:
+            continue
+        for pair in combinations(sorted(names), 2):
+            pair_stats[pair]["games"] += 1
+            pair_stats[pair]["wins"] += 1 if side == "win" else 0
+
+    links = []
+    directed = []
+    for pair, values in pair_stats.items():
+        games = int(values["games"])
+        if games < 3:
+            continue
+        wins = int(values["wins"])
+        winrate = safe_div(wins, games)
+        base = sum(player_stats.get(name, {}).get("winrate", 0.5) for name in pair) / 2
+        lift = winrate - base
+        link = {
+            "players": pair,
+            "label": " + ".join(pair),
+            "games": games,
+            "wins": wins,
+            "losses": games - wins,
+            "winrate": winrate,
+            "base_winrate": base,
+            "lift": lift,
+            "lift_points": lift * 100,
+        }
+        links.append(link)
+        for source, target in ((pair[0], pair[1]), (pair[1], pair[0])):
+            target_stats = player_stats.get(target, {})
+            target_games = int(target_stats.get("games", 0))
+            target_wins = int(target_stats.get("wins", 0))
+            without_games = target_games - games
+            without_wins = target_wins - wins
+            if without_games < 3:
+                continue
+            without_winrate = safe_div(without_wins, without_games)
+            directed.append(
+                {
+                    "source": source,
+                    "target": target,
+                    "label": f"{source} + {target}",
+                    "games": games,
+                    "winrate": winrate,
+                    "without_winrate": without_winrate,
+                    "lift": winrate - without_winrate,
+                    "lift_points": (winrate - without_winrate) * 100,
+                }
+            )
+
+    best_links = sorted(
+        [row for row in links if row["games"] >= 4],
+        key=lambda row: (-float(row["lift"]), -float(row["winrate"]), -int(row["games"])),
+    )
+    worst_links = sorted(
+        [row for row in links if row["games"] >= 4],
+        key=lambda row: (float(row["lift"]), float(row["winrate"]), -int(row["games"])),
+    )
+    do_not_separate = find_first(
+        sorted(directed, key=lambda row: (-float(row["lift"]), -int(row["games"])))
+    )
+    avoid_pairing = find_first(
+        sorted(directed, key=lambda row: (float(row["lift"]), -int(row["games"])))
+    )
+    best_five = find_first(team_combo_rows(appearances, 5, TEAM_COMBO_MIN_GAMES[5]))
+    network_links = best_links[:5] + worst_links[:5]
+    return {
+        "links": links,
+        "network_links": network_links,
+        "best_links": best_links[:5],
+        "worst_links": worst_links[:5],
+        "do_not_separate": do_not_separate,
+        "avoid_pairing": avoid_pairing,
+        "best_five": best_five,
+    }
+
+
+def experimental_upset_rows(
+    appearances: Sequence[Appearance],
+    player_rows: Sequence[dict[str, object]],
+    mvp_rows: Sequence[dict[str, object]],
+    role_score_rows: Sequence[dict[str, object]],
+    player_champion_role_rows: Sequence[dict[str, object]],
+) -> dict[str, list[dict[str, object]]]:
+    visible = [
+        appearance
+        for appearance in appearances
+        if not is_spotlight_excluded_player(appearance.name)
+    ]
+    player_by_name = {str(row.get("name", "")): row for row in player_rows}
+    mvp_by_name = {str(row.get("name", "")): row for row in mvp_rows}
+    role_score_by_key = {
+        (str(row.get("name", "")), str(row.get("role", ""))): row
+        for row in role_score_rows
+    }
+    combo_by_key = {
+        (
+            str(row.get("name", "")),
+            str(row.get("champion", "")),
+            str(row.get("role", "")),
+        ): row
+        for row in player_champion_role_rows
+    }
+    grouped: dict[int, list[Appearance]] = defaultdict(list)
+    for appearance in visible:
+        grouped[appearance.match_id].append(appearance)
+
+    def player_expected_strength(appearance: Appearance) -> float:
+        player = player_by_name.get(appearance.name, {})
+        mvp_score = float(
+            mvp_by_name.get(appearance.name, {}).get(
+                "mvp_score", float(player.get("winrate", 0.5)) * 100
+            )
+        )
+        role_score = float(
+            role_score_by_key.get((appearance.name, appearance.role), {}).get(
+                "role_score", 50
+            )
+        )
+        combo = combo_by_key.get((appearance.name, appearance.champion, appearance.role), {})
+        combo_games = int(combo.get("games", 0))
+        combo_reliability = clamp(combo_games / 5)
+        combo_winrate = float(combo.get("winrate", 0.5))
+        combo_kda = clamp(float(combo.get("kda_ratio", 0)) / 5)
+        comfort_score = 100 * (
+            0.65 * (0.5 + ((combo_winrate - 0.5) * combo_reliability))
+            + 0.35 * combo_kda
+        )
+        return 0.45 * mvp_score + 0.35 * role_score + 0.20 * comfort_score
+
+    rows = []
+    for match_id, match_rows in grouped.items():
+        by_side = {
+            "win": [row for row in match_rows if row.win],
+            "lose": [row for row in match_rows if not row.win],
+        }
+        if not by_side["win"] or not by_side["lose"]:
+            continue
+        side_scores = {
+            side: safe_div(
+                sum(player_expected_strength(row) for row in side_rows), len(side_rows)
+            )
+            for side, side_rows in by_side.items()
+        }
+        expected_side = "win" if side_scores["win"] >= side_scores["lose"] else "lose"
+        expected_margin = abs(side_scores["win"] - side_scores["lose"])
+        winner_names = ", ".join(row.name for row in by_side["win"])
+        loser_names = ", ".join(row.name for row in by_side["lose"])
+        win_kills = sum(row.kills for row in by_side["win"])
+        lose_kills = sum(row.kills for row in by_side["lose"])
+        first = match_rows[0]
+        rows.append(
+            {
+                "match_id": match_id,
+                "label": appearance_match_label(first),
+                "date_label": first.date_label,
+                "winner_names": winner_names,
+                "loser_names": loser_names,
+                "win_score": side_scores["win"],
+                "lose_score": side_scores["lose"],
+                "expected_side": expected_side,
+                "expected_margin": expected_margin,
+                "actual_margin": win_kills - lose_kills,
+                "win_kills": win_kills,
+                "lose_kills": lose_kills,
+                "upset": expected_side == "lose",
+                "detail": (
+                    f"Expected {'losing' if expected_side == 'lose' else 'winning'} side by "
+                    f"{score(expected_margin)} model points. Kills: {win_kills}-{lose_kills}."
+                ),
+            }
+        )
+
+    upsets = sorted(
+        [row for row in rows if row["upset"]],
+        key=lambda row: (-float(row["expected_margin"]), -int(row["actual_margin"])),
+    )
+    stomps = sorted(
+        [row for row in rows if not row["upset"]],
+        key=lambda row: (-float(row["expected_margin"]), -int(row["actual_margin"])),
+    )
+    throws = sorted(
+        [row for row in rows if row["upset"]],
+        key=lambda row: (-float(row["expected_margin"]), int(row["lose_kills"])),
+    )
+    return {"upsets": upsets[:5], "stomps": stomps[:5], "throws": throws[:5]}
+
+
+def champion_ownership_rows(
+    appearances: Sequence[Appearance],
+    champion_rows: Sequence[dict[str, object]],
+    champion_role_rows: Sequence[dict[str, object]],
+    player_champion_rows: Sequence[dict[str, object]],
+    target_ban_rows: Sequence[dict[str, object]],
+) -> list[dict[str, object]]:
+    pilot_rows_by_champion: dict[str, list[dict[str, object]]] = defaultdict(list)
+    for row in player_champion_rows:
+        pilot_rows_by_champion[str(row.get("champion", ""))].append(row)
+    role_rows_by_champion: dict[str, list[dict[str, object]]] = defaultdict(list)
+    for row in champion_role_rows:
+        role_rows_by_champion[str(row.get("champion", ""))].append(row)
+    ban_rows_by_champion: dict[str, list[dict[str, object]]] = defaultdict(list)
+    for row in target_ban_rows:
+        ban_rows_by_champion[str(row.get("champion", ""))].append(row)
+    recent_by_champion: dict[str, Appearance] = {}
+    for appearance in appearances:
+        if is_spotlight_excluded_player(appearance.name):
+            continue
+        champion = appearance.champion
+        current = recent_by_champion.get(champion)
+        if current is None or (appearance.timestamp, appearance.match_id) > (
+            current.timestamp,
+            current.match_id,
+        ):
+            recent_by_champion[champion] = appearance
+
+    rows = []
+    for champion in sorted(champion_rows, key=lambda row: str(row.get("champion", ""))):
+        champion_name = str(champion.get("champion", ""))
+        pilots = pilot_rows_by_champion.get(champion_name, [])
+        pilot_pool = [row for row in pilots if int(row.get("games", 0)) >= 2] or pilots
+        best_pilot = find_first(
+            sorted(
+                pilot_pool,
+                key=lambda row: (
+                    -float(row.get("winrate", 0)),
+                    -int(row.get("wins", 0)),
+                    -float(row.get("kda_ratio", 0)),
+                    -int(row.get("games", 0)),
+                    str(row.get("name", "")),
+                ),
+            )
+        )
+        cursed_pilot = find_first(
+            sorted(
+                pilot_pool,
+                key=lambda row: (
+                    float(row.get("winrate", 0)),
+                    -int(row.get("losses", 0)),
+                    -int(row.get("games", 0)),
+                    str(row.get("name", "")),
+                ),
+            )
+        )
+        best_role = find_first(
+            sorted(
+                role_rows_by_champion.get(champion_name, []),
+                key=lambda row: (
+                    -float(row.get("winrate", 0)),
+                    -int(row.get("wins", 0)),
+                    -int(row.get("games", 0)),
+                    role_sort(str(row.get("role", ""))),
+                ),
+            )
+        )
+        ban_row = find_first(
+            sorted(
+                ban_rows_by_champion.get(champion_name, []),
+                key=lambda row: (
+                    -float(row.get("ban_score", 0)),
+                    -int(row.get("games", 0)),
+                ),
+            )
+        )
+        recent = recent_by_champion.get(champion_name)
+        rows.append(
+            {
+                "champion": champion_name,
+                "games": int(champion.get("games", 0)),
+                "wins": int(champion.get("wins", 0)),
+                "losses": int(champion.get("losses", 0)),
+                "winrate": float(champion.get("winrate", 0)),
+                "owner": str(best_pilot.get("name", "-")) if best_pilot else "-",
+                "owner_detail": (
+                    f"{pct(float(best_pilot.get('winrate', 0)))} WR, "
+                    f"{integer(best_pilot.get('games', 0))}g"
+                    if best_pilot
+                    else "-"
+                ),
+                "cursed_pilot": (
+                    str(cursed_pilot.get("name", "-")) if cursed_pilot else "-"
+                ),
+                "cursed_detail": (
+                    f"{pct(float(cursed_pilot.get('winrate', 0)))} WR, "
+                    f"{integer(cursed_pilot.get('games', 0))}g"
+                    if cursed_pilot
+                    else "-"
+                ),
+                "best_role": str(best_role.get("role", "-")) if best_role else "-",
+                "best_role_detail": (
+                    f"{pct(float(best_role.get('winrate', 0)))} WR, "
+                    f"{integer(best_role.get('games', 0))}g"
+                    if best_role
+                    else "-"
+                ),
+                "recent": (
+                    f"Match {recent.match_id}: {recent.name} {recent.role}"
+                    if recent
+                    else "No recent games"
+                ),
+                "ban_priority": float(ban_row.get("ban_score", 0)) if ban_row else 0.0,
+                "ban_detail": (
+                    f"{ban_row.get('name', '-')} {score(float(ban_row.get('ban_score', 0)))}"
+                    if ban_row
+                    else "No target signal"
+                ),
+                "search_text": (
+                    f"{champion_name} {best_pilot.get('name', '') if best_pilot else ''} "
+                    f"{cursed_pilot.get('name', '') if cursed_pilot else ''} "
+                    f"{best_role.get('role', '') if best_role else ''}"
+                ),
+            }
+        )
+    return sorted(
+        rows,
+        key=lambda row: (
+            -float(row.get("ban_priority", 0)),
+            -int(row.get("games", 0)),
+            str(row.get("champion", "")),
+        ),
+    )
+
+
+def highest_value_next_build_rows(
+    player_champion_role_rows: Sequence[dict[str, object]],
+    role_score_rows: Sequence[dict[str, object]],
+    meta_rows: Sequence[dict[str, object]],
+) -> list[dict[str, object]]:
+    role_score_by_key = {
+        (str(row.get("name", "")), str(row.get("role", ""))): row
+        for row in role_score_rows
+    }
+    meta_by_key = {
+        (str(row.get("champion", "")), str(row.get("role", ""))): row for row in meta_rows
+    }
+    candidate_rows = [
+        row
+        for row in player_champion_role_rows
+        if 1 <= int(row.get("games", 0)) <= 4 and str(row.get("role", "")) in ROLE_ORDER
+    ]
+    kda_low, kda_high = metric_bounds(candidate_rows, "kda_ratio")
+    rows = []
+    for row in candidate_rows:
+        name = str(row.get("name", ""))
+        champion = str(row.get("champion", ""))
+        role = str(row.get("role", ""))
+        games = int(row.get("games", 0))
+        winrate = float(row.get("winrate", 0))
+        reliability = clamp(games / 4)
+        adjusted_winrate = 0.5 + ((winrate - 0.5) * reliability)
+        role_score = float(role_score_by_key.get((name, role), {}).get("role_score", 50))
+        meta_score = float(
+            meta_by_key.get((champion, role), {}).get("contested_score", 45)
+        )
+        kda_score = normalized_metric(float(row.get("kda_ratio", 0)), kda_low, kda_high)
+        upside = 100 * (
+            0.34 * adjusted_winrate
+            + 0.24 * clamp(role_score / 100)
+            + 0.20 * clamp(meta_score / 100)
+            + 0.14 * kda_score
+            + 0.08 * (1 - reliability)
+        )
+        rows.append(
+            {
+                "name": name,
+                "champion": champion,
+                "role": role,
+                "games": games,
+                "wins": int(row.get("wins", 0)),
+                "losses": int(row.get("losses", 0)),
+                "winrate": winrate,
+                "kda_ratio": float(row.get("kda_ratio", 0)),
+                "role_score": role_score,
+                "meta_score": meta_score,
+                "upside_score": upside,
+                "detail": (
+                    f"{integer(row.get('wins', 0))}-{integer(row.get('losses', 0))}, "
+                    f"{games} games, {two_decimal(float(row.get('kda_ratio', 0)))} KDA, "
+                    f"{score(role_score)} role score."
+                ),
+            }
+        )
+    return sorted(
+        rows,
+        key=lambda row: (
+            -float(row.get("upside_score", 0)),
+            -float(row.get("winrate", 0)),
+            int(row.get("games", 0)),
             str(row.get("name", "")),
         ),
     )
@@ -4078,83 +4635,6 @@ def render_meta_spotlights(rows: Sequence[dict[str, object]]) -> str:
     return f'<div class="meta-spotlight-grid">{"".join(cards)}</div>'
 
 
-def render_grade_badge(grade: object) -> str:
-    grade_value = str(grade or "C")
-    return f'<span class="grade-badge grade-{html_attr(grade_value.lower())}">{escape(grade_value)}</span>'
-
-
-def render_match_grade_browser(rows: Sequence[dict[str, object]]) -> str:
-    by_match: dict[int, list[dict[str, object]]] = defaultdict(list)
-    for row in rows:
-        by_match[int(row.get("match_id", 0))].append(row)
-    match_ids = sorted(by_match, reverse=True)
-    options = []
-    match_cards = []
-    for index, match_id in enumerate(match_ids):
-        match_rows = sorted(
-            by_match[match_id],
-            key=lambda row: (
-                -float(row.get("op_score", 0)),
-                str(row.get("name", "")),
-            ),
-        )
-        if not match_rows:
-            continue
-        first = match_rows[0]
-        label = f"Match {match_id} - {first.get('weekday', '')} {first.get('date_label', '')}"
-        options.append(
-            f'<option value="{match_id}"{" selected" if index == 0 else ""}>{escape(label)}</option>'
-        )
-        grade_items = []
-        for row in match_rows:
-            tags = "".join(
-                f'<span>{escape(str(tag))}</span>' for tag in row.get("tags", [])
-            )
-            grade_items.append(
-                f"""
-                <article class="match-grade-player grade-card-{html_attr(str(row.get('grade', 'c')).lower())}">
-                  <div class="match-grade-topline">
-                    {render_grade_badge(row.get('grade', 'C'))}
-                    <strong>{score(float(row.get('op_score', 0)))}</strong>
-                  </div>
-                  <h4>{escape(str(row.get('name', '-')))}</h4>
-                  <small>{escape(str(row.get('role', '-')))} - {escape(str(row.get('champion', '-')))} - {escape(str(row.get('result', '-')))}</small>
-                  <b>{escape(str(row.get('kda_line', '-')))} KDA</b>
-                  <small>{pct(float(row.get('kill_participation', 0)))} KP</small>
-                  <div class="match-grade-tags">{tags}</div>
-                </article>
-                """
-            )
-        active_class = " active" if index == 0 else ""
-        match_cards.append(
-            f"""
-            <section class="match-grade-card{active_class}" data-grade-card data-grade-match-id="{match_id}">
-              <div class="section-heading">
-                <h3>{escape(label)}</h3>
-                <small>Top grade: {escape(str(first.get('name', '-')))} {escape(str(first.get('grade', '-')))} / {score(float(first.get('op_score', 0)))}</small>
-              </div>
-              <div class="match-grade-grid">{"".join(grade_items)}</div>
-            </section>
-            """
-        )
-    return f"""
-    <section id="match-grades" class="section">
-      <div class="section-title">
-        <div>
-          <h2>Custom OP Score / Match Grades</h2>
-          <p class="note">Every player-game gets an OP-style grade from result, KDA, kill participation, kills, assists, and deaths, plus performance tags.</p>
-        </div>
-      </div>
-      <div class="match-grade-browser">
-        <button type="button" data-grade-prev aria-label="Previous graded match" title="Previous graded match">&larr;</button>
-        <select data-grade-picker aria-label="Select graded match">{"".join(options)}</select>
-        <button type="button" data-grade-next aria-label="Next graded match" title="Next graded match">&rarr;</button>
-      </div>
-      <div class="match-grade-stack">{"".join(match_cards)}</div>
-    </section>
-    """
-
-
 def form_status_class(status: object) -> str:
     return str(status).lower().replace(" ", "-")
 
@@ -4278,40 +4758,318 @@ def render_recent_form_section(rows: Sequence[dict[str, object]]) -> str:
     """
 
 
-def render_experimental_script() -> str:
-    return """
-    function initMatchGradeBrowser() {
-      const cards = Array.from(document.querySelectorAll("[data-grade-card]"));
-      const picker = document.querySelector("[data-grade-picker]");
-      const previous = document.querySelector("[data-grade-prev]");
-      const next = document.querySelector("[data-grade-next]");
-      if (!cards.length || !picker) {
-        return;
-      }
-      const ids = cards.map(card => card.dataset.gradeMatchId);
-      let currentId = picker.value || ids[0];
+def render_lab_award_visual(row: dict[str, object]) -> str:
+    champion = str(row.get("champion", "")).strip()
+    badge = str(row.get("badge", "")).strip() or str(row.get("title", "-"))[:3]
+    if champion and champion != "-":
+        return (
+            f'<div class="lab-award-icon">'
+            f'<img src="{html_attr(champion_icon_url(champion))}" alt="{html_attr(champion)}">'
+            f"</div>"
+        )
+    return f'<div class="lab-award-icon lab-award-badge">{escape(badge[:4].upper())}</div>'
 
-      function showGradeCard(id) {
-        currentId = String(id);
-        cards.forEach(card => {
-          card.classList.toggle("active", card.dataset.gradeMatchId === currentId);
-        });
-        picker.value = currentId;
-      }
 
-      function moveGrade(offset) {
-        const index = ids.indexOf(currentId);
-        const nextIndex = (index + offset + ids.length) % ids.length;
-        showGradeCard(ids[nextIndex]);
-      }
+def render_hall_of_fame_section(
+    rows: Sequence[dict[str, object]], main_page_name: str
+) -> str:
+    cards = []
+    for row in rows:
+        theme = str(row.get("theme", "blue"))
+        match_id = str(row.get("match_id", "")).strip()
+        if match_id:
+            open_tag = (
+                f'<a class="lab-award-card lab-theme-{html_attr(theme)}" '
+                f'href="{html_attr(main_page_name)}#match-{html_attr(match_id)}">'
+            )
+            close_tag = "</a>"
+        else:
+            open_tag = f'<article class="lab-award-card lab-theme-{html_attr(theme)}">'
+            close_tag = "</article>"
+        cards.append(
+            f"""
+            {open_tag}
+              {render_lab_award_visual(row)}
+              <div>
+                <span>{escape(str(row.get('title', '-')))}</span>
+                <strong>{escape(str(row.get('winner', '-')))}</strong>
+                <b>{escape(str(row.get('stat', '-')))}</b>
+                <small>{escape(str(row.get('detail', '-')))}</small>
+              </div>
+            {close_tag}
+            """
+        )
+    return f"""
+    <section id="hall-of-fame" class="section">
+      <div class="section-title">
+        <div>
+          <h2>Customs Hall Of Fame / Hall Of Pain</h2>
+          <p class="note">Single-game legends, cursed picks, tragic losses, and other custom-only awards.</p>
+        </div>
+      </div>
+      <div class="lab-award-grid">{"".join(cards)}</div>
+    </section>
+    """
 
-      picker.addEventListener("change", () => showGradeCard(picker.value));
-      previous?.addEventListener("click", () => moveGrade(-1));
-      next?.addEventListener("click", () => moveGrade(1));
-      showGradeCard(currentId);
-    }
 
-    initMatchGradeBrowser();
+def chemistry_link_detail(row: dict[str, object]) -> str:
+    return (
+        f"{integer(row.get('wins', 0))}-{integer(row.get('losses', 0))}, "
+        f"{integer(row.get('games', 0))} games, {pct(float(row.get('winrate', 0)))} WR, "
+        f"{signed_integer(round(float(row.get('lift_points', 0))))} pts vs baseline"
+    )
+
+
+def render_chemistry_list(title: str, rows: Sequence[dict[str, object]], mood: str) -> str:
+    items = []
+    for row in rows:
+        items.append(
+            f"""
+            <li class="chemistry-list-item chemistry-{html_attr(mood)}">
+              <strong>{escape(str(row.get('label', '-')))}</strong>
+              <span>{escape(chemistry_link_detail(row))}</span>
+            </li>
+            """
+        )
+    if not items:
+        items.append('<li class="chemistry-list-item"><strong>No sample yet</strong><span>Needs more games.</span></li>')
+    return f"""
+    <article class="chemistry-panel">
+      <h3>{escape(title)}</h3>
+      <ul>{"".join(items)}</ul>
+    </article>
+    """
+
+
+def render_chemistry_network_svg(links: Sequence[dict[str, object]]) -> str:
+    players = sorted({name for link in links for name in link.get("players", ())})
+    if len(players) < 2:
+        return '<div class="chemistry-empty">Not enough duo samples yet.</div>'
+    width = 760
+    height = 420
+    center_x = width / 2
+    center_y = height / 2
+    radius = 155
+    positions = {}
+    for index, name in enumerate(players):
+        angle = (-90 + (360 / len(players)) * index) * math.pi / 180
+        positions[name] = (
+            center_x + math.cos(angle) * radius,
+            center_y + math.sin(angle) * radius,
+        )
+    line_parts = []
+    for link in links:
+        pair = tuple(link.get("players", ()))
+        if len(pair) != 2 or pair[0] not in positions or pair[1] not in positions:
+            continue
+        x1, y1 = positions[pair[0]]
+        x2, y2 = positions[pair[1]]
+        lift = float(link.get("lift", 0))
+        mood = "good" if lift >= 0 else "bad"
+        width_value = 2.0 + min(7.0, abs(lift) * 24)
+        line_parts.append(
+            f"""
+            <line class="chemistry-link chemistry-link-{mood}" x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke-width="{width_value:.1f}">
+              <title>{escape(str(link.get('label', '-')))}: {signed_integer(round(float(link.get('lift_points', 0))))} pts</title>
+            </line>
+            """
+        )
+    node_parts = []
+    for name, (x, y) in positions.items():
+        initials = "".join(part[:1] for part in name.split()[:2]).upper()[:2] or name[:1]
+        node_parts.append(
+            f"""
+            <g class="chemistry-node">
+              <circle cx="{x:.1f}" cy="{y:.1f}" r="26" />
+              <text x="{x:.1f}" y="{y + 4:.1f}" text-anchor="middle">{escape(initials)}</text>
+              <text class="chemistry-node-label" x="{x:.1f}" y="{y + 45:.1f}" text-anchor="middle">{escape(name)}</text>
+            </g>
+            """
+        )
+    return f"""
+    <svg class="chemistry-network" viewBox="0 0 {width} {height}" role="img" aria-label="Team chemistry network">
+      <g>{"".join(line_parts)}</g>
+      <g>{"".join(node_parts)}</g>
+    </svg>
+    """
+
+
+def render_directed_chemistry_card(
+    title: str, row: dict[str, object], mood: str, fallback: str
+) -> str:
+    if not row:
+        return f"""
+        <article class="chemistry-callout chemistry-{html_attr(mood)}">
+          <span>{escape(title)}</span>
+          <strong>{escape(fallback)}</strong>
+          <small>Needs more directed duo samples.</small>
+        </article>
+        """
+    relationship = (
+        f"{row.get('source', '-')} improves {row.get('target', '-')}"
+        if mood == "good"
+        else f"{row.get('source', '-')} lowers {row.get('target', '-')}"
+    )
+    return f"""
+    <article class="chemistry-callout chemistry-{html_attr(mood)}">
+      <span>{escape(title)}</span>
+      <strong>{escape(relationship)}</strong>
+      <b>{signed_integer(round(float(row.get('lift_points', 0))))} pts</b>
+      <small>{pct(float(row.get('winrate', 0)))} with them vs {pct(float(row.get('without_winrate', 0)))} without.</small>
+    </article>
+    """
+
+
+def render_team_chemistry_section(data: dict[str, object]) -> str:
+    best_five = data.get("best_five", {})
+    best_five_card = ""
+    if isinstance(best_five, dict) and best_five:
+        best_five_card = f"""
+        <article class="chemistry-callout chemistry-good">
+          <span>Best 5-Stack Historically</span>
+          <strong>{escape(str(best_five.get('combo', '-')))}</strong>
+          <b>{pct(float(best_five.get('winrate', 0)))} WR</b>
+          <small>{escape(str(best_five.get('footer', '')))}</small>
+        </article>
+        """
+    return f"""
+    <section id="team-chemistry-network" class="section">
+      <div class="section-title">
+        <div>
+          <h2>Team Chemistry Network</h2>
+          <p class="note">Duo links compare same-side winrate against each player's baseline. Green links overperform; red links underperform.</p>
+        </div>
+      </div>
+      <div class="chemistry-layout">
+        <div class="chemistry-visual">{render_chemistry_network_svg(data.get('network_links', []))}</div>
+        <div class="chemistry-callout-grid">
+          {render_directed_chemistry_card("Do Not Separate", data.get("do_not_separate", {}), "good", "No standout yet")}
+          {render_directed_chemistry_card("Avoid Pairing", data.get("avoid_pairing", {}), "bad", "No danger pair yet")}
+          {best_five_card}
+        </div>
+      </div>
+      <div class="chemistry-list-grid">
+        {render_chemistry_list("Best Duo Links", data.get("best_links", []), "good")}
+        {render_chemistry_list("Worst Duo Links", data.get("worst_links", []), "bad")}
+      </div>
+    </section>
+    """
+
+
+def render_upset_cards(
+    title: str, rows: Sequence[dict[str, object]], main_page_name: str, mood: str
+) -> str:
+    cards = []
+    for row in rows:
+        cards.append(
+            f"""
+            <a class="upset-card upset-{html_attr(mood)}" href="{html_attr(main_page_name)}#match-{html_attr(row.get('match_id', ''))}">
+              <span>{escape(str(row.get('label', '-')))}</span>
+              <strong>{escape(str(row.get('winner_names', '-')))}</strong>
+              <b>{score(float(row.get('expected_margin', 0)))} expected-point gap</b>
+              <small>{escape(str(row.get('detail', '-')))}</small>
+            </a>
+            """
+        )
+    if not cards:
+        cards.append(
+            '<article class="upset-card"><span>No sample yet</span><strong>Nothing found</strong><small>Needs more matches.</small></article>'
+        )
+    return f"""
+    <article class="upset-column">
+      <h3>{escape(title)}</h3>
+      <div class="upset-stack">{"".join(cards)}</div>
+    </article>
+    """
+
+
+def render_upset_detector_section(data: dict[str, list[dict[str, object]]], main_page_name: str) -> str:
+    return f"""
+    <section id="upset-detector" class="section">
+      <div class="section-title">
+        <div>
+          <h2>Upset Detector</h2>
+          <p class="note">Pre-match expectation is estimated from MVP score, role score, and champion-role comfort, then compared with the actual result.</p>
+        </div>
+      </div>
+      <div class="upset-grid">
+        {render_upset_cards("Biggest Upset Wins", data.get("upsets", []), main_page_name, "upset")}
+        {render_upset_cards("Expected Stomps That Happened", data.get("stomps", []), main_page_name, "stomp")}
+        {render_upset_cards("Biggest Throws By Expected Strength", data.get("throws", []), main_page_name, "throw")}
+      </div>
+    </section>
+    """
+
+
+def render_champion_ownership_section(rows: Sequence[dict[str, object]]) -> str:
+    cards = []
+    for row in rows:
+        champion = str(row.get("champion", "-"))
+        cards.append(
+            f"""
+            <article class="ownership-card" data-card-text="{html_attr(row.get('search_text', ''))}">
+              <div class="ownership-heading">
+                <img src="{html_attr(champion_icon_url(champion))}" alt="{html_attr(champion)}">
+                <div>
+                  <h3>{escape(champion)}</h3>
+                  <span>{integer(row.get('games', 0))} games / {pct(float(row.get('winrate', 0)))} WR</span>
+                </div>
+                <strong>{score(float(row.get('ban_priority', 0)))}</strong>
+              </div>
+              <div class="ownership-details">
+                <div><span>Owner</span><b>{escape(str(row.get('owner', '-')))}</b><small>{escape(str(row.get('owner_detail', '-')))}</small></div>
+                <div><span>Cursed Pilot</span><b>{escape(str(row.get('cursed_pilot', '-')))}</b><small>{escape(str(row.get('cursed_detail', '-')))}</small></div>
+                <div><span>Best Role</span><b>{escape(str(row.get('best_role', '-')))}</b><small>{escape(str(row.get('best_role_detail', '-')))}</small></div>
+                <div><span>Draft Ban Priority</span><b>{escape(str(row.get('ban_detail', '-')))}</b><small>If included in the 40-champ draft.</small></div>
+              </div>
+              <small class="ownership-recent">{escape(str(row.get('recent', '-')))}</small>
+            </article>
+            """
+        )
+    return f"""
+    <section id="champion-ownership" class="section">
+      <div class="section-title">
+        <div>
+          <h2>Champion Ownership Cards</h2>
+          <p class="note">Each champion's current owner, cursed pilot, best role, recent usage, and draft-ban signal.</p>
+        </div>
+      </div>
+      <div class="form-toolbar">
+        <input class="card-search" type="search" placeholder="Search champions, owners, or roles" data-card-filter="ownership">
+        <span class="pool-count">{len(rows)} champion cards</span>
+      </div>
+      <div class="ownership-grid" data-card-container="ownership">{"".join(cards)}</div>
+    </section>
+    """
+
+
+def render_next_builds_section(rows: Sequence[dict[str, object]]) -> str:
+    cards = []
+    for row in rows[:12]:
+        champion = str(row.get("champion", "-"))
+        cards.append(
+            f"""
+            <article class="next-build-card">
+              <img src="{html_attr(champion_icon_url(champion))}" alt="{html_attr(champion)}">
+              <div>
+                <span>{escape(str(row.get('role', '-')))} build</span>
+                <strong>{escape(str(row.get('name', '-')))} {escape(champion)}</strong>
+                <b>{score(float(row.get('upside_score', 0)))} upside</b>
+                <small>{escape(str(row.get('detail', '-')))}</small>
+              </div>
+            </article>
+            """
+        )
+    return f"""
+    <section id="next-builds" class="section">
+      <div class="section-title">
+        <div>
+          <h2>Highest-Value Next Builds</h2>
+          <p class="note">Small-sample player/champion/role combos with enough upside to deliberately develop next.</p>
+        </div>
+      </div>
+      <div class="next-build-grid">{"".join(cards)}</div>
+    </section>
     """
 
 
@@ -4403,124 +5161,81 @@ def render_experimental_css() -> str:
       justify-content: space-between;
       margin-bottom: 14px;
     }
-    .match-grade-browser {
-      align-items: center;
-      display: grid;
-      gap: 10px;
-      grid-template-columns: auto minmax(220px, 460px) auto;
-      margin-bottom: 14px;
-    }
-    .match-grade-browser button,
-    .match-grade-browser select {
-      background: #0d141d;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      color: var(--ink);
-      min-height: 38px;
-      padding: 8px 11px;
-    }
-    .match-grade-browser button {
-      cursor: pointer;
-      font-weight: 950;
-      width: 42px;
-    }
-    .match-grade-stack {
-      min-height: 360px;
-    }
-    .match-grade-card {
-      display: none;
-    }
-    .match-grade-card.active {
-      display: block;
-    }
-    .section-heading {
-      align-items: end;
-      display: flex;
-      gap: 12px;
-      justify-content: space-between;
-      margin-bottom: 12px;
-    }
-    .section-heading h3 {
-      margin: 0;
-    }
-    .section-heading small {
-      color: var(--muted);
-      font-weight: 850;
-    }
-    .match-grade-grid {
+    .lab-award-grid {
       display: grid;
       gap: 16px;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
-    .match-grade-player {
-      background: linear-gradient(180deg, #121d2a, #0e1721);
+    .lab-award-card {
+      align-items: center;
+      background: linear-gradient(180deg, #121d2a, #0d1620);
       border: 1px solid var(--line);
-      border-left-width: 4px;
+      border-left: 4px solid #62a8ff;
       border-radius: 8px;
       box-shadow: var(--shadow);
-      min-height: 214px;
-      padding: 13px;
+      color: var(--ink);
+      display: grid;
+      gap: 13px;
+      grid-template-columns: 58px minmax(0, 1fr);
+      min-height: 150px;
+      padding: 14px;
+      text-decoration: none;
     }
-    .grade-card-s { border-left-color: #f0c96a; }
-    .grade-card-a { border-left-color: #4fc48b; }
-    .grade-card-b { border-left-color: #62a8ff; }
-    .grade-card-c { border-left-color: #ff6f81; }
-    .match-grade-topline {
+    .lab-award-icon {
       align-items: center;
+      background: #101b28;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
       display: flex;
-      gap: 12px;
-      justify-content: space-between;
-    }
-    .match-grade-topline strong {
-      color: var(--gold);
-      font-size: 1.05rem;
-    }
-    .grade-badge {
-      align-items: center;
-      border: 1px solid currentColor;
-      border-radius: 999px;
-      display: inline-flex;
-      font-size: 0.86rem;
-      font-weight: 950;
-      height: 34px;
+      height: 56px;
       justify-content: center;
-      width: 34px;
+      overflow: hidden;
+      width: 56px;
     }
-    .grade-s { color: #f0c96a; }
-    .grade-a { color: #4fc48b; }
-    .grade-b { color: #62a8ff; }
-    .grade-c { color: #ff6f81; }
-    .match-grade-player h4 {
-      font-size: 1rem;
-      margin: 12px 0 5px;
+    .lab-award-icon img {
+      display: block;
+      height: 100%;
+      object-fit: cover;
+      width: 100%;
     }
-    .match-grade-player small,
-    .match-grade-player b {
+    .lab-award-badge {
+      color: var(--gold);
+      font-size: 0.82rem;
+      font-weight: 950;
+    }
+    .lab-award-card span,
+    .chemistry-callout span,
+    .ownership-heading span,
+    .next-build-card span {
+      color: var(--muted);
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 950;
+      text-transform: uppercase;
+    }
+    .lab-award-card strong,
+    .lab-award-card b,
+    .lab-award-card small {
       display: block;
     }
-    .match-grade-player small {
+    .lab-award-card strong {
+      font-size: 1.08rem;
+      margin-top: 4px;
+    }
+    .lab-award-card b {
+      color: var(--gold);
+      margin-top: 5px;
+    }
+    .lab-award-card small {
       color: var(--muted);
-      line-height: 1.35;
+      line-height: 1.4;
+      margin-top: 7px;
     }
-    .match-grade-player b {
-      color: var(--ink);
-      margin-top: 10px;
-    }
-    .match-grade-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 12px;
-    }
-    .match-grade-tags span {
-      background: #203049;
-      border: 1px solid rgba(98, 168, 255, 0.28);
-      border-radius: 999px;
-      color: #d6e5ff;
-      font-size: 0.78rem;
-      font-weight: 850;
-      padding: 4px 8px;
-    }
+    .lab-theme-gold { border-left-color: #f0c96a; }
+    .lab-theme-green { border-left-color: #4fc48b; }
+    .lab-theme-red { border-left-color: #ff6f81; }
+    .lab-theme-purple { border-left-color: #b596ff; }
+    .lab-theme-blue { border-left-color: #62a8ff; }
     .form-highlight-grid {
       display: grid;
       gap: 14px;
@@ -4649,26 +5364,285 @@ def render_experimental_css() -> str:
     .status-small-sample {
       border-top-color: #8a94a6;
     }
+    .chemistry-layout {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.75fr);
+      margin-bottom: 16px;
+    }
+    .chemistry-visual,
+    .chemistry-panel,
+    .chemistry-callout,
+    .upset-column,
+    .ownership-card,
+    .next-build-card {
+      background: linear-gradient(180deg, #121d2a, #0d1620);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+    .chemistry-visual {
+      min-height: 420px;
+      padding: 12px;
+    }
+    .chemistry-network {
+      display: block;
+      height: auto;
+      width: 100%;
+    }
+    .chemistry-link {
+      opacity: 0.82;
+      stroke-linecap: round;
+    }
+    .chemistry-link-good { stroke: #4fc48b; }
+    .chemistry-link-bad { stroke: #ff6f81; }
+    .chemistry-node circle {
+      fill: #142338;
+      stroke: #62a8ff;
+      stroke-width: 2;
+    }
+    .chemistry-node text {
+      fill: var(--ink);
+      font-size: 0.82rem;
+      font-weight: 950;
+      letter-spacing: 0;
+    }
+    .chemistry-node .chemistry-node-label {
+      fill: var(--muted);
+      font-size: 0.72rem;
+    }
+    .chemistry-empty {
+      align-items: center;
+      color: var(--muted);
+      display: flex;
+      font-weight: 850;
+      min-height: 360px;
+      justify-content: center;
+    }
+    .chemistry-callout-grid,
+    .upset-stack {
+      display: grid;
+      gap: 12px;
+    }
+    .chemistry-callout {
+      border-left: 4px solid #62a8ff;
+      padding: 14px;
+    }
+    .chemistry-callout strong,
+    .chemistry-callout b,
+    .chemistry-callout small {
+      display: block;
+    }
+    .chemistry-callout strong {
+      font-size: 1.05rem;
+      margin-top: 7px;
+    }
+    .chemistry-callout b {
+      color: var(--gold);
+      margin-top: 5px;
+    }
+    .chemistry-callout small {
+      color: var(--muted);
+      line-height: 1.4;
+      margin-top: 7px;
+    }
+    .chemistry-good { border-left-color: #4fc48b; }
+    .chemistry-bad { border-left-color: #ff6f81; }
+    .chemistry-list-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .chemistry-panel {
+      padding: 16px;
+    }
+    .chemistry-panel h3,
+    .upset-column h3 {
+      margin: 0 0 12px;
+    }
+    .chemistry-panel ul {
+      display: grid;
+      gap: 10px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .chemistry-list-item {
+      border-left: 4px solid #62a8ff;
+      background: #101b28;
+      border-radius: 7px;
+      display: grid;
+      gap: 3px;
+      padding: 10px;
+    }
+    .chemistry-list-item span {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    .upset-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .upset-column {
+      padding: 16px;
+    }
+    .upset-card {
+      background: #101b28;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-left: 4px solid #62a8ff;
+      border-radius: 7px;
+      color: var(--ink);
+      display: block;
+      padding: 12px;
+      text-decoration: none;
+    }
+    .upset-upset,
+    .upset-throw {
+      border-left-color: #ff6f81;
+    }
+    .upset-stomp {
+      border-left-color: #4fc48b;
+    }
+    .upset-card span,
+    .upset-card strong,
+    .upset-card b,
+    .upset-card small {
+      display: block;
+    }
+    .upset-card span {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 950;
+    }
+    .upset-card strong {
+      margin-top: 5px;
+    }
+    .upset-card b {
+      color: var(--gold);
+      margin-top: 5px;
+    }
+    .upset-card small {
+      color: var(--muted);
+      line-height: 1.4;
+      margin-top: 7px;
+    }
+    .ownership-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .ownership-card {
+      padding: 14px;
+    }
+    .ownership-heading {
+      align-items: center;
+      display: grid;
+      gap: 11px;
+      grid-template-columns: 52px minmax(0, 1fr) auto;
+    }
+    .ownership-heading img {
+      border-radius: 8px;
+      height: 52px;
+      object-fit: cover;
+      width: 52px;
+    }
+    .ownership-heading h3 {
+      margin: 0 0 3px;
+    }
+    .ownership-heading strong {
+      color: var(--gold);
+      font-size: 1.15rem;
+    }
+    .ownership-details {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin-top: 13px;
+    }
+    .ownership-details div {
+      background: #101b28;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 7px;
+      padding: 8px;
+    }
+    .ownership-details span,
+    .ownership-details small,
+    .ownership-recent {
+      color: var(--muted);
+      display: block;
+      font-size: 0.76rem;
+      font-weight: 850;
+    }
+    .ownership-details b {
+      display: block;
+      margin-top: 3px;
+    }
+    .ownership-recent {
+      margin-top: 12px;
+    }
+    .next-build-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .next-build-card {
+      align-items: center;
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 52px minmax(0, 1fr);
+      padding: 14px;
+    }
+    .next-build-card img {
+      border-radius: 8px;
+      height: 52px;
+      object-fit: cover;
+      width: 52px;
+    }
+    .next-build-card strong,
+    .next-build-card b,
+    .next-build-card small {
+      display: block;
+    }
+    .next-build-card strong {
+      margin-top: 3px;
+    }
+    .next-build-card b {
+      color: var(--gold);
+      margin-top: 4px;
+    }
+    .next-build-card small {
+      color: var(--muted);
+      line-height: 1.35;
+      margin-top: 6px;
+    }
     @media (max-width: 1100px) {
       .meta-spotlight-grid,
-      .match-grade-grid,
       .form-highlight-grid,
-      .form-grid {
+      .form-grid,
+      .lab-award-grid,
+      .upset-grid,
+      .ownership-grid,
+      .next-build-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
       .experimental-hero {
         grid-template-columns: 1fr;
       }
+      .chemistry-layout {
+        grid-template-columns: 1fr;
+      }
     }
     @media (max-width: 720px) {
       .meta-spotlight-grid,
-      .match-grade-grid,
       .form-highlight-grid,
-      .form-grid {
+      .form-grid,
+      .lab-award-grid,
+      .chemistry-list-grid,
+      .upset-grid,
+      .ownership-grid,
+      .next-build-grid {
         grid-template-columns: 1fr;
-      }
-      .match-grade-browser {
-        grid-template-columns: auto minmax(0, 1fr) auto;
       }
       .form-toolbar {
         align-items: stretch;
@@ -4683,8 +5657,12 @@ def render_experimental_page(
     shared_style: str,
     shared_script: str,
     meta_rows: Sequence[dict[str, object]],
-    grade_rows: Sequence[dict[str, object]],
     form_rows: Sequence[dict[str, object]],
+    hall_rows: Sequence[dict[str, object]],
+    chemistry_data: dict[str, object],
+    upset_data: dict[str, list[dict[str, object]]],
+    ownership_rows: Sequence[dict[str, object]],
+    next_build_rows: Sequence[dict[str, object]],
     generated_at: str,
     main_page_name: str,
     teams_page_name: str,
@@ -4717,7 +5695,7 @@ def render_experimental_page(
     <div class="topline">
       <div>
         <h1>LoL Experimental Stats</h1>
-        <p>Custom meta tiering, OP-style match grades, and recent form tracking inspired by League stat sites, adapted to your custom-games dataset.</p>
+        <p>Custom meta tiering, recent form, hall-of-fame awards, team chemistry, upset detection, and champion ownership experiments.</p>
       </div>
       {render_refresh_control(generated_at)}
     </div>
@@ -4761,10 +5739,14 @@ def render_experimental_page(
       {render_meta_spotlights(meta_rows)}
       {render_table("custom-meta-tier-list", "Champion Role Meta", meta_rows, meta_columns, controls_html=role_filter_control("custom-meta-tier-list"))}
     </section>
-    {render_match_grade_browser(grade_rows)}
     {render_recent_form_section(form_rows)}
+    {render_hall_of_fame_section(hall_rows, main_page_name)}
+    {render_team_chemistry_section(chemistry_data)}
+    {render_upset_detector_section(upset_data, main_page_name)}
+    {render_champion_ownership_section(ownership_rows)}
+    {render_next_builds_section(next_build_rows)}
   </main>
-  <script>{shared_script}{render_experimental_script()}</script>
+  <script>{shared_script}</script>
 </body>
 </html>
 """
@@ -7579,6 +8561,10 @@ def build_dashboard(
     best_mvp = find_first(mvp_rows)
     role_score_rows = player_role_score_rows(player_rows, player_role_rows, mvp_rows)
     tiered_teams, unused_team_players = build_tiered_teams(player_rows, role_score_rows)
+    experimental_champion_rows = sorted(
+        aggregate(visible_appearances, ("champion",)),
+        key=lambda row: (-int(row["games"]), -float(row["winrate"]), str(row["champion"])),
+    )
     experimental_champion_role_rows = sorted(
         aggregate(visible_appearances, ("champion", "role")),
         key=lambda row: (
@@ -7593,8 +8579,32 @@ def build_dashboard(
     fingerprint_rows = player_fingerprint_rows(
         visible_appearances, display_player_rows, display_player_champion_role_rows
     )
-    grade_rows = op_grade_rows(visible_appearances)
     form_rows = recent_form_rows(visible_appearances, display_player_rows, mvp_rows)
+    hall_rows = experimental_hall_rows(
+        visible_appearances,
+        experimental_champion_rows,
+        display_player_role_rows,
+        display_player_champion_rows,
+        display_player_champion_role_rows,
+    )
+    chemistry_data = experimental_chemistry_data(visible_appearances, display_player_rows)
+    upset_data = experimental_upset_rows(
+        visible_appearances,
+        display_player_rows,
+        mvp_rows,
+        role_score_rows,
+        display_player_champion_role_rows,
+    )
+    ownership_rows = champion_ownership_rows(
+        visible_appearances,
+        experimental_champion_rows,
+        experimental_champion_role_rows,
+        display_player_champion_rows,
+        display_target_ban_rows,
+    )
+    next_build_rows = highest_value_next_build_rows(
+        display_player_champion_role_rows, role_score_rows, custom_meta_rows
+    )
     awards = build_awards(
         appearances,
         player_rows,
@@ -10147,8 +11157,12 @@ def build_dashboard(
         shared_style=shared_style,
         shared_script=shared_script,
         meta_rows=custom_meta_rows,
-        grade_rows=grade_rows,
         form_rows=form_rows,
+        hall_rows=hall_rows,
+        chemistry_data=chemistry_data,
+        upset_data=upset_data,
+        ownership_rows=ownership_rows,
+        next_build_rows=next_build_rows,
         generated_at=generated_at,
         main_page_name=main_page_name,
         teams_page_name=teams_page_name,
