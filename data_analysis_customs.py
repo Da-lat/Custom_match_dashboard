@@ -825,8 +825,8 @@ def build_tiered_teams(
         role: sorted(
             [row for row in role_score_rows if str(row["role"]) == role],
             key=lambda row: (
-                int(row.get("role_rank", len(ROLE_ORDER))),
                 -float(row["role_score"]),
+                int(row.get("role_rank", len(ROLE_ORDER))),
                 -int(row["games"]),
                 str(row["name"]),
             ),
@@ -888,12 +888,11 @@ def build_tiered_teams(
                 role_games = int(row["games"])
                 role_rank = int(row.get("role_rank", len(ROLE_ORDER)))
                 fit_component = float(row.get("role_fit_score", role_fit_score(role_rank)))
-                primary_bonus = 1.0 if role_rank == 1 else 0.0
                 cost = -round(
-                    (primary_bonus * 2_000_000)
-                    + (fit_component * 1_000_000)
-                    + (role_score * 1000)
-                    + role_games
+                    (role_score * 100_000)
+                    + (fit_component * 1_000)
+                    + (role_games * 10)
+                    + (float(row.get("winrate", 0)) * 10)
                 )
                 add_edge(player_node, role_node, 1, cost, (role, name, row))
 
@@ -967,8 +966,8 @@ def build_tiered_teams(
     for rows in by_role.values():
         rows.sort(
             key=lambda row: (
-                int(row.get("role_rank", len(ROLE_ORDER))),
                 -float(row["role_score"]),
+                int(row.get("role_rank", len(ROLE_ORDER))),
                 -int(row["games"]),
                 str(row["name"]),
             )
@@ -5893,7 +5892,7 @@ def render_scoring_formula_explainer(
         ),
         (
             "Role Preference",
-            "Role fit does not add score points. The team builder ranks each player's roles by games played, then role winrate, and only steps down that list when needed to complete teams.",
+            "Role fit does not add visible score points. The team builder uses it only as a small assignment tiebreaker after role score, ranked by games played then role winrate.",
         ),
         (
             "Overall MVP",
@@ -8610,7 +8609,7 @@ def build_dashboard(
       <div class="section-title">
         <div>
           <h2>MVP & Drafted Teams</h2>
-          <p class="note">MVP formula: {escape(weight_summary(MVP_WEIGHTS))}. MVP board requires at least {MIN_PLAYER_GAMES} games; after that, games add a small capped sample score and can also help through positive net wins. Team role score: {escape(weight_summary(ROLE_SCORE_WEIGHTS))}. Role preference does not add score points; the builder still tries each player's most-played role first, ranked by games then role winrate, and only steps down that list when needed. Role Share does not score directly; role games score 5% directly and also affect role-metric reliability. Drafted teams use one TOP, JUNGLE, MID, BOT, and SUPP, without reusing players.</p>
+          <p class="note">MVP formula: {escape(weight_summary(MVP_WEIGHTS))}. MVP board requires at least {MIN_PLAYER_GAMES} games; after that, games add a small capped sample score and can also help through positive net wins. Team role score: {escape(weight_summary(ROLE_SCORE_WEIGHTS))}. Role preference does not add visible score points; the builder uses it only as a small assignment tiebreaker after role score, ranked by games then role winrate. Role Share does not score directly; role games score 5% directly and also affect role-metric reliability. Drafted teams use one TOP, JUNGLE, MID, BOT, and SUPP, without reusing players.</p>
         </div>
       </div>
       <div class="mvp-team-grid">
