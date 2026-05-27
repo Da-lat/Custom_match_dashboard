@@ -5225,7 +5225,7 @@ def render_chemistry_list(title: str, rows: Sequence[dict[str, object]], mood: s
     """
 
 
-def render_chemistry_board(links: Sequence[dict[str, object]]) -> str:
+def render_chemistry_network_chart(links: Sequence[dict[str, object]]) -> str:
     if not links:
         return '<div class="chemistry-empty">Not enough duo samples yet.</div>'
     sorted_links = sorted(
@@ -5236,47 +5236,121 @@ def render_chemistry_board(links: Sequence[dict[str, object]]) -> str:
             str(row.get("label", "")),
         ),
     )
-    max_lift = max(abs(float(link.get("lift_points", 0))) for link in sorted_links) or 1
-    cards = []
-    for index, link in enumerate(sorted_links, start=1):
+    players = []
+    for link in sorted_links:
         pair = tuple(link.get("players", ()))
         if len(pair) != 2:
+            continue
+        for name in pair:
+            if name not in players:
+                players.append(str(name))
+    if len(players) < 2:
+        return '<div class="chemistry-empty">Not enough duo samples yet.</div>'
+
+    width = 980
+    height = 620
+    center_x = width / 2
+    center_y = height / 2
+    radius_x = 382
+    radius_y = 228
+    positions = {}
+    for index, name in enumerate(players):
+        angle = (-94 + (360 / len(players)) * index) * math.pi / 180
+        positions[name] = (
+            center_x + math.cos(angle) * radius_x,
+            center_y + math.sin(angle) * radius_y,
+        )
+
+    max_lift = max(abs(float(link.get("lift_points", 0))) for link in sorted_links) or 1
+    path_parts = []
+    label_parts = []
+    for index, link in enumerate(sorted_links, start=1):
+        pair = tuple(str(name) for name in link.get("players", ()))
+        if len(pair) != 2 or pair[0] not in positions or pair[1] not in positions:
             continue
         lift_points = float(link.get("lift_points", 0))
         lift = float(link.get("lift", safe_div(lift_points, 100)))
         mood = "good" if lift >= 0 else "bad"
-        width_value = max(6.0, min(100.0, abs(lift_points) / max_lift * 100))
-        cards.append(
+        stroke_width = 3.0 + min(6.0, abs(lift_points) / max_lift * 6.0)
+        x1, y1 = positions[pair[0]]
+        x2, y2 = positions[pair[1]]
+        mid_x = (x1 + x2) / 2
+        mid_y = (y1 + y2) / 2
+        out_x = mid_x - center_x
+        out_y = mid_y - center_y
+        out_len = max(1.0, math.hypot(out_x, out_y))
+        if out_len < 46:
+            dx = x2 - x1
+            dy = y2 - y1
+            line_len = max(1.0, math.hypot(dx, dy))
+            out_x = -dy / line_len
+            out_y = dx / line_len
+            if index % 2:
+                out_x *= -1
+                out_y *= -1
+        else:
+            out_x /= out_len
+            out_y /= out_len
+        curve = 54 + (index % 4) * 16
+        control_x = mid_x + out_x * curve
+        control_y = mid_y + out_y * curve
+        dash_attr = ' stroke-dasharray="10 8"' if mood == "bad" else ""
+        path_parts.append(
             f"""
-            <article class="chemistry-link-card chemistry-{html_attr(mood)}">
-              <div class="chemistry-link-rank">{index}</div>
-              <div class="chemistry-link-pair">
-                <strong>{escape(str(pair[0]))}</strong>
-                <span>+</span>
-                <strong>{escape(str(pair[1]))}</strong>
-              </div>
-              <div class="chemistry-link-stats">
-                <b>{pct(float(link.get('winrate', 0)))}</b>
-                <small>{integer(link.get('wins', 0))}-{integer(link.get('losses', 0))}, {integer(link.get('games', 0))} games</small>
-              </div>
-              <div class="chemistry-lift-meter">
-                <span>{signed_integer(round(lift_points))} pts</span>
-                <div class="chemistry-lift-track"><i style="width: {width_value:.1f}%"></i></div>
-              </div>
-            </article>
+            <path class="chemistry-link-path chemistry-link-{mood}" d="M {x1:.1f} {y1:.1f} Q {control_x:.1f} {control_y:.1f} {x2:.1f} {y2:.1f}" stroke-width="{stroke_width:.1f}"{dash_attr}>
+              <title>{escape(str(link.get('label', '-')))}: {integer(link.get('wins', 0))}-{integer(link.get('losses', 0))}, {pct(float(link.get('winrate', 0)))} WR, {signed_integer(round(lift_points))} pts</title>
+            </path>
             """
         )
-    if not cards:
+        label_text = signed_integer(round(lift_points))
+        label_width = max(42, 12 + len(label_text) * 8)
+        label_x = min(max(10.0, control_x - (label_width / 2)), width - label_width - 10)
+        label_y = min(max(22.0, control_y - 12), height - 32)
+        label_parts.append(
+            f"""
+            <g class="chemistry-edge-label chemistry-edge-label-{mood}">
+              <rect x="{label_x:.1f}" y="{label_y:.1f}" width="{label_width:.1f}" height="24" rx="8"></rect>
+              <text x="{label_x + (label_width / 2):.1f}" y="{label_y + 16:.1f}" text-anchor="middle">{escape(label_text)}</text>
+            </g>
+            """
+        )
+
+    node_parts = []
+    for name, (x, y) in positions.items():
+        initials = "".join(part[:1] for part in name.split()[:2]).upper()[:2] or name[:1]
+        label_width = min(122, max(58, len(name) * 8 + 20))
+        label_x = min(max(8.0, x - (label_width / 2)), width - label_width - 8)
+        label_y = y + 38 if y < center_y else y - 58
+        node_parts.append(
+            f"""
+            <g class="chemistry-node">
+              <circle cx="{x:.1f}" cy="{y:.1f}" r="28"></circle>
+              <text class="chemistry-node-initials" x="{x:.1f}" y="{y + 5:.1f}" text-anchor="middle">{escape(initials)}</text>
+              <rect class="chemistry-node-label-bg" x="{label_x:.1f}" y="{label_y:.1f}" width="{label_width:.1f}" height="26" rx="8"></rect>
+              <text class="chemistry-node-label" x="{label_x + (label_width / 2):.1f}" y="{label_y + 17:.1f}" text-anchor="middle">{escape(name)}</text>
+            </g>
+            """
+        )
+
+    if not path_parts:
         return '<div class="chemistry-empty">Not enough duo samples yet.</div>'
     return f"""
-    <div class="chemistry-board" role="img" aria-label="Ranked team chemistry links">
-      <div class="chemistry-board-heading">
-        <span>Pair</span>
-        <span>Result</span>
-        <span>Lift vs baseline</span>
-      </div>
-      {"".join(cards)}
-    </div>
+    <svg class="chemistry-network" viewBox="0 0 {width} {height}" role="img" aria-label="Team chemistry network">
+      <g class="chemistry-grid">
+        <ellipse cx="{center_x:.1f}" cy="{center_y:.1f}" rx="{radius_x:.1f}" ry="{radius_y:.1f}"></ellipse>
+        <ellipse cx="{center_x:.1f}" cy="{center_y:.1f}" rx="{radius_x * 0.58:.1f}" ry="{radius_y * 0.58:.1f}"></ellipse>
+      </g>
+      <g class="chemistry-links">{"".join(path_parts)}</g>
+      <g class="chemistry-edge-labels">{"".join(label_parts)}</g>
+      <g class="chemistry-nodes">{"".join(node_parts)}</g>
+      <g class="chemistry-legend">
+        <rect x="24" y="24" width="210" height="58" rx="10"></rect>
+        <path class="chemistry-link-path chemistry-link-good" d="M 42 46 L 92 46" stroke-width="5"></path>
+        <text x="102" y="50">Overperforms</text>
+        <path class="chemistry-link-path chemistry-link-bad" d="M 42 68 L 92 68" stroke-width="5" stroke-dasharray="10 8"></path>
+        <text x="102" y="72">Underperforms</text>
+      </g>
+    </svg>
     """
 
 
@@ -5323,11 +5397,11 @@ def render_team_chemistry_section(data: dict[str, object]) -> str:
       <div class="section-title">
         <div>
           <h2>Team Chemistry Network</h2>
-          <p class="note">Duo links compare same-side winrate against each player's baseline. The board ranks the biggest chemistry swings first: green overperforms, red underperforms.</p>
+          <p class="note">Duo links compare same-side winrate against each player's baseline. Curved green links overperform; dashed red links underperform; thicker links and badges show bigger swings.</p>
         </div>
       </div>
       <div class="chemistry-layout">
-        <div class="chemistry-visual">{render_chemistry_board(data.get('network_links', []))}</div>
+        <div class="chemistry-visual">{render_chemistry_network_chart(data.get('network_links', []))}</div>
         <div class="chemistry-callout-grid">
           {render_directed_chemistry_card("Do Not Separate", data.get("do_not_separate", {}), "good", "No standout yet")}
           {render_directed_chemistry_card("Avoid Pairing", data.get("avoid_pairing", {}), "bad", "No danger pair yet")}
@@ -5736,113 +5810,79 @@ def render_experimental_css() -> str:
       box-shadow: var(--shadow);
     }
     .chemistry-visual {
-      min-height: 0;
-      padding: 14px;
-    }
-    .chemistry-board {
-      display: grid;
-      gap: 9px;
-    }
-    .chemistry-board-heading,
-    .chemistry-link-card {
-      display: grid;
-      grid-template-columns: minmax(220px, 1.4fr) minmax(120px, 0.55fr) minmax(180px, 0.9fr);
-      gap: 12px;
-      align-items: center;
-    }
-    .chemistry-board-heading {
-      color: var(--muted);
-      font-size: 0.72rem;
-      font-weight: 900;
-      padding: 0 10px 2px 48px;
-      text-transform: uppercase;
-    }
-    .chemistry-link-card {
-      background: #101b28;
-      border: 1px solid var(--line);
-      border-left: 5px solid #62a8ff;
-      border-radius: 8px;
-      min-width: 0;
+      min-height: 520px;
+      overflow-x: auto;
       padding: 10px;
     }
-    .chemistry-link-rank {
-      align-items: center;
-      background: #0b1119;
-      border: 1px solid #263548;
-      border-radius: 8px;
-      color: var(--muted);
-      display: inline-flex;
-      font-size: 0.78rem;
-      font-weight: 950;
-      height: 30px;
-      justify-content: center;
-      width: 30px;
-    }
-    .chemistry-link-pair {
-      align-items: center;
-      display: grid;
-      gap: 7px;
-      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-      min-width: 0;
-    }
-    .chemistry-link-pair strong {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .chemistry-link-pair span {
-      color: var(--gold);
-      font-weight: 950;
-    }
-    .chemistry-link-card {
-      grid-template-columns: 30px minmax(190px, 1.25fr) minmax(110px, 0.55fr) minmax(180px, 0.9fr);
-    }
-    .chemistry-link-stats {
-      display: grid;
-      gap: 2px;
-      min-width: 0;
-    }
-    .chemistry-link-stats b {
-      color: var(--ink);
-      font-size: 1rem;
-      font-variant-numeric: tabular-nums;
-    }
-    .chemistry-link-stats small,
-    .chemistry-lift-meter span {
-      color: var(--muted);
-      font-size: 0.78rem;
-      font-weight: 850;
-    }
-    .chemistry-lift-meter {
-      display: grid;
-      gap: 5px;
-      min-width: 0;
-    }
-    .chemistry-lift-track {
-      background: #263548;
-      border-radius: 999px;
-      height: 9px;
-      overflow: hidden;
-    }
-    .chemistry-lift-track i {
-      background: #62a8ff;
-      border-radius: inherit;
+    .chemistry-network {
       display: block;
-      height: 100%;
+      height: auto;
+      min-width: 820px;
+      width: 100%;
     }
-    .chemistry-link-card.chemistry-good {
-      background: linear-gradient(90deg, rgba(79, 196, 139, 0.14), rgba(16, 27, 40, 0) 44%), #101b28;
-      border-left-color: #4fc48b;
+    .chemistry-grid ellipse {
+      fill: none;
+      stroke: rgba(98, 168, 255, 0.12);
+      stroke-dasharray: 8 11;
+      stroke-width: 1.4;
     }
-    .chemistry-link-card.chemistry-good .chemistry-lift-track i {
-      background: #4fc48b;
+    .chemistry-link-path {
+      fill: none;
+      opacity: 0.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
-    .chemistry-link-card.chemistry-bad {
-      background: linear-gradient(90deg, rgba(255, 111, 129, 0.14), rgba(16, 27, 40, 0) 44%), #101b28;
-      border-left-color: #ff6f81;
+    .chemistry-link-good {
+      stroke: #4fc48b;
     }
-    .chemistry-link-card.chemistry-bad .chemistry-lift-track i {
-      background: #ff6f81;
+    .chemistry-link-bad {
+      stroke: #ff6f81;
+    }
+    .chemistry-edge-label rect {
+      fill: #0b1119;
+      stroke-width: 1.2;
+    }
+    .chemistry-edge-label-good rect {
+      stroke: rgba(79, 196, 139, 0.72);
+    }
+    .chemistry-edge-label-bad rect {
+      stroke: rgba(255, 111, 129, 0.72);
+    }
+    .chemistry-edge-label text {
+      fill: var(--ink);
+      font-size: 11px;
+      font-weight: 950;
+    }
+    .chemistry-node circle {
+      fill: #142338;
+      stroke: #62a8ff;
+      stroke-width: 2.5;
+    }
+    .chemistry-node-initials {
+      fill: var(--ink);
+      font-size: 14px;
+      font-weight: 950;
+      letter-spacing: 0;
+    }
+    .chemistry-node-label-bg {
+      fill: rgba(11, 17, 25, 0.92);
+      stroke: rgba(98, 168, 255, 0.24);
+      stroke-width: 1;
+    }
+    .chemistry-node-label {
+      fill: #dce8f5;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+    .chemistry-legend rect {
+      fill: rgba(11, 17, 25, 0.92);
+      stroke: rgba(98, 168, 255, 0.22);
+    }
+    .chemistry-legend text {
+      fill: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
     }
     .chemistry-empty {
       align-items: center;
@@ -6040,15 +6080,12 @@ def render_experimental_css() -> str:
       .ownership-grid {
         grid-template-columns: 1fr;
       }
-      .chemistry-board-heading {
-        display: none;
+      .chemistry-visual {
+        min-height: 430px;
+        padding: 8px;
       }
-      .chemistry-link-card {
-        grid-template-columns: 30px minmax(0, 1fr);
-      }
-      .chemistry-link-stats,
-      .chemistry-lift-meter {
-        grid-column: 2;
+      .chemistry-network {
+        min-width: 720px;
       }
       .form-toolbar {
         align-items: stretch;
