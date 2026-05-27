@@ -4133,45 +4133,118 @@ def render_head_to_head_css() -> str:
       margin: 0;
     }
     .h2h-role-heatmap .table-wrap {
-      max-height: 640px;
+      max-height: 680px;
       overflow: auto;
+      overscroll-behavior: contain;
     }
     .h2h-matrix {
-      min-width: max-content;
+      table-layout: fixed;
+      width: max-content;
+      min-width: 100%;
+    }
+    .h2h-matrix col.h2h-row-col {
+      width: 156px;
+    }
+    .h2h-matrix col.h2h-value-col {
+      width: 76px;
     }
     .h2h-matrix th,
     .h2h-matrix td {
-      min-width: 82px;
+      width: 76px;
+      min-width: 76px;
+      max-width: 76px;
+      padding: 6px 7px;
+      line-height: 1.1;
+      overflow: hidden;
       text-align: center;
       white-space: nowrap;
     }
     .h2h-matrix th:first-child {
       left: 0;
-      min-width: 126px;
+      width: 156px;
+      min-width: 156px;
+      max-width: 156px;
       position: sticky;
       text-align: left;
       z-index: 2;
     }
     .h2h-matrix thead th {
+      height: 78px;
+      padding: 6px 5px;
       position: sticky;
       top: 0;
+      vertical-align: bottom;
       z-index: 3;
     }
     .h2h-matrix thead th:first-child {
       z-index: 4;
+    }
+    .h2h-column-name,
+    .h2h-row-name,
+    .h2h-row-games {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .h2h-column-name {
+      color: var(--ink);
+      font-size: 0.72rem;
+      line-height: 1.15;
+      margin: 0 auto;
+      max-width: 64px;
+      text-transform: none;
+    }
+    .h2h-row-name {
+      max-width: 130px;
+    }
+    .h2h-row-games {
+      max-width: 130px;
     }
     .h2h-heatmap-cell span,
     .h2h-heatmap-cell small {
       display: block;
     }
     .h2h-heatmap-cell span {
-      font-size: 0.95rem;
+      font-size: 0.84rem;
       font-weight: 950;
       letter-spacing: 0;
     }
     .h2h-heatmap-cell small {
-      font-size: 0.7rem;
+      font-size: 0.62rem;
       opacity: 0.86;
+      margin-top: 1px;
+    }
+    .h2h-heatmap-cell .h2h-cell-games {
+      opacity: 0.72;
+    }
+    @media (max-width: 760px) {
+      .h2h-matrix col.h2h-row-col {
+        width: 132px;
+      }
+      .h2h-matrix col.h2h-value-col {
+        width: 66px;
+      }
+      .h2h-matrix th,
+      .h2h-matrix td {
+        width: 66px;
+        min-width: 66px;
+        max-width: 66px;
+        padding: 5px 5px;
+      }
+      .h2h-matrix th:first-child {
+        width: 132px;
+        min-width: 132px;
+        max-width: 132px;
+      }
+      .h2h-column-name {
+        max-width: 56px;
+        font-size: 0.68rem;
+      }
+      .h2h-row-name,
+      .h2h-row-games {
+        max-width: 108px;
+      }
     }
     .h2h-empty {
       display: none;
@@ -4392,7 +4465,16 @@ def render_head_to_head_heatmaps(rows: Sequence[dict[str, object]]) -> str:
             for row in role_rows
         }
 
-        header = "".join(f"<th>{escape(player)}</th>" for player in players)
+        header = "".join(
+            f'<th class="h2h-column-header" title="{html_attr(player)}">'
+            f'<span class="h2h-column-name">{escape(player)}</span></th>'
+            for player in players
+        )
+        colgroup = (
+            '<colgroup><col class="h2h-row-col">'
+            + "".join('<col class="h2h-value-col">' for _player in players)
+            + "</colgroup>"
+        )
         body = []
         for player in players:
             cells = []
@@ -4414,15 +4496,19 @@ def render_head_to_head_heatmaps(rows: Sequence[dict[str, object]]) -> str:
                 winrate = safe_div(wins, games)
                 color = heat_color(winrate)
                 text_color = heat_text_color(winrate)
+                compact_winrate = pct(winrate).replace(".0%", "%")
                 cells.append(
                     f'<td class="h2h-heatmap-cell" style="background: {color}; color: {text_color}" '
-                    f'data-sort="{winrate:.4f}" title="{html_attr(player)} vs {html_attr(opponent)}: {wins}-{losses} over {games} games">'
-                    f'<span>{wins}-{losses}</span><small>{pct(winrate)} / {games}g</small></td>'
+                    f'data-sort="{winrate:.4f}" title="{html_attr(player)} vs {html_attr(opponent)}: {wins}-{losses} over {games} games ({html_attr(compact_winrate)})">'
+                    f'<span>{wins}-{losses}</span><small>{escape(compact_winrate)}</small><small class="h2h-cell-games">{games}g</small></td>'
                 )
             body.append(
                 f"""
                 <tr data-h2h-heatmap-row data-h2h-role="{html_attr(role)}" data-h2h-heatmap-player="{html_attr(player)}">
-                  <th>{escape(player)}<small>{integer(player_games[player])} games</small></th>
+                  <th title="{html_attr(player)}">
+                    <span class="h2h-row-name">{escape(player)}</span>
+                    <small class="h2h-row-games">{integer(player_games[player])} games</small>
+                  </th>
                   {''.join(cells)}
                 </tr>
                 """
@@ -4437,6 +4523,7 @@ def render_head_to_head_heatmaps(rows: Sequence[dict[str, object]]) -> str:
               </div>
               <div class="table-wrap">
                 <table class="heatmap-table h2h-matrix">
+                  {colgroup}
                   <thead><tr><th>Player</th>{header}</tr></thead>
                   <tbody>{''.join(body)}</tbody>
                 </table>
