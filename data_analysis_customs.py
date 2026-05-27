@@ -4817,30 +4817,6 @@ def render_head_to_head_page(
         if row
     )
 
-    chart_rows = sorted(
-        rows,
-        key=lambda row: (
-            -float(row.get("dominance", 0)),
-            -int(row.get("games", 0)),
-            str(row.get("matchup", "")),
-        ),
-    )
-    chart_html = []
-    for row in chart_rows:
-        winrate = float(row.get("winrate", 0))
-        chart_html.append(
-            f"""
-            <div class="h2h-chart-row" {h2h_item_attrs(row)}>
-              <div class="h2h-chart-label">
-                <strong>{escape(str(row.get("chart_label", "-")))}</strong>
-                <small>{escape(str(row.get("role", "-")))} · {escape(str(row.get("record", "-")))} over {integer(row.get("games", 0))} games</small>
-              </div>
-              <div class="h2h-track"><div class="h2h-fill" style="width: {max(3.0, winrate * 100):.2f}%"></div></div>
-              <b>{escape(pct(winrate))}</b>
-            </div>
-            """
-        )
-
     empty_html = (
         '<div class="empty-state">No same-role head-to-head matchups have reached 3 games yet.</div>'
         if not rows
@@ -4902,11 +4878,7 @@ def render_head_to_head_page(
       {empty_html}
       {render_head_to_head_heatmaps(rows)}
       <div class="h2h-highlight-grid">{highlights}</div>
-      <section class="chart-panel">
-        <h3>Strongest Head To Head Edges</h3>
-        <div class="h2h-chart">{"".join(chart_html)}</div>
-        <div class="empty-state h2h-empty" data-h2h-empty>No matchups match the selected filters.</div>
-      </section>
+      <div class="empty-state h2h-empty" data-h2h-empty>No matchups match the selected filters.</div>
       {render_head_to_head_table(rows)}
     </section>
     {render_champion_head_to_head_section(champion_rows, pilot_champion_rows)}
