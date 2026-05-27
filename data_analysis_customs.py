@@ -33,6 +33,8 @@ PRACTICE_PICK_MIN_GAMES = 2
 PRACTICE_PICK_MAX_WINRATE = 0.45
 PRACTICE_PICK_BASELINE_GAP = 0.05
 PRACTICE_PICK_RELIABILITY_GAMES = 6
+VIBES_MIN_PLAYER_GAMES = 2
+VIBES_MIN_SHARED_GAMES = 2
 ROLE_RELIABILITY_GAMES = 8
 GAME_SCORE_TARGET = 20
 TEAM_COMBO_MIN_GAMES = {
@@ -1769,6 +1771,26 @@ def format_vibe_points(value: object) -> str:
     return f"{signed_integer(rounded)} pts"
 
 
+def vibe_rating_from_points(value: float) -> float:
+    return clamp(50 + value, 0, 100)
+
+
+def format_vibe_rating(value: object) -> str:
+    return f"{round(float(value))}/100"
+
+
+def vibe_label(value: float) -> str:
+    if value >= 12:
+        return "Major buff"
+    if value >= 5:
+        return "Positive aura"
+    if value <= -12:
+        return "Major debuff"
+    if value <= -5:
+        return "Negative aura"
+    return "Neutral"
+
+
 def experimental_vibes_data(
     appearances: Sequence[Appearance],
     player_rows: Sequence[dict[str, object]],
@@ -1781,7 +1803,7 @@ def experimental_vibes_data(
             "winrate": float(row.get("winrate", 0)),
         }
         for row in visible_players
-        if str(row.get("name", ""))
+        if str(row.get("name", "")) and int(row.get("games", 0)) >= VIBES_MIN_PLAYER_GAMES
     }
 
     grouped: dict[tuple[int, str], set[str]] = defaultdict(set)
@@ -1797,7 +1819,7 @@ def experimental_vibes_data(
     )
 
     for (_match_id, side), names in grouped.items():
-        clean_names = sorted(name for name in names if name)
+        clean_names = sorted(name for name in names if name in player_stats)
         if len(clean_names) < 2:
             continue
         won = 1 if side == "win" else 0
@@ -1810,12 +1832,11 @@ def experimental_vibes_data(
             pair_stats[pair]["games"] += 1
             pair_stats[pair]["wins"] += won
 
-    directed_rows = []
     impacts_by_source: dict[str, list[dict[str, object]]] = defaultdict(list)
     for pair, values in pair_stats.items():
         games = int(values["games"])
         wins = int(values["wins"])
-        if games <= 0:
+        if games < VIBES_MIN_SHARED_GAMES:
             continue
         winrate = safe_div(wins, games)
         pair_reliability = clamp((games / 8) ** 0.5)
@@ -1851,11 +1872,10 @@ def experimental_vibes_data(
                 "adjusted_lift_points": lift * reliability * 100,
                 "reliability": reliability,
             }
-            directed_rows.append(row)
             impacts_by_source[source].append(row)
 
     player_vibe_rows = []
-    all_names = sorted(set(player_stats) | set(teammates_by_player))
+    all_names = sorted(player_stats)
     for name in all_names:
         stats = player_stats.get(name, {})
         games = int(stats.get("games", 0))
@@ -1905,6 +1925,10 @@ def experimental_vibes_data(
         )
         best_points = float(best_target.get("adjusted_lift_points", 0)) if best_target else 0
         worst_points = float(worst_target.get("adjusted_lift_points", 0)) if worst_target else 0
+        adjusted_vibe_points = adjusted_vibe_lift * 100
+        positive_targets = sum(1 for row in impacts if float(row.get("lift", 0)) > 0)
+        negative_targets = sum(1 for row in impacts if float(row.get("lift", 0)) < 0)
+        interaction_games = sum(int(row.get("games", 0)) for row in impacts)
         player_vibe_rows.append(
             {
                 "name": name,
@@ -1916,10 +1940,13 @@ def experimental_vibes_data(
                 "won_with_unique_teammates": len(won_with),
                 "win_coverage": safe_div(len(won_with), len(teammates)),
                 "vibe_lift_points": vibe_lift * 100,
-                "adjusted_vibe_points": adjusted_vibe_lift * 100,
-                "positive_targets": sum(1 for row in impacts if float(row.get("lift", 0)) > 0),
-                "negative_targets": sum(1 for row in impacts if float(row.get("lift", 0)) < 0),
-                "interaction_games": sum(int(row.get("games", 0)) for row in impacts),
+                "adjusted_vibe_points": adjusted_vibe_points,
+                "vibe_rating": vibe_rating_from_points(adjusted_vibe_points),
+                "vibe_label": vibe_label(adjusted_vibe_points),
+                "positive_targets": positive_targets,
+                "negative_targets": negative_targets,
+                "link_balance": positive_targets - negative_targets,
+                "interaction_games": interaction_games,
                 "best_target": (
                     f"{best_target.get('target', '-')} ({format_vibe_points(best_points)})"
                     if best_target
@@ -1970,30 +1997,12 @@ def experimental_vibes_data(
             str(row.get("name", "")),
         ),
     )
-    worst_interactions = sorted(
-        directed_rows,
-        key=lambda row: (
-            float(row.get("adjusted_lift_points", 0)),
-            -int(row.get("games", 0)),
-            str(row.get("label", "")),
-        ),
-    )
-    best_interactions = sorted(
-        directed_rows,
-        key=lambda row: (
-            -float(row.get("adjusted_lift_points", 0)),
-            -int(row.get("games", 0)),
-            str(row.get("label", "")),
-        ),
-    )
     return {
         "player_rows": player_vibe_rows,
         "buff_rows": buff_rows,
         "debuff_rows": highlight_player_rows,
         "spread_rows": spread_rows,
         "volatile_rows": volatile_rows,
-        "worst_interactions": worst_interactions,
-        "best_interactions": best_interactions,
     }
 
 
@@ -5789,6 +5798,7 @@ def render_vibe_highlight_card(
     mood: str,
     fallback: str,
     detail: str,
+    metric: str = "",
 ) -> str:
     if not row:
         return f"""
@@ -5802,29 +5812,43 @@ def render_vibe_highlight_card(
     <article class="vibe-card vibe-{html_attr(mood)}">
       <span>{escape(title)}</span>
       <strong>{escape(str(row.get('name', '-')))}</strong>
-      <b>{format_vibe_points(row.get('adjusted_vibe_points', 0))}</b>
+      <b>{escape(metric or f"Vibe {format_vibe_rating(row.get('vibe_rating', 50))}")}</b>
       <small>{escape(detail)}</small>
     </article>
     """
 
 
-def render_vibe_interaction_list(
-    title: str, rows: Sequence[dict[str, object]], mood: str
+def render_vibe_player_board(
+    title: str, rows: Sequence[dict[str, object]], mood: str, *, limit: int = 10
 ) -> str:
     items = []
-    for row in rows[:8]:
+    for row in rows[:limit]:
+        impact = float(row.get("adjusted_vibe_points", 0))
+        width = min(50.0, abs(impact) * 1.6)
+        fill_style = (
+            f"left: 50%; width: {width:.2f}%"
+            if impact >= 0
+            else f"right: 50%; width: {width:.2f}%"
+        )
+        row_mood = "good" if impact >= 0 else "bad"
         items.append(
             f"""
-            <li class="vibe-interaction vibe-{html_attr(mood)}">
-              <strong>{escape(str(row.get('label', '-')))}</strong>
-              <span>{escape(str(row.get('record', '-')))} together, {pct(float(row.get('winrate', 0)))} WR</span>
-              <small>{pct(float(row.get('winrate', 0)))} with {escape(str(row.get('source', '-')))} vs {pct(float(row.get('without_winrate', 0)))} without them - {format_vibe_points(row.get('adjusted_lift_points', 0))}</small>
+            <li class="vibe-impact-row vibe-{html_attr(row_mood)}">
+              <div class="vibe-impact-name">
+                <strong>{escape(str(row.get('name', '-')))}</strong>
+                <small>{format_vibe_rating(row.get('vibe_rating', 50))} rating / {integer(row.get('games', 0))} games / {integer(row.get('unique_teammates', 0))} teammates</small>
+              </div>
+              <div class="vibe-impact-meter" aria-hidden="true">
+                <span class="vibe-impact-zero"></span>
+                <span class="vibe-impact-fill vibe-fill-{html_attr(row_mood)}" style="{html_attr(fill_style)}"></span>
+              </div>
+              <b>{format_vibe_points(impact)}</b>
             </li>
             """
         )
     if not items:
         items.append(
-            '<li class="vibe-interaction"><strong>No sample yet</strong><span>Needs shared games.</span></li>'
+            '<li class="vibe-impact-row"><strong>No sample yet</strong><small>Needs shared games.</small></li>'
         )
     return f"""
     <article class="vibe-panel">
@@ -5847,20 +5871,25 @@ def render_vibes_section(data: dict[str, object]) -> str:
         ("Unique Teammates", "unique_teammates", integer, "number"),
         ("Won With", "won_with_unique_teammates", integer, "number"),
         ("Win Spread", "win_coverage", lambda value: pct(float(value)), "number"),
-        ("Vibe Impact", "adjusted_vibe_points", format_vibe_points, "number"),
+        ("Vibe Rating", "vibe_rating", format_vibe_rating, "number"),
+        ("Impact", "adjusted_vibe_points", format_vibe_points, "number"),
+        ("Aura", "vibe_label", str, "text"),
+        ("Buff Targets", "positive_targets", integer, "number"),
         ("Debuff Targets", "negative_targets", integer, "number"),
-        ("Worst Hit", "worst_target", str, "text"),
-        ("Best Link", "best_target", str, "text"),
+        ("Link Balance", "link_balance", signed_integer, "number"),
+        ("Sample", "interaction_games", integer, "number"),
     ]
     debuff_detail = (
-        f"{integer(debuff.get('negative_targets', 0))} teammate links trend down. "
-        f"Worst hit: {debuff.get('worst_target', '-')}."
+        f"{format_vibe_points(debuff.get('adjusted_vibe_points', 0))} impact. "
+        f"{integer(debuff.get('negative_targets', 0))} links down vs "
+        f"{integer(debuff.get('positive_targets', 0))} up."
         if debuff
         else ""
     )
     buff_detail = (
-        f"{integer(buff.get('positive_targets', 0))} teammate links trend up. "
-        f"Best link: {buff.get('best_target', '-')}."
+        f"{format_vibe_points(buff.get('adjusted_vibe_points', 0))} impact. "
+        f"{integer(buff.get('positive_targets', 0))} links up vs "
+        f"{integer(buff.get('negative_targets', 0))} down."
         if buff
         else ""
     )
@@ -5871,8 +5900,8 @@ def render_vibes_section(data: dict[str, object]) -> str:
         else ""
     )
     volatile_detail = (
-        f"Biggest gap between best and worst teammate effects: "
-        f"{format_vibe_points(volatile.get('vibe_range_points', 0))}."
+        f"Biggest spread between good and bad teammate effects. "
+        f"Overall impact: {format_vibe_points(volatile.get('adjusted_vibe_points', 0))}."
         if volatile
         else ""
     )
@@ -5881,18 +5910,18 @@ def render_vibes_section(data: dict[str, object]) -> str:
       <div class="section-title">
         <div>
           <h2>Vibes</h2>
-          <p class="note">A player-centered chemistry model. For each teammate, it compares their winrate with this player against their winrate without this player, then sample-weights the swing. Win Spread is unique teammates won with divided by unique teammates played with. One-game links count, small samples are dampened, and headline cards prefer 5+ game players.</p>
+          <p class="note">A player-centered chemistry model. Players need at least {VIBES_MIN_PLAYER_GAMES} games, and teammate effects need at least {VIBES_MIN_SHARED_GAMES} shared games. Vibe Rating is 50 plus sample-weighted impact points, where below 50 is a debuff and above 50 is a buff. Win Spread is unique teammates won with divided by unique teammates played with.</p>
         </div>
       </div>
       <div class="vibe-highlight-grid">
         {render_vibe_highlight_card("Biggest Vibes Debuff", debuff, "bad", "No debuff yet", debuff_detail)}
         {render_vibe_highlight_card("Biggest Vibes Buff", buff, "good", "No buff yet", buff_detail)}
-        {render_vibe_highlight_card("Best Win Spread", spread, "good", "No spread yet", spread_detail)}
-        {render_vibe_highlight_card("Most Volatile Aura", volatile, "neutral", "No volatility yet", volatile_detail)}
+        {render_vibe_highlight_card("Best Win Spread", spread, "good", "No spread yet", spread_detail, pct(float(spread.get('win_coverage', 0))) if spread else "")}
+        {render_vibe_highlight_card("Most Volatile Aura", volatile, "neutral", "No volatility yet", volatile_detail, format_vibe_points(volatile.get('vibe_range_points', 0)) if volatile else "")}
       </div>
       <div class="vibe-board-grid">
-        {render_vibe_interaction_list("Hardest Teammate Debuffs", data.get("worst_interactions", []), "bad")}
-        {render_vibe_interaction_list("Strongest Teammate Buffs", data.get("best_interactions", []), "good")}
+        {render_vibe_player_board("Vibes Debuff Rankings", data.get("debuff_rows", []), "bad")}
+        {render_vibe_player_board("Vibes Buff Rankings", data.get("buff_rows", []), "good")}
       </div>
       {render_table("vibes-summary", "Vibes Summary", rows, columns)}
     </section>
@@ -6495,24 +6524,68 @@ def render_experimental_css() -> str:
       margin: 0;
       padding: 0;
     }
-    .vibe-interaction {
+    .vibe-impact-row {
+      align-items: center;
       background: #101b28;
       border-left: 4px solid #62a8ff;
       border-radius: 7px;
       display: grid;
-      gap: 3px;
+      gap: 12px;
+      grid-template-columns: minmax(145px, 0.9fr) minmax(150px, 1.2fr) 72px;
       padding: 10px;
     }
-    .vibe-interaction strong,
-    .vibe-interaction span,
-    .vibe-interaction small {
+    .vibe-impact-name {
+      min-width: 0;
+    }
+    .vibe-impact-row strong,
+    .vibe-impact-row small,
+    .vibe-impact-row b {
       display: block;
     }
-    .vibe-interaction span,
-    .vibe-interaction small {
+    .vibe-impact-row strong,
+    .vibe-impact-row small {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .vibe-impact-row small {
       color: var(--muted);
       font-size: 0.82rem;
       line-height: 1.35;
+    }
+    .vibe-impact-row b {
+      color: var(--ink);
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+    .vibe-impact-meter {
+      background: #0b121c;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 999px;
+      height: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+    .vibe-impact-zero {
+      background: rgba(255, 255, 255, 0.32);
+      bottom: 0;
+      left: calc(50% - 1px);
+      position: absolute;
+      top: 0;
+      width: 2px;
+      z-index: 2;
+    }
+    .vibe-impact-fill {
+      border-radius: inherit;
+      bottom: 0;
+      position: absolute;
+      top: 0;
+    }
+    .vibe-fill-good {
+      background: linear-gradient(90deg, #3a9f73, #79e2a8);
+    }
+    .vibe-fill-bad {
+      background: linear-gradient(90deg, #ff9eab, #ff5f73);
     }
     .vibe-good { border-left-color: #4fc48b; }
     .vibe-bad { border-left-color: #ff6f81; }
@@ -6606,6 +6679,13 @@ def render_experimental_css() -> str:
       }
       .chemistry-network {
         min-width: 720px;
+      }
+      .vibe-impact-row {
+        grid-template-columns: minmax(0, 1fr) 64px;
+      }
+      .vibe-impact-meter {
+        grid-column: 1 / -1;
+        grid-row: 2;
       }
       .form-toolbar {
         align-items: stretch;
