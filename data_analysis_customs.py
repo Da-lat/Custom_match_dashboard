@@ -3573,7 +3573,7 @@ def team_combo_rows(
 
 
 def head_to_head_rows(
-    appearances: Sequence[Appearance], minimum_games: int = 3
+    appearances: Sequence[Appearance], minimum_games: int = 1
 ) -> list[dict[str, object]]:
     grouped: dict[int, list[Appearance]] = defaultdict(list)
     for appearance in appearances:
@@ -3694,7 +3694,7 @@ def head_to_head_rows(
 
 
 def champion_head_to_head_rows(
-    appearances: Sequence[Appearance], minimum_games: int = 2
+    appearances: Sequence[Appearance], minimum_games: int = 1
 ) -> list[dict[str, object]]:
     grouped: dict[int, list[Appearance]] = defaultdict(list)
     for appearance in appearances:
@@ -3816,7 +3816,7 @@ def champion_head_to_head_rows(
 
 
 def pilot_champion_head_to_head_rows(
-    appearances: Sequence[Appearance], minimum_games: int = 2
+    appearances: Sequence[Appearance], minimum_games: int = 1
 ) -> list[dict[str, object]]:
     grouped: dict[int, list[Appearance]] = defaultdict(list)
     for appearance in appearances:
@@ -4498,7 +4498,7 @@ def render_head_to_head_table(rows: Sequence[dict[str, object]]) -> str:
     <section class="table-panel">
       <div class="section-heading">
         <h3>All Head To Head Matchups</h3>
-        <small>Same-role opponent pairs with at least 3 games</small>
+        <small>Same-role opponent pairs, including one-game samples</small>
       </div>
       <div class="table-wrap">
         <table class="h2h-sortable sortable-table">
@@ -4568,7 +4568,7 @@ def render_champion_head_to_head_table(rows: Sequence[dict[str, object]]) -> str
     <section class="table-panel">
       <div class="section-heading">
         <h3>All Champion Lane Matchups</h3>
-        <small>Champion-vs-champion pairs in the same role with at least 2 games</small>
+        <small>Champion-vs-champion pairs in the same role, including one-game samples</small>
       </div>
       <div class="table-wrap">
         <table class="h2h-sortable sortable-table">
@@ -4615,14 +4615,14 @@ def render_pilot_champion_head_to_head_table(rows: Sequence[dict[str, object]]) 
     if not body:
         body.append(
             """
-            <tr><td colspan="8" class="empty-cell">No exact player/champion lane matchup has repeated twice yet.</td></tr>
+            <tr><td colspan="8" class="empty-cell">No exact player/champion lane matchups available yet.</td></tr>
             """
         )
     return f"""
     <section class="table-panel">
       <div class="section-heading">
         <h3>Pilot-Specific Champion Duels</h3>
-        <small>Exact player/champion vs player/champion pairs are sparse, so this table starts at 2 games and should be treated as anecdotal.</small>
+        <small>Exact player/champion vs player/champion pairs are sparse, so one-game samples should be treated as directional.</small>
       </div>
       <div class="table-wrap">
         <table class="h2h-sortable sortable-table">
@@ -4823,7 +4823,7 @@ def render_head_to_head_page(
     )
 
     empty_html = (
-        '<div class="empty-state">No same-role head-to-head matchups have reached 3 games yet.</div>'
+        '<div class="empty-state">No same-role head-to-head matchups available yet.</div>'
         if not rows
         else ""
     )
@@ -4841,7 +4841,7 @@ def render_head_to_head_page(
     <div class="topline">
       <div>
         <h1>LoL Head To Head</h1>
-        <p>Same-role rivalries with at least 3 games played against each other.</p>
+        <p>Same-role rivalries, including one-game samples.</p>
       </div>
       {render_refresh_control(generated_at)}
     </div>
