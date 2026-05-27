@@ -258,6 +258,10 @@ def teams_page_path(output_path: Path) -> Path:
     return output_path.with_name(f"{output_path.stem}_teams{output_path.suffix}")
 
 
+def draft_coach_page_path(output_path: Path) -> Path:
+    return output_path.with_name(f"{output_path.stem}_draft_coach{output_path.suffix}")
+
+
 def showcases_page_path(output_path: Path) -> Path:
     return output_path.with_name(f"{output_path.stem}_showcases{output_path.suffix}")
 
@@ -4739,6 +4743,7 @@ def render_head_to_head_page(
     generated_at: str,
     main_page_name: str,
     teams_page_name: str,
+    draft_coach_page_name: str,
     showcases_page_name: str,
     experimental_page_name: str,
 ) -> str:
@@ -4851,7 +4856,7 @@ def render_head_to_head_page(
     <a href="{html_attr(main_page_name)}#role-pools">Role Pools</a>
     <a href="{html_attr(main_page_name)}#combos">Combos</a>
     <a href="{html_attr(teams_page_name)}#teams">Teams</a>
-    <a href="{html_attr(teams_page_name)}#target-bans">Bans</a>
+    <a href="{html_attr(draft_coach_page_name)}#draft-coach">Draft Coach</a>
     <a href="{html_attr(showcases_page_name)}">Showcases</a>
     <a href="{html_attr(experimental_page_name)}#custom-meta">Experimental</a>
     <a href="{html_attr(main_page_name)}#deep-dive">Deep Dive</a>
@@ -5975,6 +5980,7 @@ def render_experimental_page(
     generated_at: str,
     main_page_name: str,
     teams_page_name: str,
+    draft_coach_page_name: str,
     showcases_page_name: str,
     head_to_head_page_name: str,
 ) -> str:
@@ -6019,7 +6025,7 @@ def render_experimental_page(
     <a href="{html_attr(main_page_name)}#role-pools">Role Pools</a>
     <a href="{html_attr(main_page_name)}#combos">Combos</a>
     <a href="{html_attr(teams_page_name)}#teams">Teams</a>
-    <a href="{html_attr(teams_page_name)}#target-bans">Bans</a>
+    <a href="{html_attr(draft_coach_page_name)}#draft-coach">Draft Coach</a>
     <a href="{html_attr(showcases_page_name)}">Showcases</a>
     <a href="#custom-meta">Experimental</a>
     <a href="{html_attr(main_page_name)}#deep-dive">Deep Dive</a>
@@ -6731,11 +6737,11 @@ def render_target_ban_section(
         """
 
     return f"""
-    <section id="target-bans" class="section">
+    <section id="draft-coach" class="section">
       <div class="section-title">
         <div>
-          <h2>Target Ban Planner</h2>
-          <p class="note">Top player/champion ban targets use adjusted winrate, sample size, KDA, takedowns, and lift against that player's baseline. General list uses at least {TARGET_BAN_MIN_GAMES} games where possible.</p>
+          <h2>Draft Coach</h2>
+          <p class="note">Target bans, tournament draft simulation, best available picks, and practice picks in one board. Ban targets use adjusted winrate, sample size, KDA, takedowns, MVP rating, and lift against that player's baseline.</p>
         </div>
       </div>
       {render_target_ban_cards(target_ban_rows)}
@@ -6781,7 +6787,7 @@ def render_target_ban_section(
         <section class="draft-coach-panel">
           <div class="section-heading">
             <div>
-              <h3>Draft Coach 2.0</h3>
+              <h3>Tournament Draft Simulation</h3>
               <small>Tournament order: Blue/Red alternating bans, then B1, R1+R2, B2+B3, R3+R4, B4+B5, R5. Main cards show the likely simulation; Ideal tags show first choice before earlier blocks.</small>
             </div>
           </div>
@@ -8401,6 +8407,7 @@ def render_player_showcase_page(
     generated_at: str,
     main_page_name: str,
     teams_page_name: str,
+    draft_coach_page_name: str,
     head_to_head_page_name: str,
     experimental_page_name: str,
 ) -> str:
@@ -8867,7 +8874,7 @@ def render_player_showcase_page(
     <a href="{html_attr(main_page_name)}#role-pools">Role Pools</a>
     <a href="{html_attr(main_page_name)}#combos">Combos</a>
     <a href="{html_attr(teams_page_name)}#teams">Teams</a>
-    <a href="{html_attr(teams_page_name)}#target-bans">Bans</a>
+    <a href="{html_attr(draft_coach_page_name)}#draft-coach">Draft Coach</a>
     <a href="#{html_attr(first_slug)}">Showcases</a>
     <a href="{html_attr(experimental_page_name)}#custom-meta">Experimental</a>
   </nav>
@@ -9417,11 +9424,13 @@ def build_dashboard(
     last_date = format_date(last_timestamp)
     generated_at = format_refresh_timestamp(datetime.now(LOCAL_TZ))
     teams_output_path = teams_page_path(output_path)
+    draft_coach_output_path = draft_coach_page_path(output_path)
     showcase_output_path = showcases_page_path(output_path)
     head_to_head_output_path = head_to_head_page_path(output_path)
     experimental_output_path = experimental_page_path(output_path)
     main_page_name = output_path.name
     teams_page_name = teams_output_path.name
+    draft_coach_page_name = draft_coach_output_path.name
     showcases_page_name = showcase_output_path.name
     head_to_head_page_name = head_to_head_output_path.name
     experimental_page_name = experimental_output_path.name
@@ -11382,7 +11391,7 @@ def build_dashboard(
     <a href="#role-pools">Role Pools</a>
     <a href="#combos">Combos</a>
     <a href="{html_attr(teams_page_name)}#teams">Teams</a>
-    <a href="{html_attr(teams_page_name)}#target-bans">Bans</a>
+    <a href="{html_attr(draft_coach_page_name)}#draft-coach">Draft Coach</a>
     <a href="{html_attr(showcases_page_name)}">Showcases</a>
     <a href="{html_attr(experimental_page_name)}#custom-meta">Experimental</a>
     <a href="#deep-dive">Deep Dive</a>
@@ -11862,7 +11871,7 @@ def build_dashboard(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>LoL Teams & Bans</title>
+  <title>LoL Teams</title>
   <style>{shared_style}</style>
 </head>
 <body>
@@ -11870,8 +11879,8 @@ def build_dashboard(
   <header>
     <div class="topline">
       <div>
-        <h1>LoL Teams & Bans</h1>
-        <p>Drafted team tiers, MVP scores, and the target-ban planner for the same {len(matches)} match dataset.</p>
+        <h1>LoL Teams</h1>
+        <p>Drafted team tiers, MVP scores, and scoring formulas for the same {len(matches)} match dataset.</p>
       </div>
       {render_refresh_control(generated_at)}
     </div>
@@ -11886,7 +11895,7 @@ def build_dashboard(
     <a href="{html_attr(main_page_name)}#role-pools">Role Pools</a>
     <a href="{html_attr(main_page_name)}#combos">Combos</a>
     <a href="#teams">Teams</a>
-    <a href="#target-bans">Bans</a>
+    <a href="{html_attr(draft_coach_page_name)}#draft-coach">Draft Coach</a>
     <a href="{html_attr(showcases_page_name)}">Showcases</a>
     <a href="{html_attr(experimental_page_name)}#custom-meta">Experimental</a>
     <a href="{html_attr(main_page_name)}#deep-dive">Deep Dive</a>
@@ -11911,8 +11920,49 @@ def build_dashboard(
       </div>
     </section>
 
-    {render_target_ban_section(display_target_ban_rows, display_practice_pick_rows, display_player_rows)}
     {render_scoring_formula_explainer(mvp_rows, role_score_rows, display_player_rows, display_player_role_rows)}
+  </main>
+  <script>{shared_script}</script>
+</body>
+</html>
+"""
+
+    draft_coach_html = f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LoL Draft Coach</title>
+  <style>{shared_style}</style>
+</head>
+<body>
+  {render_hidden_head_to_head_link(head_to_head_page_name)}
+  <header>
+    <div class="topline">
+      <div>
+        <h1>LoL Draft Coach</h1>
+        <p>Target bans, tournament draft simulation, pick recommendations, and practice picks for 40-champion custom drafts.</p>
+      </div>
+      {render_refresh_control(generated_at)}
+    </div>
+  </header>
+  <nav>
+    <a href="{html_attr(main_page_name)}#overview">Overview</a>
+    <a href="{html_attr(main_page_name)}#awards">Awards</a>
+    <a href="{html_attr(main_page_name)}#match-history">Matches</a>
+    <a href="{html_attr(main_page_name)}#players">Players</a>
+    <a href="{html_attr(main_page_name)}#champion-pools">Champion Pools</a>
+    <a href="{html_attr(main_page_name)}#champions">Champions</a>
+    <a href="{html_attr(main_page_name)}#role-pools">Role Pools</a>
+    <a href="{html_attr(main_page_name)}#combos">Combos</a>
+    <a href="{html_attr(teams_page_name)}#teams">Teams</a>
+    <a href="#draft-coach">Draft Coach</a>
+    <a href="{html_attr(showcases_page_name)}">Showcases</a>
+    <a href="{html_attr(experimental_page_name)}#custom-meta">Experimental</a>
+    <a href="{html_attr(main_page_name)}#deep-dive">Deep Dive</a>
+  </nav>
+  <main>
+    {render_target_ban_section(display_target_ban_rows, display_practice_pick_rows, display_player_rows)}
   </main>
   <script>{shared_script}{render_ban_planner_script(display_target_ban_rows, display_target_pick_rows, display_player_rows, champion_h2h_rows)}</script>
 </body>
@@ -11933,6 +11983,7 @@ def build_dashboard(
         generated_at=generated_at,
         main_page_name=main_page_name,
         teams_page_name=teams_page_name,
+        draft_coach_page_name=draft_coach_page_name,
         head_to_head_page_name=head_to_head_page_name,
         experimental_page_name=experimental_page_name,
     )
@@ -11945,6 +11996,7 @@ def build_dashboard(
         generated_at=generated_at,
         main_page_name=main_page_name,
         teams_page_name=teams_page_name,
+        draft_coach_page_name=draft_coach_page_name,
         showcases_page_name=showcases_page_name,
         experimental_page_name=experimental_page_name,
     )
@@ -11961,6 +12013,7 @@ def build_dashboard(
         generated_at=generated_at,
         main_page_name=main_page_name,
         teams_page_name=teams_page_name,
+        draft_coach_page_name=draft_coach_page_name,
         showcases_page_name=showcases_page_name,
         head_to_head_page_name=head_to_head_page_name,
     )
@@ -11968,6 +12021,7 @@ def build_dashboard(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(html, encoding="utf-8")
     teams_output_path.write_text(teams_html, encoding="utf-8")
+    draft_coach_output_path.write_text(draft_coach_html, encoding="utf-8")
     showcase_output_path.write_text(showcase_html, encoding="utf-8")
     head_to_head_output_path.write_text(head_to_head_html, encoding="utf-8")
     experimental_output_path.write_text(experimental_html, encoding="utf-8")
@@ -12017,6 +12071,7 @@ def main() -> None:
     build_dashboard(input_path, output_path, api_url=api_url, api_key=api_key)
     print(f"Wrote {output_path.resolve()}")
     print(f"Wrote {teams_page_path(output_path).resolve()}")
+    print(f"Wrote {draft_coach_page_path(output_path).resolve()}")
     print(f"Wrote {showcases_page_path(output_path).resolve()}")
     print(f"Wrote {head_to_head_page_path(output_path).resolve()}")
     print(f"Wrote {experimental_page_path(output_path).resolve()}")
