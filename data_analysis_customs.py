@@ -1008,15 +1008,19 @@ def build_tiered_teams(
 
 
 def meta_tier_label(value: float) -> str:
-    if value >= 78:
+    if value >= 70:
         return "S"
-    if value >= 68:
+    if value >= 60:
         return "A"
-    if value >= 58:
+    if value >= 50:
         return "B"
-    if value >= 48:
+    if value >= 40:
         return "C"
-    return "D"
+    if value >= 30:
+        return "D"
+    if value >= 20:
+        return "E"
+    return "F"
 
 
 def format_meta_pilot(row: dict[str, object] | None) -> str:
@@ -3689,18 +3693,20 @@ def radar_grid_points(level: float, *, center: float = 96, radius: float = 70) -
     return radar_points([level] * len(FINGERPRINT_METRICS), center=center, radius=radius)
 
 
-def render_fingerprint_radar(row: dict[str, object]) -> str:
+def render_fingerprint_radar(row: dict[str, object], *, large: bool = False) -> str:
     values = [float(row.get(key, 0)) for _label, key in FINGERPRINT_METRICS]
     axes = []
     labels = []
-    center = 96
-    radius = 70
+    size = 320 if large else 280
+    center = size / 2
+    radius = 88 if large else 76
+    label_radius = radius + (18 if large else 12)
     for index, (label, _key) in enumerate(FINGERPRINT_METRICS):
         angle = (-90 + (360 / len(FINGERPRINT_METRICS)) * index) * math.pi / 180
         x = center + (math.cos(angle) * radius)
         y = center + (math.sin(angle) * radius)
-        label_x = center + (math.cos(angle) * (radius + 18))
-        label_y = center + (math.sin(angle) * (radius + 18))
+        label_x = center + (math.cos(angle) * label_radius)
+        label_y = center + (math.sin(angle) * label_radius)
         anchor = "middle"
         if label_x < center - 10:
             anchor = "end"
@@ -3714,14 +3720,15 @@ def render_fingerprint_radar(row: dict[str, object]) -> str:
         )
 
     rings = "\n".join(
-        f'<polygon points="{radar_grid_points(level)}" />'
+        f'<polygon points="{radar_grid_points(level, center=center, radius=radius)}" />'
         for level in (0.25, 0.50, 0.75, 1.0)
     )
+    class_name = "fingerprint-radar fingerprint-radar-large" if large else "fingerprint-radar"
     return f"""
-    <svg class="fingerprint-radar" viewBox="0 0 192 192" role="img" aria-label="{html_attr(row.get('name', 'Player'))} fingerprint radar">
+    <svg class="{class_name}" viewBox="0 0 {size} {size}" role="img" aria-label="{html_attr(row.get('name', 'Player'))} fingerprint radar">
       <g class="radar-grid">{rings}</g>
       <g class="radar-axis">{"".join(axes)}</g>
-      <polygon class="radar-fill" points="{radar_points(values)}" />
+      <polygon class="radar-fill" points="{radar_points(values, center=center, radius=radius)}" />
       <g class="radar-labels">{"".join(labels)}</g>
     </svg>
     """
@@ -3759,6 +3766,35 @@ def render_fingerprint_cards(rows: Sequence[dict[str, object]]) -> str:
             """
         )
     return "".join(cards)
+
+
+def render_showcase_fingerprint(row: dict[str, object] | None) -> str:
+    if not row:
+        return ""
+    metric_rows = []
+    for label, key in FINGERPRINT_METRICS:
+        value = float(row.get(key, 0))
+        metric_rows.append(
+            f"""
+            <div class="showcase-fingerprint-metric">
+              <span>{escape(label)}</span>
+              <b>{fingerprint_score_label(value)}</b>
+            </div>
+            """
+        )
+    return f"""
+    <article class="showcase-fingerprint">
+      <div class="showcase-fingerprint-heading">
+        <div>
+          <span>Player Fingerprint</span>
+          <strong>{fingerprint_score_label(float(row.get('fingerprint_score', 0)))}</strong>
+        </div>
+        <small>{escape(str(row.get('comfort_label', '-')))}</small>
+      </div>
+      {render_fingerprint_radar(row, large=True)}
+      <div class="showcase-fingerprint-metrics">{"".join(metric_rows)}</div>
+    </article>
+    """
 
 
 def render_meta_spotlights(rows: Sequence[dict[str, object]]) -> str:
@@ -3869,7 +3905,9 @@ def render_experimental_css() -> str:
     .tier-a { border-top-color: #4fc48b; }
     .tier-b { border-top-color: #62a8ff; }
     .tier-c { border-top-color: #b596ff; }
-    .tier-d { border-top-color: #ff6f81; }
+    .tier-d { border-top-color: #f0a85a; }
+    .tier-e { border-top-color: #ff6f81; }
+    .tier-f { border-top-color: #8a94a6; }
     .fingerprint-toolbar {
       align-items: center;
       display: flex;
@@ -5399,7 +5437,7 @@ def render_showcase_css() -> str:
       position: relative;
       min-height: min(760px, calc(100vh - 150px));
       display: grid;
-      grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+      grid-template-columns: minmax(0, 1.02fr) minmax(280px, 0.62fr) minmax(360px, 0.94fr);
       gap: clamp(22px, 4vw, 54px);
       align-items: center;
       padding: clamp(28px, 5vw, 70px);
@@ -5434,6 +5472,90 @@ def render_showcase_css() -> str:
       color: #c7d6e7;
       font-size: clamp(1.02rem, 2vw, 1.35rem);
       line-height: 1.45;
+    }
+    .showcase-fingerprint {
+      position: relative;
+      z-index: 1;
+      border: 1px solid rgba(232, 238, 246, 0.14);
+      border-radius: 8px;
+      background: rgba(10, 16, 24, 0.70);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.24);
+      padding: 16px;
+    }
+    .showcase-fingerprint-heading {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+    .showcase-fingerprint-heading span {
+      color: var(--muted);
+      display: block;
+      font-size: 0.74rem;
+      font-weight: 950;
+      text-transform: uppercase;
+    }
+    .showcase-fingerprint-heading strong {
+      color: var(--accent);
+      display: block;
+      font-size: 2rem;
+      line-height: 1;
+      margin-top: 3px;
+    }
+    .showcase-fingerprint-heading small {
+      color: #aebdcc;
+      font-weight: 850;
+      line-height: 1.35;
+      max-width: 150px;
+      text-align: right;
+    }
+    .showcase-fingerprint .fingerprint-radar {
+      margin: 0 auto;
+      max-width: 320px;
+    }
+    .showcase-fingerprint .radar-grid polygon {
+      fill: none;
+      stroke: rgba(174, 189, 204, 0.28);
+      stroke-width: 1;
+    }
+    .showcase-fingerprint .radar-axis line {
+      stroke: rgba(174, 189, 204, 0.22);
+      stroke-width: 1;
+    }
+    .showcase-fingerprint .radar-fill {
+      fill: color-mix(in srgb, var(--accent) 28%, transparent);
+      stroke: var(--accent);
+      stroke-width: 3;
+    }
+    .showcase-fingerprint .radar-labels text {
+      fill: #c7d6e7;
+      font-size: 0.62rem;
+      font-weight: 950;
+      letter-spacing: 0;
+    }
+    .showcase-fingerprint-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .showcase-fingerprint-metric {
+      border-top: 1px solid rgba(232, 238, 246, 0.1);
+      padding-top: 7px;
+    }
+    .showcase-fingerprint-metric span {
+      color: var(--muted);
+      display: block;
+      font-size: 0.67rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+    .showcase-fingerprint-metric b {
+      color: #f7fbff;
+      display: block;
+      font-size: 0.95rem;
+      margin-top: 2px;
     }
     .showcase-hero-grid {
       display: grid;
@@ -5865,6 +5987,7 @@ def render_player_showcase_page(
     practice_pick_rows: Sequence[dict[str, object]],
     mvp_rows: Sequence[dict[str, object]],
     role_score_rows: Sequence[dict[str, object]],
+    fingerprint_rows: Sequence[dict[str, object]],
     generated_at: str,
     main_page_name: str,
     teams_page_name: str,
@@ -5877,6 +6000,11 @@ def render_player_showcase_page(
     mvp_by_name = {
         str(row.get("name", "")): row
         for row in mvp_rows
+        if str(row.get("name", "")) in showcase_player_names
+    }
+    fingerprint_by_name = {
+        str(row.get("name", "")): row
+        for row in fingerprint_rows
         if str(row.get("name", "")) in showcase_player_names
     }
     records_by_name: dict[str, list[Appearance]] = defaultdict(list)
@@ -6156,6 +6284,7 @@ def render_player_showcase_page(
 
         champion_html = "".join(render_showcase_champion(row) for row in top_champion_rows)
         role_html = render_showcase_role_bars(role_rows, player_games)
+        fingerprint_html = render_showcase_fingerprint(fingerprint_by_name.get(name))
         player_kda = two_decimal(float(player.get("kda_ratio", 0)))
         player_average_line = (
             f"{one_decimal(float(player.get('avg_kills', 0)))} / "
@@ -6198,6 +6327,7 @@ def render_player_showcase_page(
                   <h2>{escape(name)}</h2>
                   <p class="showcase-summary">{escape(summary)}</p>
                 </div>
+                {fingerprint_html}
                 <div class="showcase-hero-grid">
                   {render_showcase_stat("Games", integer(player_games), f"#{games_rank.get(name, 0)} by volume", None)}
                   {render_showcase_stat("Winrate", pct(winrate), f"{wins}-{player_games - wins} record", winrate)}
@@ -9362,6 +9492,7 @@ def build_dashboard(
         practice_pick_rows=display_practice_pick_rows,
         mvp_rows=mvp_rows,
         role_score_rows=role_score_rows,
+        fingerprint_rows=fingerprint_rows,
         generated_at=generated_at,
         main_page_name=main_page_name,
         teams_page_name=teams_page_name,
