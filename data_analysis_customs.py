@@ -8327,10 +8327,12 @@ def render_showcase_css() -> str:
       border-bottom: 1px solid var(--line);
     }
     .showcase-toolbar-controls {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(220px, 1fr));
       gap: 12px;
       align-items: end;
+      flex: 1 1 620px;
+      max-width: 760px;
       min-width: 0;
     }
     .showcase-toolbar label {
@@ -8340,7 +8342,7 @@ def render_showcase_css() -> str:
       font-size: 0.76rem;
       font-weight: 900;
       text-transform: uppercase;
-      min-width: min(300px, 100%);
+      min-width: 0;
     }
     .showcase-toolbar select {
       min-height: 40px;
@@ -8350,6 +8352,7 @@ def render_showcase_css() -> str:
       color: var(--ink);
       padding: 8px 34px 8px 10px;
       font-weight: 900;
+      width: 100%;
     }
     .showcase-count {
       color: var(--muted);
@@ -9133,7 +9136,7 @@ def render_showcase_css() -> str:
         grid-template-columns: 1fr;
       }
       .showcase-toolbar-controls {
-        display: grid;
+        grid-template-columns: 1fr;
         width: 100%;
       }
       .showcase-compare-role-row {
