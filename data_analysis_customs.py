@@ -9740,7 +9740,7 @@ def render_player_showcase_page(
 
     def render_compare_band(primary_name: str) -> str:
         return f"""
-        <div class="showcase-band showcase-compare-band">
+        <div class="showcase-band showcase-compare-band" data-compare-section hidden>
           <div class="showcase-band-inner" data-compare-wrap>
             <div class="showcase-band-title">
               <h3>1v1 Compare</h3>
@@ -10341,14 +10341,19 @@ def render_player_showcase_page(
       const activePanel = showcasePanels.find(panel => panel.classList.contains("active"));
       if (!activePanel) return;
       const compareId = showcaseCompareSelect ? showcaseCompareSelect.value : "";
+      const section = activePanel.querySelector("[data-compare-section]");
       const wrap = activePanel.querySelector("[data-compare-wrap]");
-      if (!wrap) return;
+      if (!wrap) {
+        if (section) section.hidden = true;
+        return;
+      }
       const content = wrap.querySelector("[data-compare-content]");
       const activeId = activePanel.dataset.showcase;
       const html = compareId ? renderCompareContent(activeId, compareId) : "";
       if (content) content.innerHTML = html;
+      if (section) section.hidden = !html;
       const empty = wrap.querySelector("[data-compare-empty]");
-      if (empty) empty.hidden = Boolean(html);
+      if (empty) empty.hidden = true;
     }
 
     function showPlayerShowcase(id, updateHash = true) {
