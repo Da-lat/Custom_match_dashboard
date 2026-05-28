@@ -277,6 +277,10 @@ def head_to_head_page_path(output_path: Path) -> Path:
     return output_path.with_name(f"{output_path.stem}_head_to_head{output_path.suffix}")
 
 
+def random_pool_page_path(output_path: Path) -> Path:
+    return output_path.with_name(f"{output_path.stem}_random_pool{output_path.suffix}")
+
+
 def experimental_page_path(output_path: Path) -> Path:
     return output_path.with_name(f"{output_path.stem}_experimental{output_path.suffix}")
 
@@ -5150,6 +5154,7 @@ def render_head_to_head_page(
     teams_page_name: str,
     draft_coach_page_name: str,
     showcases_page_name: str,
+    random_pool_page_name: str,
     experimental_page_name: str,
 ) -> str:
     player_counts: Counter[str] = Counter()
@@ -5251,21 +5256,7 @@ def render_head_to_head_page(
       {render_refresh_control(generated_at)}
     </div>
   </header>
-  <nav>
-    <a href="{html_attr(main_page_name)}#overview">Overview</a>
-    <a href="{html_attr(main_page_name)}#awards">Awards</a>
-    <a href="{html_attr(main_page_name)}#match-history">Matches</a>
-    <a href="{html_attr(main_page_name)}#players">Players</a>
-    <a href="{html_attr(main_page_name)}#champion-pools">Champion Pools</a>
-    <a href="{html_attr(main_page_name)}#champions">Champions</a>
-    <a href="{html_attr(main_page_name)}#role-pools">Role Pools</a>
-    <a href="{html_attr(main_page_name)}#combos">Combos</a>
-    <a href="{html_attr(teams_page_name)}#teams">Teams</a>
-    <a href="{html_attr(draft_coach_page_name)}#draft-coach">Draft Coach</a>
-    <a href="{html_attr(showcases_page_name)}">Showcases</a>
-    <a href="{html_attr(experimental_page_name)}#custom-meta">Experimental</a>
-    <a href="{html_attr(main_page_name)}#deep-dive">Deep Dive</a>
-  </nav>
+  {render_dashboard_nav("head_to_head", main_page_name=main_page_name, teams_page_name=teams_page_name, draft_coach_page_name=draft_coach_page_name, showcases_page_name=showcases_page_name, random_pool_page_name=random_pool_page_name, experimental_page_name=experimental_page_name)}
   <main>
     <section id="head-to-head" class="section">
       <div class="section-title">
@@ -6449,6 +6440,7 @@ def render_experimental_page(
     teams_page_name: str,
     draft_coach_page_name: str,
     showcases_page_name: str,
+    random_pool_page_name: str,
     head_to_head_page_name: str,
 ) -> str:
     tag_columns: list[Column] = [
@@ -6502,21 +6494,7 @@ def render_experimental_page(
       {render_refresh_control(generated_at)}
     </div>
   </header>
-  <nav>
-    <a href="{html_attr(main_page_name)}#overview">Overview</a>
-    <a href="{html_attr(main_page_name)}#awards">Awards</a>
-    <a href="{html_attr(main_page_name)}#match-history">Matches</a>
-    <a href="{html_attr(main_page_name)}#players">Players</a>
-    <a href="{html_attr(main_page_name)}#champion-pools">Champion Pools</a>
-    <a href="{html_attr(main_page_name)}#champions">Champions</a>
-    <a href="{html_attr(main_page_name)}#role-pools">Role Pools</a>
-    <a href="{html_attr(main_page_name)}#combos">Combos</a>
-    <a href="{html_attr(teams_page_name)}#teams">Teams</a>
-    <a href="{html_attr(draft_coach_page_name)}#draft-coach">Draft Coach</a>
-    <a href="{html_attr(showcases_page_name)}">Showcases</a>
-    <a href="#custom-meta">Experimental</a>
-    <a href="{html_attr(main_page_name)}#deep-dive">Deep Dive</a>
-  </nav>
+  {render_dashboard_nav("experimental", main_page_name=main_page_name, teams_page_name=teams_page_name, draft_coach_page_name=draft_coach_page_name, showcases_page_name=showcases_page_name, random_pool_page_name=random_pool_page_name, experimental_page_name="")}
   <main>
     <section class="section experimental-hero">
       <div class="section-title">
@@ -8195,6 +8173,62 @@ def render_hidden_head_to_head_link(head_to_head_page_name: str) -> str:
     return f'<a class="hidden-page-link" href="{html_attr(head_to_head_page_name)}#head-to-head" aria-label="Head to Head"></a>'
 
 
+def render_dashboard_nav(
+    current_page: str,
+    *,
+    main_page_name: str,
+    teams_page_name: str,
+    draft_coach_page_name: str,
+    showcases_page_name: str,
+    random_pool_page_name: str,
+    experimental_page_name: str,
+    showcase_anchor: str = "",
+) -> str:
+    def main_href(section_id: str) -> str:
+        return f"#{section_id}" if current_page == "main" else f"{html_attr(main_page_name)}#{section_id}"
+
+    teams_href = "#teams" if current_page == "teams" else f"{html_attr(teams_page_name)}#teams"
+    draft_href = (
+        "#draft-coach"
+        if current_page == "draft_coach"
+        else f"{html_attr(draft_coach_page_name)}#draft-coach"
+    )
+    showcase_href = (
+        f"#{html_attr(showcase_anchor)}"
+        if current_page == "showcases" and showcase_anchor
+        else html_attr(showcases_page_name)
+    )
+    random_href = (
+        "#random-champion-pool"
+        if current_page == "random_pool"
+        else f"{html_attr(random_pool_page_name)}#random-champion-pool"
+    )
+    experimental_href = (
+        "#custom-meta"
+        if current_page == "experimental"
+        else f"{html_attr(experimental_page_name)}#custom-meta"
+    )
+    links = [
+        (main_href("overview"), "Overview"),
+        (main_href("awards"), "Awards"),
+        (main_href("match-history"), "Matches"),
+        (main_href("players"), "Players"),
+        (main_href("champion-pools"), "Champion Pools"),
+        (main_href("champions"), "Champions"),
+        (main_href("role-pools"), "Role Pools"),
+        (main_href("combos"), "Combos"),
+        (main_href("deep-dive"), "Deep Dive"),
+        (teams_href, "Teams"),
+        (draft_href, "Draft Coach"),
+        (showcase_href, "Showcases"),
+        (random_href, "Random Pool"),
+        (experimental_href, "Experimental"),
+    ]
+    return "<nav>\n" + "\n".join(
+        f'    <a href="{href}">{escape(label)}</a>' for href, label in links
+    ) + "\n  </nav>"
+
+
 def render_refresh_script() -> str:
     return """
     document.querySelectorAll("[data-refresh-data]").forEach(button => {
@@ -9052,6 +9086,7 @@ def render_player_showcase_page(
     teams_page_name: str,
     draft_coach_page_name: str,
     head_to_head_page_name: str,
+    random_pool_page_name: str,
     experimental_page_name: str,
 ) -> str:
     showcase_player_rows = without_spotlight_excluded_players(player_rows)
@@ -9523,20 +9558,7 @@ def render_player_showcase_page(
       {render_refresh_control(generated_at)}
     </div>
   </header>
-  <nav>
-    <a href="{html_attr(main_page_name)}#overview">Overview</a>
-    <a href="{html_attr(main_page_name)}#awards">Awards</a>
-    <a href="{html_attr(main_page_name)}#match-history">Matches</a>
-    <a href="{html_attr(main_page_name)}#players">Players</a>
-    <a href="{html_attr(main_page_name)}#champion-pools">Champion Pools</a>
-    <a href="{html_attr(main_page_name)}#champions">Champions</a>
-    <a href="{html_attr(main_page_name)}#role-pools">Role Pools</a>
-    <a href="{html_attr(main_page_name)}#combos">Combos</a>
-    <a href="{html_attr(teams_page_name)}#teams">Teams</a>
-    <a href="{html_attr(draft_coach_page_name)}#draft-coach">Draft Coach</a>
-    <a href="#{html_attr(first_slug)}">Showcases</a>
-    <a href="{html_attr(experimental_page_name)}#custom-meta">Experimental</a>
-  </nav>
+  {render_dashboard_nav("showcases", main_page_name=main_page_name, teams_page_name=teams_page_name, draft_coach_page_name=draft_coach_page_name, showcases_page_name="", random_pool_page_name=random_pool_page_name, experimental_page_name=experimental_page_name, showcase_anchor=first_slug)}
   <main>
     <div class="showcase-toolbar">
       <label>
@@ -9548,6 +9570,384 @@ def render_player_showcase_page(
     {"".join(sections)}
   </main>
   <script>{showcase_script}{render_refresh_script()}</script>
+</body>
+</html>
+"""
+
+
+def render_random_pool_css() -> str:
+    return """
+    .random-pool-layout {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: minmax(300px, 0.85fr) minmax(0, 1.15fr);
+      align-items: start;
+    }
+    .random-pool-panel,
+    .random-results-panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+    .random-pool-panel label,
+    .random-count-control label {
+      color: var(--muted);
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 950;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    .random-pool-panel textarea {
+      background: #0b1119;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      font: inherit;
+      min-height: 260px;
+      padding: 12px;
+      resize: vertical;
+      width: 100%;
+    }
+    .random-pool-controls {
+      align-items: end;
+      display: grid;
+      gap: 12px;
+      grid-template-columns: minmax(120px, 0.35fr) repeat(3, auto);
+      margin-top: 12px;
+    }
+    .random-count-control input {
+      background: #0b1119;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--ink);
+      font: inherit;
+      font-weight: 900;
+      min-height: 40px;
+      padding: 8px 10px;
+      width: 100%;
+    }
+    .random-pool-controls button,
+    .random-results-actions button {
+      background: #101924;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      color: var(--ink);
+      cursor: pointer;
+      font-weight: 900;
+      min-height: 40px;
+      padding: 8px 12px;
+    }
+    .random-pool-controls button[data-random-pick] {
+      background: rgba(79, 196, 139, 0.16);
+      border-color: #3fa477;
+      color: #8ee1b8;
+    }
+    .random-pool-status,
+    .random-pool-errors {
+      color: var(--muted);
+      display: block;
+      line-height: 1.45;
+      margin-top: 11px;
+    }
+    .random-pool-errors {
+      color: #ffb1bd;
+    }
+    .random-results-heading {
+      align-items: center;
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .random-results-heading h3 {
+      margin: 0;
+    }
+    .random-results-heading small {
+      color: var(--muted);
+      font-weight: 850;
+    }
+    .random-results-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .random-champion-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+    }
+    .random-champion-card {
+      background: linear-gradient(180deg, #121d2a, #0d1620);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      min-height: 146px;
+      padding: 11px;
+      text-align: center;
+    }
+    .random-champion-card img {
+      border-radius: 8px;
+      display: block;
+      height: 72px;
+      margin: 0 auto 9px;
+      object-fit: cover;
+      width: 72px;
+    }
+    .random-champion-card strong {
+      display: block;
+      font-size: 0.95rem;
+      line-height: 1.2;
+    }
+    .random-champion-card span {
+      color: var(--muted);
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 850;
+      margin-top: 4px;
+    }
+    @media (max-width: 980px) {
+      .random-pool-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (max-width: 720px) {
+      .random-pool-controls {
+        grid-template-columns: 1fr;
+      }
+      .random-results-heading {
+        align-items: stretch;
+        flex-direction: column;
+      }
+      .random-results-actions {
+        flex-wrap: wrap;
+      }
+    }
+    """
+
+
+def render_random_pool_script() -> str:
+    champion_data = [
+        {
+            "name": champion,
+            "key": champion_key(champion),
+            "icon": champion_icon_url(champion),
+        }
+        for champion in CHAMPION_ROSTER
+    ]
+    champion_json = json.dumps(champion_data, ensure_ascii=True).replace("</", "<\\/")
+    return """
+    const randomChampionData = __RANDOM_CHAMPION_DATA__;
+    const randomChampionByKey = new Map(randomChampionData.map(champion => [champion.key, champion]));
+    const randomPoolInput = document.querySelector("[data-random-pool-input]");
+    const randomCountInput = document.querySelector("[data-random-count]");
+    const randomPickButton = document.querySelector("[data-random-pick]");
+    const randomRosterButton = document.querySelector("[data-random-load-roster]");
+    const randomClearButton = document.querySelector("[data-random-clear]");
+    const randomCopyButton = document.querySelector("[data-random-copy]");
+    const randomStatus = document.querySelector("[data-random-status]");
+    const randomErrors = document.querySelector("[data-random-errors]");
+    const randomResults = document.querySelector("[data-random-results]");
+    const randomResultCount = document.querySelector("[data-random-result-count]");
+    let currentRandomSelection = [];
+
+    function randomChampionKey(value) {
+      return String(value || "").toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]/g, "");
+    }
+
+    function escapeRandomHtml(value) {
+      const element = document.createElement("div");
+      element.textContent = String(value ?? "");
+      return element.innerHTML;
+    }
+
+    function parseRandomPool() {
+      const rawItems = (randomPoolInput?.value || "")
+        .split(/[,\\n]+/)
+        .map(item => item.trim())
+        .filter(Boolean);
+      const champions = [];
+      const unknown = [];
+      const seen = new Set();
+      let duplicates = 0;
+      rawItems.forEach(item => {
+        const key = randomChampionKey(item);
+        const champion = randomChampionByKey.get(key);
+        if (!champion) {
+          unknown.push(item);
+          return;
+        }
+        if (seen.has(champion.key)) {
+          duplicates += 1;
+          return;
+        }
+        seen.add(champion.key);
+        champions.push(champion);
+      });
+      return { champions, unknown, duplicates };
+    }
+
+    function shuffleRandomChampions(items) {
+      const shuffled = [...items];
+      const randomValues = new Uint32Array(shuffled.length);
+      if (window.crypto?.getRandomValues) {
+        window.crypto.getRandomValues(randomValues);
+      }
+      for (let index = shuffled.length - 1; index > 0; index -= 1) {
+        const randomValue = randomValues[index] || Math.floor(Math.random() * 4294967296);
+        const swapIndex = randomValue % (index + 1);
+        [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+      }
+      return shuffled;
+    }
+
+    function renderRandomSelection(champions) {
+      currentRandomSelection = champions;
+      if (randomResultCount) {
+        randomResultCount.textContent = `${champions.length} selected`;
+      }
+      if (!randomResults) return;
+      if (!champions.length) {
+        randomResults.innerHTML = '<div class="empty-state">Paste a champion list, choose a number, then pick a random pool.</div>';
+        return;
+      }
+      randomResults.innerHTML = champions.map((champion, index) => `
+        <article class="random-champion-card">
+          <img src="${escapeRandomHtml(champion.icon)}" alt="${escapeRandomHtml(champion.name)}">
+          <strong>${escapeRandomHtml(champion.name)}</strong>
+          <span>#${index + 1}</span>
+        </article>
+      `).join("");
+    }
+
+    function updateRandomPoolStatus(parsed = parseRandomPool()) {
+      if (randomStatus) {
+        randomStatus.textContent = `${parsed.champions.length} valid champions. ${parsed.duplicates} duplicates removed.`;
+      }
+      if (randomErrors) {
+        randomErrors.textContent = parsed.unknown.length
+          ? `Unrecognised: ${parsed.unknown.slice(0, 12).join(", ")}${parsed.unknown.length > 12 ? "..." : ""}`
+          : "";
+      }
+      if (randomCountInput) {
+        randomCountInput.max = String(Math.max(1, parsed.champions.length || randomChampionData.length));
+      }
+      return parsed;
+    }
+
+    function pickRandomChampions() {
+      const parsed = updateRandomPoolStatus();
+      const requested = Math.max(1, Number.parseInt(randomCountInput?.value || "40", 10));
+      const count = Math.min(requested, parsed.champions.length);
+      const selected = shuffleRandomChampions(parsed.champions).slice(0, count);
+      renderRandomSelection(selected);
+      if (randomStatus) {
+        randomStatus.textContent = `Picked ${selected.length} from ${parsed.champions.length} valid champions. ${parsed.duplicates} duplicates removed.`;
+      }
+    }
+
+    randomPoolInput?.addEventListener("input", () => updateRandomPoolStatus());
+    randomPickButton?.addEventListener("click", pickRandomChampions);
+    randomRosterButton?.addEventListener("click", () => {
+      if (!randomPoolInput) return;
+      randomPoolInput.value = randomChampionData.map(champion => champion.name).join(", ");
+      updateRandomPoolStatus();
+    });
+    randomClearButton?.addEventListener("click", () => {
+      if (randomPoolInput) randomPoolInput.value = "";
+      renderRandomSelection([]);
+      updateRandomPoolStatus();
+    });
+    randomCopyButton?.addEventListener("click", async () => {
+      const text = currentRandomSelection.map(champion => champion.name).join(", ");
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        if (randomStatus) randomStatus.textContent = "Selected champion names copied.";
+      } catch (_error) {
+        if (randomStatus) randomStatus.textContent = text;
+      }
+    });
+    updateRandomPoolStatus();
+    renderRandomSelection([]);
+    """.replace("__RANDOM_CHAMPION_DATA__", champion_json)
+
+
+def render_random_pool_page(
+    *,
+    shared_style: str,
+    generated_at: str,
+    main_page_name: str,
+    teams_page_name: str,
+    draft_coach_page_name: str,
+    showcases_page_name: str,
+    head_to_head_page_name: str,
+    experimental_page_name: str,
+) -> str:
+    placeholder = (
+        "Aatrox, Ahri, Jinx, Leona, Viktor, Renekton, Ornn, Ziggs, "
+        "Seraphine, Kai'Sa, Vel'Koz, Nunu & Willump"
+    )
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LoL Random Champion Pool</title>
+  <style>{shared_style}{render_random_pool_css()}</style>
+</head>
+<body>
+  {render_hidden_head_to_head_link(head_to_head_page_name)}
+  <header>
+    <div class="topline">
+      <div>
+        <h1>LoL Random Champion Pool</h1>
+        <p>Paste a champion list, choose how many to draw, then generate an icon grid for custom drafts.</p>
+      </div>
+      {render_refresh_control(generated_at)}
+    </div>
+  </header>
+  {render_dashboard_nav("random_pool", main_page_name=main_page_name, teams_page_name=teams_page_name, draft_coach_page_name=draft_coach_page_name, showcases_page_name=showcases_page_name, random_pool_page_name="", experimental_page_name=experimental_page_name)}
+  <main>
+    <section id="random-champion-pool" class="section">
+      <div class="section-title">
+        <div>
+          <h2>Random Champion Pool</h2>
+          <p class="note">Use comma separated champion names. The picker validates names against the current Data Dragon roster and samples without replacement.</p>
+        </div>
+      </div>
+      <div class="random-pool-layout">
+        <section class="random-pool-panel">
+          <label for="random-champion-input">Champion List</label>
+          <textarea id="random-champion-input" data-random-pool-input spellcheck="false" placeholder="{html_attr(placeholder)}"></textarea>
+          <div class="random-pool-controls">
+            <div class="random-count-control">
+              <label for="random-champion-count">Pick Count</label>
+              <input id="random-champion-count" data-random-count type="number" min="1" value="40">
+            </div>
+            <button type="button" data-random-pick>Pick Random</button>
+            <button type="button" data-random-load-roster>Use Full Roster</button>
+            <button type="button" data-random-clear>Clear</button>
+          </div>
+          <span class="random-pool-status" data-random-status></span>
+          <span class="random-pool-errors" data-random-errors></span>
+        </section>
+        <section class="random-results-panel">
+          <div class="random-results-heading">
+            <div>
+              <h3>Selected Champions</h3>
+              <small data-random-result-count>0 selected</small>
+            </div>
+            <div class="random-results-actions">
+              <button type="button" data-random-copy>Copy Names</button>
+            </div>
+          </div>
+          <div class="random-champion-grid" data-random-results></div>
+        </section>
+      </div>
+    </section>
+  </main>
+  <script>{render_random_pool_script()}{render_refresh_script()}</script>
 </body>
 </html>
 """
@@ -10094,12 +10494,14 @@ def build_dashboard(
     draft_coach_output_path = draft_coach_page_path(output_path)
     showcase_output_path = showcases_page_path(output_path)
     head_to_head_output_path = head_to_head_page_path(output_path)
+    random_pool_output_path = random_pool_page_path(output_path)
     experimental_output_path = experimental_page_path(output_path)
     main_page_name = output_path.name
     teams_page_name = teams_output_path.name
     draft_coach_page_name = draft_coach_output_path.name
     showcases_page_name = showcase_output_path.name
     head_to_head_page_name = head_to_head_output_path.name
+    random_pool_page_name = random_pool_output_path.name
     experimental_page_name = experimental_output_path.name
 
     metric_cards = "".join(
@@ -12048,21 +12450,7 @@ def build_dashboard(
       {render_refresh_control(generated_at)}
     </div>
   </header>
-  <nav>
-    <a href="#overview">Overview</a>
-    <a href="#awards">Awards</a>
-    <a href="#match-history">Matches</a>
-    <a href="#players">Players</a>
-    <a href="#champion-pools">Champion Pools</a>
-    <a href="#champions">Champions</a>
-    <a href="#role-pools">Role Pools</a>
-    <a href="#combos">Combos</a>
-    <a href="{html_attr(teams_page_name)}#teams">Teams</a>
-    <a href="{html_attr(draft_coach_page_name)}#draft-coach">Draft Coach</a>
-    <a href="{html_attr(showcases_page_name)}">Showcases</a>
-    <a href="{html_attr(experimental_page_name)}#custom-meta">Experimental</a>
-    <a href="#deep-dive">Deep Dive</a>
-  </nav>
+  {render_dashboard_nav("main", main_page_name=main_page_name, teams_page_name=teams_page_name, draft_coach_page_name=draft_coach_page_name, showcases_page_name=showcases_page_name, random_pool_page_name=random_pool_page_name, experimental_page_name=experimental_page_name)}
   <main>
     <section id="overview" class="section">
       <div class="section-title">
@@ -12552,21 +12940,7 @@ def build_dashboard(
       {render_refresh_control(generated_at)}
     </div>
   </header>
-  <nav>
-    <a href="{html_attr(main_page_name)}#overview">Overview</a>
-    <a href="{html_attr(main_page_name)}#awards">Awards</a>
-    <a href="{html_attr(main_page_name)}#match-history">Matches</a>
-    <a href="{html_attr(main_page_name)}#players">Players</a>
-    <a href="{html_attr(main_page_name)}#champion-pools">Champion Pools</a>
-    <a href="{html_attr(main_page_name)}#champions">Champions</a>
-    <a href="{html_attr(main_page_name)}#role-pools">Role Pools</a>
-    <a href="{html_attr(main_page_name)}#combos">Combos</a>
-    <a href="#teams">Teams</a>
-    <a href="{html_attr(draft_coach_page_name)}#draft-coach">Draft Coach</a>
-    <a href="{html_attr(showcases_page_name)}">Showcases</a>
-    <a href="{html_attr(experimental_page_name)}#custom-meta">Experimental</a>
-    <a href="{html_attr(main_page_name)}#deep-dive">Deep Dive</a>
-  </nav>
+  {render_dashboard_nav("teams", main_page_name=main_page_name, teams_page_name=teams_page_name, draft_coach_page_name=draft_coach_page_name, showcases_page_name=showcases_page_name, random_pool_page_name=random_pool_page_name, experimental_page_name=experimental_page_name)}
   <main>
     <section id="teams" class="section">
       <div class="section-title">
@@ -12613,21 +12987,7 @@ def build_dashboard(
       {render_refresh_control(generated_at)}
     </div>
   </header>
-  <nav>
-    <a href="{html_attr(main_page_name)}#overview">Overview</a>
-    <a href="{html_attr(main_page_name)}#awards">Awards</a>
-    <a href="{html_attr(main_page_name)}#match-history">Matches</a>
-    <a href="{html_attr(main_page_name)}#players">Players</a>
-    <a href="{html_attr(main_page_name)}#champion-pools">Champion Pools</a>
-    <a href="{html_attr(main_page_name)}#champions">Champions</a>
-    <a href="{html_attr(main_page_name)}#role-pools">Role Pools</a>
-    <a href="{html_attr(main_page_name)}#combos">Combos</a>
-    <a href="{html_attr(teams_page_name)}#teams">Teams</a>
-    <a href="#draft-coach">Draft Coach</a>
-    <a href="{html_attr(showcases_page_name)}">Showcases</a>
-    <a href="{html_attr(experimental_page_name)}#custom-meta">Experimental</a>
-    <a href="{html_attr(main_page_name)}#deep-dive">Deep Dive</a>
-  </nav>
+  {render_dashboard_nav("draft_coach", main_page_name=main_page_name, teams_page_name=teams_page_name, draft_coach_page_name=draft_coach_page_name, showcases_page_name=showcases_page_name, random_pool_page_name=random_pool_page_name, experimental_page_name=experimental_page_name)}
   <main>
     {render_target_ban_section(display_target_ban_rows, display_practice_pick_rows, display_player_rows)}
   </main>
@@ -12653,6 +13013,7 @@ def build_dashboard(
         teams_page_name=teams_page_name,
         draft_coach_page_name=draft_coach_page_name,
         head_to_head_page_name=head_to_head_page_name,
+        random_pool_page_name=random_pool_page_name,
         experimental_page_name=experimental_page_name,
     )
 
@@ -12667,6 +13028,18 @@ def build_dashboard(
         teams_page_name=teams_page_name,
         draft_coach_page_name=draft_coach_page_name,
         showcases_page_name=showcases_page_name,
+        random_pool_page_name=random_pool_page_name,
+        experimental_page_name=experimental_page_name,
+    )
+
+    random_pool_html = render_random_pool_page(
+        shared_style=shared_style,
+        generated_at=generated_at,
+        main_page_name=main_page_name,
+        teams_page_name=teams_page_name,
+        draft_coach_page_name=draft_coach_page_name,
+        showcases_page_name=showcases_page_name,
+        head_to_head_page_name=head_to_head_page_name,
         experimental_page_name=experimental_page_name,
     )
 
@@ -12684,6 +13057,7 @@ def build_dashboard(
         teams_page_name=teams_page_name,
         draft_coach_page_name=draft_coach_page_name,
         showcases_page_name=showcases_page_name,
+        random_pool_page_name=random_pool_page_name,
         head_to_head_page_name=head_to_head_page_name,
     )
 
@@ -12693,6 +13067,7 @@ def build_dashboard(
     draft_coach_output_path.write_text(draft_coach_html, encoding="utf-8")
     showcase_output_path.write_text(showcase_html, encoding="utf-8")
     head_to_head_output_path.write_text(head_to_head_html, encoding="utf-8")
+    random_pool_output_path.write_text(random_pool_html, encoding="utf-8")
     experimental_output_path.write_text(experimental_html, encoding="utf-8")
 
 
@@ -12743,6 +13118,7 @@ def main() -> None:
     print(f"Wrote {draft_coach_page_path(output_path).resolve()}")
     print(f"Wrote {showcases_page_path(output_path).resolve()}")
     print(f"Wrote {head_to_head_page_path(output_path).resolve()}")
+    print(f"Wrote {random_pool_page_path(output_path).resolve()}")
     print(f"Wrote {experimental_page_path(output_path).resolve()}")
     if args.serve:
         serve_dashboard(output_path, args.host, args.port)
