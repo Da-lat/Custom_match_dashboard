@@ -8209,7 +8209,6 @@ def render_dashboard_nav(
         else f"{html_attr(experimental_page_name)}#custom-meta"
     )
     links = [
-        (main_href("overview"), "Overview"),
         (main_href("awards"), "Awards"),
         (main_href("match-history"), "Matches"),
         (main_href("players"), "Players"),
