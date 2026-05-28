@@ -583,6 +583,145 @@ def champion_icon_url(name: str) -> str:
     )
 
 
+def load_champion_catalog_metadata() -> dict[str, dict[str, object]]:
+    from urllib.error import HTTPError, URLError
+    from urllib.request import Request, urlopen
+
+    request = Request(
+        CHAMPION_ROSTER_SOURCE_URL,
+        headers={"Accept": "application/json", "User-Agent": "custom-games-dashboard/1.0"},
+        method="GET",
+    )
+    try:
+        with urlopen(request, timeout=8) as response:
+            payload = response.read().decode("utf-8")
+    except (HTTPError, URLError, TimeoutError, OSError):
+        return {}
+
+    try:
+        data = json.loads(payload).get("data", {})
+    except (json.JSONDecodeError, AttributeError):
+        return {}
+
+    metadata: dict[str, dict[str, object]] = {}
+    for champion in data.values():
+        if not isinstance(champion, dict):
+            continue
+        name = str(champion.get("name", "")).strip()
+        if not name:
+            continue
+        info = champion.get("info", {})
+        metadata[name] = {
+            "title": str(champion.get("title", "")).strip(),
+            "tags": [
+                str(tag)
+                for tag in champion.get("tags", [])
+                if str(tag).strip()
+            ],
+            "info": info if isinstance(info, dict) else {},
+            "partype": str(champion.get("partype", "")).strip(),
+        }
+    return metadata
+
+
+def champion_damage_lean(info: dict[str, object]) -> str:
+    attack = int(info.get("attack", 0) or 0)
+    magic = int(info.get("magic", 0) or 0)
+    if magic >= attack + 2:
+        return "Magic"
+    if attack >= magic + 2:
+        return "Physical"
+    return "Mixed"
+
+
+def champion_draft_categories(tags: Sequence[str], info: dict[str, object]) -> str:
+    categories = []
+    tag_set = set(tags)
+    if "Tank" in tag_set:
+        categories.append("Frontline")
+    if "Fighter" in tag_set:
+        categories.append("Bruiser")
+    if "Marksman" in tag_set:
+        categories.append("Ranged Carry")
+    if "Mage" in tag_set:
+        categories.append("Magic / Poke")
+    if "Assassin" in tag_set:
+        categories.append("Burst / Pick")
+    if "Support" in tag_set:
+        categories.append("Utility")
+    if not categories:
+        categories.append(champion_damage_lean(info))
+    return ", ".join(categories)
+
+
+def champion_tag_audit_rows(
+    champion_metadata: dict[str, dict[str, object]],
+    champion_rows: Sequence[dict[str, object]],
+    champion_role_rows: Sequence[dict[str, object]],
+) -> list[dict[str, object]]:
+    champion_stats = {str(row.get("champion", "")): row for row in champion_rows}
+    roles_by_champion: dict[str, list[dict[str, object]]] = defaultdict(list)
+    for row in champion_role_rows:
+        champion = str(row.get("champion", ""))
+        if champion and str(row.get("role", "")) in ROLE_ORDER:
+            roles_by_champion[champion].append(row)
+
+    rows = []
+    for champion in sorted(CHAMPION_ROSTER):
+        metadata = champion_metadata.get(champion, {})
+        tags = list(metadata.get("tags", []))
+        info = metadata.get("info", {})
+        if not isinstance(info, dict):
+            info = {}
+        role_rows = sorted(
+            roles_by_champion.get(champion, []),
+            key=lambda row: (
+                -int(row.get("games", 0)),
+                role_sort(str(row.get("role", ""))),
+            ),
+        )
+        stats = champion_stats.get(champion, {})
+        primary_role = str(role_rows[0].get("role", "-")) if role_rows else "-"
+        observed_roles = (
+            ", ".join(
+                f"{row.get('role', '-')} ({integer(row.get('games', 0))})"
+                for row in role_rows
+            )
+            if role_rows
+            else "-"
+        )
+        custom_games = int(stats.get("games", 0))
+        rows.append(
+            {
+                "champion": champion,
+                "role": primary_role,
+                "observed_roles": observed_roles,
+                "riot_tags": ", ".join(tags) if tags else "Source unavailable",
+                "draft_categories": champion_draft_categories(tags, info),
+                "damage_lean": champion_damage_lean(info),
+                "games": custom_games,
+                "winrate": float(stats.get("winrate", 0)),
+                "attack": int(info.get("attack", 0) or 0),
+                "defense": int(info.get("defense", 0) or 0),
+                "magic": int(info.get("magic", 0) or 0),
+                "difficulty": int(info.get("difficulty", 0) or 0),
+                "source": (
+                    f"Data Dragon {CHAMPION_ROSTER_VERSION}"
+                    if tags
+                    else "No source data"
+                ),
+                "review_note": (
+                    "No custom games yet"
+                    if not role_rows
+                    else "Multi-role sample"
+                    if len(role_rows) > 1
+                    else "Single observed role"
+                ),
+            }
+        )
+    return rows
+
+
 def unplayed_champion_rows(appearances: Iterable[Appearance]) -> list[dict[str, object]]:
     played = {champion_key(appearance.champion) for appearance in appearances}
     return [
@@ -2618,6 +2757,17 @@ def table_cell(
     return f'<td{class_attr}{style_attr} data-sort="{html_attr(sort)}">{escape(str(value))}</td>'
 
 
+def champion_icon_table_cell(champion: object) -> str:
+    champion_name = str(champion)
+    return (
+        f'<td class="champion-table-cell" data-sort="{html_attr(champion_name)}">'
+        f'<span class="champion-table-label">'
+        f'<img src="{html_attr(champion_icon_url(champion_name))}" alt="{html_attr(champion_name)}">'
+        f'<span>{escape(champion_name)}</span>'
+        f"</span></td>"
+    )
+
+
 def heat_text_color(winrate: float) -> str:
     return "#17212b" if 0.38 <= winrate <= 0.68 else "#ffffff"
 
@@ -2694,6 +2844,8 @@ def render_table(
             sort_value = raw if data_type == "number" else value
             if table_id == "mvp-scoreboard" and key == "name":
                 cells.append(mvp_rank_cell(value, row))
+            elif table_id == "champion-tag-audit" and key == "champion":
+                cells.append(champion_icon_table_cell(raw))
             elif table_id != "mvp-scoreboard" and key in {"winrate", "adjusted_winrate"}:
                 cells.append(heat_table_cell(value, float(raw), sort_value))
             elif table_id == "player-summary" and key.startswith("role_"):
@@ -5664,6 +5816,29 @@ def render_experimental_css() -> str:
       line-height: 1.4;
       margin-top: 8px;
     }
+    .champion-table-cell {
+      min-width: 178px;
+    }
+    .champion-table-label {
+      align-items: center;
+      display: inline-flex;
+      gap: 9px;
+      min-width: 0;
+      white-space: nowrap;
+    }
+    .champion-table-label img {
+      border-radius: 7px;
+      display: block;
+      height: 30px;
+      object-fit: cover;
+      width: 30px;
+    }
+    #champion-tag-audit {
+      min-width: 1320px;
+    }
+    #champion-tag-audit td {
+      vertical-align: middle;
+    }
     .tier-s { border-top-color: #f0c96a; }
     .tier-a { border-top-color: #4fc48b; }
     .tier-b { border-top-color: #62a8ff; }
@@ -6186,6 +6361,7 @@ def render_experimental_page(
     *,
     shared_style: str,
     shared_script: str,
+    champion_tag_rows: Sequence[dict[str, object]],
     meta_rows: Sequence[dict[str, object]],
     form_rows: Sequence[dict[str, object]],
     hall_rows: Sequence[dict[str, object]],
@@ -6199,6 +6375,21 @@ def render_experimental_page(
     showcases_page_name: str,
     head_to_head_page_name: str,
 ) -> str:
+    tag_columns: list[Column] = [
+        ("Champion", "champion", str, "text"),
+        ("Role", "role", str, "text"),
+        ("Observed Roles", "observed_roles", str, "text"),
+        ("Riot Tags", "riot_tags", str, "text"),
+        ("Draft Categories", "draft_categories", str, "text"),
+        ("Damage Lean", "damage_lean", str, "text"),
+        ("Games", "games", integer, "number"),
+        ("Winrate", "winrate", lambda value: pct(float(value)), "number"),
+        ("Attack", "attack", integer, "number"),
+        ("Defense", "defense", integer, "number"),
+        ("Magic", "magic", integer, "number"),
+        ("Difficulty", "difficulty", integer, "number"),
+        ("Review", "review_note", str, "text"),
+    ]
     meta_columns: list[Column] = [
         ("Tier", "tier", str, "text"),
         ("Champion", "champion", str, "text"),
@@ -6258,6 +6449,15 @@ def render_experimental_page(
         <strong>No CS, gold, vision, damage, or objectives yet</strong>
         <small>The scoring leans into what the API currently provides. If those fields are added later, this page can evolve into deeper OP.GG-style post-game analysis.</small>
       </article>
+    </section>
+    <section id="champion-tags" class="section">
+      <div class="section-title">
+        <div>
+          <h2>Champion Tags & Role Audit</h2>
+          <p class="note">Riot tags and champion info are sourced from Data Dragon {CHAMPION_ROSTER_VERSION}; observed roles are from your custom match history. Draft Categories are a first-pass mapping from those tags for manual review before Draft Coach uses them.</p>
+        </div>
+      </div>
+      {render_table("champion-tag-audit", "Champion Category Review", champion_tag_rows, tag_columns, controls_html=role_filter_control("champion-tag-audit"))}
     </section>
     <section id="custom-meta" class="section">
       <div class="section-title">
@@ -9761,6 +9961,12 @@ def build_dashboard(
     custom_meta_rows = custom_meta_tier_rows(
         experimental_champion_role_rows, display_player_champion_role_rows
     )
+    champion_metadata = load_champion_catalog_metadata()
+    champion_tag_rows = champion_tag_audit_rows(
+        champion_metadata,
+        experimental_champion_rows,
+        experimental_champion_role_rows,
+    )
     fingerprint_rows = player_fingerprint_rows(
         visible_appearances, display_player_rows, display_player_champion_role_rows
     )
@@ -12384,6 +12590,7 @@ def build_dashboard(
     experimental_html = render_experimental_page(
         shared_style=shared_style,
         shared_script=shared_script,
+        champion_tag_rows=champion_tag_rows,
         meta_rows=custom_meta_rows,
         form_rows=form_rows,
         hall_rows=hall_rows,
