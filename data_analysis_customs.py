@@ -853,6 +853,16 @@ def champion_tag_audit_rows(
         online_roles = online.get("roles", {})
         if not isinstance(online_roles, dict):
             online_roles = {}
+        online_role_shares = {
+            role: float(data_row.get("share", 0))
+            for role, data_row in online_roles.items()
+            if role in ROLE_ORDER and isinstance(data_row, dict)
+        }
+        custom_role_games = {
+            str(row.get("role", "")): int(row.get("games", 0))
+            for row in role_rows
+            if str(row.get("role", "")) in ROLE_ORDER
+        }
         rows.append(
             {
                 "champion": champion,
@@ -862,6 +872,8 @@ def champion_tag_audit_rows(
                 "online_role_share": float(online.get("primary_share", 0)),
                 "online_pickrate": float(online.get("primary_pickrate", 0)),
                 "online_roles": str(online.get("role_summary", "-")),
+                "online_role_shares": online_role_shares,
+                "custom_role_games": custom_role_games,
                 "riot_tags": ", ".join(tags) if tags else "Source unavailable",
                 "draft_categories": champion_draft_categories(tags, info),
                 "damage_lean": champion_damage_lean(info),
@@ -6425,25 +6437,8 @@ def render_experimental_css() -> str:
     """
 
 
-def render_experimental_page(
-    *,
-    shared_style: str,
-    shared_script: str,
-    champion_tag_rows: Sequence[dict[str, object]],
-    meta_rows: Sequence[dict[str, object]],
-    form_rows: Sequence[dict[str, object]],
-    hall_rows: Sequence[dict[str, object]],
-    upset_data: dict[str, list[dict[str, object]]],
-    ownership_rows: Sequence[dict[str, object]],
-    generated_at: str,
-    main_page_name: str,
-    teams_page_name: str,
-    draft_coach_page_name: str,
-    showcases_page_name: str,
-    random_pool_page_name: str,
-    head_to_head_page_name: str,
-) -> str:
-    tag_columns: list[Column] = [
+def champion_tag_audit_columns() -> list[Column]:
+    return [
         ("Champion", "champion", str, "text"),
         ("Role", "role", str, "text"),
         ("Observed Roles", "observed_roles", str, "text"),
@@ -6463,6 +6458,39 @@ def render_experimental_page(
         ("Role Check", "role_check", str, "text"),
         ("Review", "review_note", str, "text"),
     ]
+
+
+def render_champion_tag_audit_section(champion_tag_rows: Sequence[dict[str, object]]) -> str:
+    return f"""
+    <section id="champion-tags" class="section">
+      <div class="section-title">
+        <div>
+          <h2>Champion Tags & Role Audit</h2>
+          <p class="note">Draft Coach uses this data live: Riot tags and champion info come from Data Dragon {CHAMPION_ROSTER_VERSION}; online role popularity comes from <a href="{html_attr(U_GG_ROLE_STATS_PAGE_URL)}" target="_blank" rel="noreferrer">U.GG Emerald+ ranked tier data</a>; observed roles and winrates come from your custom match history.</p>
+        </div>
+      </div>
+      {render_table("champion-tag-audit", "Champion Category Review", champion_tag_rows, champion_tag_audit_columns(), controls_html=role_filter_control("champion-tag-audit"))}
+    </section>
+    """
+
+
+def render_experimental_page(
+    *,
+    shared_style: str,
+    shared_script: str,
+    meta_rows: Sequence[dict[str, object]],
+    form_rows: Sequence[dict[str, object]],
+    hall_rows: Sequence[dict[str, object]],
+    upset_data: dict[str, list[dict[str, object]]],
+    ownership_rows: Sequence[dict[str, object]],
+    generated_at: str,
+    main_page_name: str,
+    teams_page_name: str,
+    draft_coach_page_name: str,
+    showcases_page_name: str,
+    random_pool_page_name: str,
+    head_to_head_page_name: str,
+) -> str:
     meta_columns: list[Column] = [
         ("Tier", "tier", str, "text"),
         ("Champion", "champion", str, "text"),
@@ -6508,15 +6536,6 @@ def render_experimental_page(
         <strong>No CS, gold, vision, damage, or objectives yet</strong>
         <small>The scoring leans into what the API currently provides. If those fields are added later, this page can evolve into deeper OP.GG-style post-game analysis.</small>
       </article>
-    </section>
-    <section id="champion-tags" class="section">
-      <div class="section-title">
-        <div>
-          <h2>Champion Tags & Role Audit</h2>
-          <p class="note">Riot tags and champion info are sourced from Data Dragon {CHAMPION_ROSTER_VERSION}; online role popularity is pulled from <a href="{html_attr(U_GG_ROLE_STATS_PAGE_URL)}" target="_blank" rel="noreferrer">U.GG Emerald+ ranked tier data</a>. Observed roles are from your custom match history, so the Role Check column flags where your customs differ from the wider meta.</p>
-        </div>
-      </div>
-      {render_table("champion-tag-audit", "Champion Category Review", champion_tag_rows, tag_columns, controls_html=role_filter_control("champion-tag-audit"))}
     </section>
     <section id="custom-meta" class="section">
       <div class="section-title">
@@ -6863,6 +6882,57 @@ def render_ban_planner_css() -> str:
       font-size: 0.86rem;
       font-weight: 800;
     }
+    .draft-insight-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .draft-insight-panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0f1721;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .draft-insight-panel h4 {
+      margin: 0;
+      padding: 10px 12px;
+      border-bottom: 1px solid #202b39;
+      color: var(--gold);
+      font-size: 0.82rem;
+      text-transform: uppercase;
+    }
+    .draft-insight-list {
+      display: grid;
+      gap: 8px;
+      padding: 10px 12px 12px;
+    }
+    .draft-insight-item {
+      display: grid;
+      gap: 3px;
+      border-left: 3px solid rgba(98, 168, 255, 0.68);
+      padding-left: 9px;
+      min-width: 0;
+    }
+    .draft-insight-item strong {
+      color: var(--ink);
+      font-size: 0.9rem;
+      overflow-wrap: anywhere;
+    }
+    .draft-insight-item small {
+      color: var(--muted);
+      font-weight: 800;
+      line-height: 1.35;
+    }
+    .draft-insight-item[data-tone="good"] {
+      border-left-color: var(--green);
+    }
+    .draft-insight-item[data-tone="warn"] {
+      border-left-color: var(--red);
+    }
+    .draft-insight-item[data-tone="gold"] {
+      border-left-color: var(--gold);
+    }
     .draft-turn-list {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -7090,7 +7160,8 @@ def render_ban_planner_css() -> str:
     @media (max-width: 720px) {
       .ban-target-grid,
       .draft-import-grid,
-      .ban-results-grid {
+      .ban-results-grid,
+      .draft-insight-grid {
         grid-template-columns: 1fr;
       }
       .draft-board {
@@ -7181,6 +7252,7 @@ def render_target_ban_section(
     target_ban_rows: Sequence[dict[str, object]],
     practice_pick_rows: Sequence[dict[str, object]],
     player_rows: Sequence[dict[str, object]],
+    champion_tag_rows: Sequence[dict[str, object]],
 ) -> str:
     player_options = "".join(
         f'<option value="{html_attr(row["name"])}"></option>'
@@ -7214,7 +7286,7 @@ def render_target_ban_section(
       <div class="section-title">
         <div>
           <h2>Draft Coach</h2>
-          <p class="note">Target bans, tournament draft simulation, best available picks, and practice picks in one board. Ban targets use adjusted winrate, sample size, KDA, takedowns, MVP rating, and lift against that player's baseline.</p>
+          <p class="note">Target bans, tournament draft simulation, best available picks, and practice picks in one board. Draft Coach now blends player comfort, custom winrates, champion role popularity, Riot tags, damage lean, matchup history, and team-shape needs.</p>
         </div>
       </div>
       {render_target_ban_cards(target_ban_rows)}
@@ -7265,6 +7337,16 @@ def render_target_ban_section(
             </div>
           </div>
           <div class="draft-coach-summary" data-draft-coach-summary>Enter teams and a champion pool to simulate the draft.</div>
+          <div class="draft-insight-grid">
+            <article class="draft-insight-panel">
+              <h4>Macro & Micro Read</h4>
+              <div class="draft-insight-list" data-draft-macro></div>
+            </article>
+            <article class="draft-insight-panel">
+              <h4>Predicted Enemy Draft</h4>
+              <div class="draft-insight-list" data-draft-predictions></div>
+            </article>
+          </div>
           <div class="draft-turn-list" data-draft-coach-turns></div>
         </section>
         <div class="ban-results-grid">
@@ -7320,6 +7402,7 @@ def render_target_ban_section(
         </section>
       </section>
     </section>
+    {render_champion_tag_audit_section(champion_tag_rows)}
     """
 
 
@@ -7328,6 +7411,7 @@ def render_ban_planner_script(
     target_pick_rows: Sequence[dict[str, object]],
     player_rows: Sequence[dict[str, object]],
     champion_matchup_rows: Sequence[dict[str, object]],
+    champion_tag_rows: Sequence[dict[str, object]],
 ) -> str:
     target_data = []
     for row in target_ban_rows:
@@ -7386,6 +7470,56 @@ def render_ban_planner_script(
         }
         for champion in CHAMPION_ROSTER
     ]
+    champion_tag_data = []
+    for row in champion_tag_rows:
+        champion = str(row.get("champion", ""))
+        categories = [
+            part.strip()
+            for part in str(row.get("draft_categories", "")).split(",")
+            if part.strip()
+        ]
+        tags = [
+            part.strip()
+            for part in str(row.get("riot_tags", "")).split(",")
+            if part.strip() and part.strip() != "Source unavailable"
+        ]
+        online_role_shares = row.get("online_role_shares", {})
+        if not isinstance(online_role_shares, dict):
+            online_role_shares = {}
+        custom_role_games = row.get("custom_role_games", {})
+        if not isinstance(custom_role_games, dict):
+            custom_role_games = {}
+        champion_tag_data.append(
+            {
+                "name": champion,
+                "icon": champion_icon_url(champion),
+                "onlineRole": str(row.get("online_role", "")),
+                "onlineRoleShare": round(float(row.get("online_role_share", 0)), 4),
+                "onlinePickrate": round(float(row.get("online_pickrate", 0)), 5),
+                "onlineRoles": str(row.get("online_roles", "")),
+                "roleShares": {
+                    str(role): round(float(share), 4)
+                    for role, share in online_role_shares.items()
+                    if str(role) in ROLE_ORDER
+                },
+                "customRoleGames": {
+                    str(role): int(games)
+                    for role, games in custom_role_games.items()
+                    if str(role) in ROLE_ORDER
+                },
+                "riotTags": tags,
+                "categories": categories,
+                "categoryText": str(row.get("draft_categories", "")),
+                "damageLean": str(row.get("damage_lean", "")),
+                "games": int(row.get("games", 0)),
+                "winrate": round(float(row.get("winrate", 0)), 4),
+                "attack": int(row.get("attack", 0)),
+                "defense": int(row.get("defense", 0)),
+                "magic": int(row.get("magic", 0)),
+                "difficulty": int(row.get("difficulty", 0)),
+                "roleCheck": str(row.get("role_check", "")),
+            }
+        )
     matchup_data = []
     for row in champion_matchup_rows:
         matchup_data.append(
@@ -7403,12 +7537,14 @@ def render_ban_planner_script(
     target_json = json.dumps(target_data, ensure_ascii=True).replace("</", "<\\/")
     pick_json = json.dumps(pick_data, ensure_ascii=True).replace("</", "<\\/")
     champion_json = json.dumps(champion_data, ensure_ascii=True).replace("</", "<\\/")
+    champion_tag_json = json.dumps(champion_tag_data, ensure_ascii=True).replace("</", "<\\/")
     matchup_json = json.dumps(matchup_data, ensure_ascii=True).replace("</", "<\\/")
     player_json = json.dumps(player_names, ensure_ascii=True).replace("</", "<\\/")
     script = """
     const banTargetData = __BAN_TARGET_DATA__;
     const pickTargetData = __PICK_TARGET_DATA__;
     const championRosterData = __CHAMPION_ROSTER_DATA__;
+    const championTagData = __CHAMPION_TAG_DATA__;
     const championMatchupData = __CHAMPION_MATCHUP_DATA__;
     const banPlayerNames = __BAN_PLAYER_NAMES__;
     const draftInputs = Array.from(document.querySelectorAll("[data-draft-team]"));
@@ -7420,6 +7556,8 @@ def render_ban_planner_script(
     const championPoolList = document.querySelector("[data-champion-pool-list]");
     const championPoolClear = document.querySelector("[data-champion-pool-clear]");
     const draftCoachSummary = document.querySelector("[data-draft-coach-summary]");
+    const draftMacro = document.querySelector("[data-draft-macro]");
+    const draftPredictions = document.querySelector("[data-draft-predictions]");
     const draftCoachTurns = document.querySelector("[data-draft-coach-turns]");
 
     function formatBanPercent(value) {
@@ -7454,12 +7592,28 @@ def render_ban_planner_script(
         }
       });
     });
+    const championMetaByName = new Map(championTagData.map(row => [row.name, row]));
     const roleEligibleChampions = new Map();
-    pickTargetData.forEach(row => {
-      if (!roleEligibleChampions.has(row.role)) {
-        roleEligibleChampions.set(row.role, new Set());
+    function addRoleEligible(role, champion) {
+      if (!role || !champion) return;
+      if (!roleEligibleChampions.has(role)) {
+        roleEligibleChampions.set(role, new Set());
       }
-      roleEligibleChampions.get(row.role).add(row.champion);
+      roleEligibleChampions.get(role).add(champion);
+    }
+    pickTargetData.forEach(row => {
+      addRoleEligible(row.role, row.champion);
+    });
+    championTagData.forEach(row => {
+      Object.entries(row.customRoleGames || {}).forEach(([role, games]) => {
+        if (Number(games) > 0) addRoleEligible(role, row.name);
+      });
+      Object.entries(row.roleShares || {}).forEach(([role, share]) => {
+        if (Number(share) >= 0.08) addRoleEligible(role, row.name);
+      });
+      if (row.onlineRole && row.onlineRole !== "-" && Number(row.onlineRoleShare || 0) >= 0.05) {
+        addRoleEligible(row.onlineRole, row.name);
+      }
     });
     const roleMetaAccumulator = new Map();
     pickTargetData.forEach(row => {
@@ -7484,7 +7638,7 @@ def render_ban_planner_script(
       entry.score = Math.max(entry.score, Number(row.score) || 0);
       entry.pilots.add(row.player);
     });
-    const roleMetaData = Array.from(roleMetaAccumulator.values()).map(row => ({
+    const customRoleMetaData = Array.from(roleMetaAccumulator.values()).map(row => ({
       player: "Role meta",
       champion: row.champion,
       championIcon: row.championIcon,
@@ -7504,6 +7658,41 @@ def render_ban_planner_script(
       playerThreat: 0,
       confidence: `${row.pilots.size} pilots`
     }));
+    const tagRoleMetaData = championTagData.flatMap(meta => {
+      const roleShares = Object.entries(meta.roleShares || {})
+        .filter(([role, share]) => roleEligibleChampions.get(role)?.has(meta.name) && Number(share) >= 0.08);
+      if (!roleShares.length && meta.onlineRole && meta.onlineRole !== "-") {
+        roleShares.push([meta.onlineRole, Number(meta.onlineRoleShare || 0)]);
+      }
+      return roleShares.map(([role, share]) => {
+        const customGames = Number(meta.customRoleGames?.[role] || 0);
+        const customWinrateBonus = customGames ? (Number(meta.winrate || 0) - 0.5) * 12 : 0;
+        const categoryBonus =
+          (meta.categories || []).some(category => ["Frontline", "Bruiser", "Ranged Carry", "Utility"].includes(category)) ? 3 : 0;
+        return {
+          player: "Role meta",
+          champion: meta.name,
+          championIcon: meta.icon,
+          role,
+          roles: meta.onlineRoles || role,
+          games: customGames || Math.max(1, Math.round(Number(share || 0) * 100)),
+          wins: customGames ? Math.round(customGames * Number(meta.winrate || 0)) : 0,
+          winrate: customGames ? Number(meta.winrate || 0) : 0.5,
+          kda: 0,
+          avgKills: 0,
+          avgDeaths: 0,
+          avgAssists: 0,
+          score: 30 + (Number(share || 0) * 34) + customWinrateBonus + categoryBonus,
+          lift: 0,
+          playerWinrate: 0,
+          mvpScore: 0,
+          playerThreat: 0,
+          confidence: `${role} ${formatBanPercent(Number(share || 0))} online`,
+          tagFallback: true
+        };
+      });
+    });
+    const roleMetaData = customRoleMetaData.concat(tagRoleMetaData);
 
     function canonicalPlayerName(value) {
       const term = String(value || "").trim().toLowerCase();
@@ -7555,7 +7744,118 @@ def render_ban_planner_script(
     }
 
     function championHasRole(champion, role) {
-      return Boolean(roleEligibleChampions.get(role)?.has(champion));
+      if (roleEligibleChampions.get(role)?.has(champion)) return true;
+      const meta = championMetaByName.get(champion);
+      return Boolean(meta && Number(meta.roleShares?.[role] || 0) >= 0.08);
+    }
+
+    function metaForChampion(champion) {
+      return championMetaByName.get(champion) || {
+        name: champion,
+        categories: [],
+        categoryText: "-",
+        damageLean: "-",
+        onlineRole: "-",
+        onlineRoleShare: 0,
+        roleShares: {},
+        roleCheck: "",
+        difficulty: 0,
+        defense: 0
+      };
+    }
+
+    function categorySet(champion) {
+      return new Set(metaForChampion(champion).categories || []);
+    }
+
+    function hasAnyCategory(champion, categories) {
+      const set = categorySet(champion);
+      return categories.some(category => set.has(category));
+    }
+
+    function teamProfile(picks) {
+      const profile = {
+        frontline: 0,
+        utility: 0,
+        rangedCarry: 0,
+        poke: 0,
+        burst: 0,
+        physical: 0,
+        magic: 0,
+        mixed: 0
+      };
+      (picks || []).forEach(pick => {
+        const meta = metaForChampion(pick.champion);
+        const categories = new Set(meta.categories || []);
+        if (categories.has("Frontline") || categories.has("Bruiser")) profile.frontline += 1;
+        if (categories.has("Utility")) profile.utility += 1;
+        if (categories.has("Ranged Carry")) profile.rangedCarry += 1;
+        if (categories.has("Magic / Poke")) profile.poke += 1;
+        if (categories.has("Burst / Pick")) profile.burst += 1;
+        if (meta.damageLean === "Magic") profile.magic += 1;
+        else if (meta.damageLean === "Physical") profile.physical += 1;
+        else profile.mixed += 1;
+      });
+      return profile;
+    }
+
+    function teamNeedContext(champion, ownPicks) {
+      const meta = metaForChampion(champion);
+      const profile = teamProfile(ownPicks);
+      const categories = new Set(meta.categories || []);
+      const tags = [];
+      let bonus = 0;
+      if (profile.frontline === 0 && (categories.has("Frontline") || categories.has("Bruiser"))) {
+        bonus += 9;
+        tags.push("Adds frontline");
+      }
+      if (profile.utility === 0 && categories.has("Utility")) {
+        bonus += 4;
+        tags.push("Adds utility");
+      }
+      if (profile.magic === 0 && meta.damageLean === "Magic") {
+        bonus += 5;
+        tags.push("Adds magic");
+      }
+      if (profile.physical === 0 && meta.damageLean === "Physical") {
+        bonus += 4;
+        tags.push("Adds physical");
+      }
+      if (profile.magic >= 3 && meta.damageLean === "Magic") {
+        bonus -= 6;
+        tags.push("Magic-heavy risk");
+      }
+      if (profile.physical >= 3 && meta.damageLean === "Physical") {
+        bonus -= 5;
+        tags.push("Physical-heavy risk");
+      }
+      return { bonus, tags };
+    }
+
+    function roleMetaContext(champion, role, roleMatched) {
+      const meta = metaForChampion(champion);
+      const share = Number(meta.roleShares?.[role] || 0);
+      const customGames = Number(meta.customRoleGames?.[role] || 0);
+      const tags = [];
+      let bonus = 0;
+      if (share >= 0.25) {
+        bonus += Math.min(10, share * 18);
+        tags.push(`${role} ${formatBanPercent(share)} online`);
+      } else if (share >= 0.08) {
+        bonus += 3;
+        tags.push(`${role} secondary online`);
+      } else if (customGames > 0) {
+        bonus += 2;
+        tags.push(`${customGames} custom ${role}g`);
+      } else if (!roleMatched) {
+        bonus -= 8;
+        tags.push("Role risk");
+      }
+      if (meta.roleCheck === "Custom off-meta" && !roleMatched) {
+        bonus -= 4;
+        tags.push("Off-meta");
+      }
+      return { bonus, tags };
     }
 
     function updateChampionPoolDisplay(pool) {
@@ -7670,14 +7970,17 @@ def render_ban_planner_script(
       };
     }
 
-    function pickCandidatesForEntry(entry, pool, unavailableChampions, opponentPicks = []) {
+    function pickCandidatesForEntry(entry, pool, unavailableChampions, opponentPicks = [], ownPicks = []) {
       const unavailable = unavailableChampions || new Set();
       const sameRoleOpponent = opponentPicks.find(row => row.assignedRole === entry.role);
       const decorate = (row, roleMatched, metaFallback = false) => {
         const matchup = championMatchupSignal(row.champion, sameRoleOpponent?.champion || "", entry.role);
+        const meta = metaForChampion(row.champion);
+        const teamNeed = teamNeedContext(row.champion, ownPicks);
+        const roleMeta = roleMetaContext(row.champion, entry.role, roleMatched);
         const sampleBonus = Math.min(Number(row.games) || 0, 8) * 0.8;
         const roleBonus = roleMatched ? 8 : -4;
-        const historyPenalty = metaFallback ? -18 : 0;
+        const historyPenalty = metaFallback ? (row.tagFallback ? -12 : -16) : 0;
         const comfortBonus =
           (Number(row.winrate) * 8) +
           (Math.min(Number(row.kda) || 0, 6) * 2) +
@@ -7691,7 +7994,15 @@ def render_ban_planner_script(
           metaFallback,
           matchupBonus: matchup.bonus,
           matchupLabel: matchup.label,
-          pickScore: Number(row.score || 0) + roleBonus + sampleBonus + comfortBonus + matchup.bonus + historyPenalty
+          categories: meta.categoryText || "-",
+          categoryList: meta.categories || [],
+          damageLean: meta.damageLean || "-",
+          onlineRole: meta.onlineRole || "-",
+          onlineRoleShare: Number(meta.onlineRoleShare || 0),
+          difficulty: Number(meta.difficulty || 0),
+          roleContextTags: roleMeta.tags,
+          needTags: teamNeed.tags,
+          pickScore: Number(row.score || 0) + roleBonus + sampleBonus + comfortBonus + matchup.bonus + historyPenalty + roleMeta.bonus + teamNeed.bonus
         };
       };
       const exactRows = pickTargetData
@@ -7780,7 +8091,7 @@ def render_ban_planner_script(
 
     function opponentContestScore(champion, opponentEntries, pool, unavailableChampions) {
       return Math.max(0, ...opponentEntries.map(entry => {
-        const rows = pickCandidatesForEntry(entry, pool, unavailableChampions, []);
+        const rows = pickCandidatesForEntry(entry, pool, unavailableChampions, [], []);
         const match = rows.find(row => row.champion === champion);
         return match ? Number(match.pickScore) : 0;
       }));
@@ -7795,10 +8106,10 @@ def render_ban_planner_script(
       const options = ownEntries
         .filter(entry => !pickedPlayers.has(entry.player))
         .map(entry => {
-          const candidates = pickCandidatesForEntry(entry, pool, unavailableChampions, enemyPicks);
+          const candidates = pickCandidatesForEntry(entry, pool, unavailableChampions, enemyPicks, ownPicks);
           const pick = candidates[0];
           if (!pick) return null;
-          const ideal = pickCandidatesForEntry(entry, pool, new Set(), [])[0] || null;
+          const ideal = pickCandidatesForEntry(entry, pool, new Set(), [], ownPicks)[0] || null;
           const safe = bestSafePick(candidates);
           const ceiling = highCeilingPick(candidates);
           const trap = trapPick(candidates);
@@ -7912,8 +8223,8 @@ def render_ban_planner_script(
         ? `${row.player} - ${roleNote}${row.fit ? `, ${row.fit}` : ""}${row.metaFallback ? ", role meta fallback" : ""}`
         : `Deny ${row.player} - ${row.assignedRole}`;
       const detail = row.metaFallback
-        ? `${row.games} role games, ${formatBanPercent(row.winrate)} role WR, ${Number(row.kda).toFixed(2)} role KDA, no player sample`
-        : `${row.games}g, ${formatBanPercent(row.winrate)} WR, ${Number(row.kda).toFixed(2)} KDA, ${Number(row.mvpScore).toFixed(1)} MVP`;
+        ? `${row.games} role signal, ${formatBanPercent(row.winrate)} estimated WR, ${row.categories || "role meta"}, ${row.damageLean || "mixed"} damage, no player sample`
+        : `${row.games}g, ${formatBanPercent(row.winrate)} WR, ${Number(row.kda).toFixed(2)} KDA, ${Number(row.mvpScore).toFixed(1)} MVP, ${row.categories || "uncategorised"}`;
       const scoreValue = Number(isPick ? row.pickScore : row.denyScore || row.draftScore || row.score);
       const ideal = turn.ideal;
       const tags = [];
@@ -7927,6 +8238,10 @@ def render_ban_planner_script(
         const ceiling = turn.choice.ceiling;
         const trap = turn.choice.trap;
         if (row.metaFallback) tags.push(draftTag("draft-tag-trap", "No player sample"));
+        (row.needTags || []).forEach(text => tags.push(draftTag("draft-tag-safe", text)));
+        (row.roleContextTags || []).slice(0, 2).forEach(text => tags.push(draftTag("draft-tag-counter", text)));
+        if (row.categories && row.categories !== "-") tags.push(draftTag("draft-tag-ceiling", row.categories));
+        if (row.damageLean && row.damageLean !== "-") tags.push(draftTag("draft-tag-counter", row.damageLean));
         if (safe) tags.push(draftTag("draft-tag-safe", `Safe: ${safe.champion}`));
         if (ceiling) tags.push(draftTag("draft-tag-ceiling", `Ceiling: ${ceiling.champion}`));
         if (row.matchupLabel) tags.push(draftTag("draft-tag-counter", row.matchupLabel));
@@ -7951,11 +8266,118 @@ def render_ban_planner_script(
       `;
     }
 
+    function draftInsightItem(title, detail, tone = "") {
+      return `
+        <div class="draft-insight-item" data-tone="${escapeBanHtml(tone)}">
+          <strong>${escapeBanHtml(title)}</strong>
+          <small>${escapeBanHtml(detail)}</small>
+        </div>
+      `;
+    }
+
+    function teamNeeds(profile) {
+      const needs = [];
+      if (profile.frontline === 0) needs.push("frontline");
+      if (profile.magic === 0) needs.push("magic damage");
+      if (profile.physical === 0) needs.push("physical damage");
+      if (profile.utility === 0) needs.push("utility");
+      return needs;
+    }
+
+    function sideMacroItems(team, ownPicks, enemyPicks) {
+      const ownName = sideName(team);
+      const enemyName = sideName(opponentTeam(team));
+      const ownProfile = teamProfile(ownPicks);
+      const enemyProfile = teamProfile(enemyPicks);
+      const ownNeeds = teamNeeds(ownProfile);
+      const items = [];
+      if (!ownPicks.length) {
+        items.push(draftInsightItem(`${ownName} waiting for picks`, "Select or import players to generate team-shape coaching.", "gold"));
+        return items;
+      }
+      if (ownNeeds.length) {
+        items.push(draftInsightItem(`${ownName} still needs ${ownNeeds.join(", ")}`, "Prioritize picks that fill missing jobs unless a comfort denial is too valuable.", "warn"));
+      } else {
+        items.push(draftInsightItem(`${ownName} has a rounded shape`, "Current picks cover frontline, utility, and mixed damage well enough to draft for comfort or counters.", "good"));
+      }
+      if (enemyProfile.frontline === 0 && enemyPicks.length >= 3) {
+        items.push(draftInsightItem(`${enemyName} lacks frontline`, "Look for engage, pick tools, or long fights where their carries have to face-check.", "good"));
+      }
+      if (enemyProfile.magic >= 3) {
+        items.push(draftInsightItem(`${enemyName} magic-heavy`, "Draft or play toward magic resistance and avoid giving their poke free setup.", "gold"));
+      }
+      if (enemyProfile.physical >= 3) {
+        items.push(draftInsightItem(`${enemyName} physical-heavy`, "Frontline armor and peel become more valuable than another damage-only lane.", "gold"));
+      }
+      ownPicks.forEach(ownPick => {
+        const enemyPick = enemyPicks.find(row => row.assignedRole === ownPick.assignedRole);
+        if (!enemyPick) return;
+        const signal = championMatchupSignal(ownPick.champion, enemyPick.champion, ownPick.assignedRole);
+        if (!signal.label) return;
+        const tone = signal.bonus >= 0 ? "good" : "warn";
+        const title = signal.bonus >= 0
+          ? `${ownPick.assignedRole}: play through ${ownPick.champion}`
+          : `${ownPick.assignedRole}: respect ${enemyPick.champion}`;
+        items.push(draftInsightItem(title, signal.label, tone));
+      });
+      return items;
+    }
+
+    function predictionItems(team, entries, pool, unavailable) {
+      return entries
+        .map(entry => {
+          const candidates = pickCandidatesForEntry(entry, pool, unavailable, [], []);
+          const best = candidates[0];
+          if (!best) return null;
+          const backup = candidates.find(row => row.champion !== best.champion);
+          const meta = metaForChampion(best.champion);
+          const detailParts = [
+            `${entry.role} ${entry.player}`,
+            `${best.games}g`,
+            `${formatBanPercent(best.winrate)} WR`,
+            meta.categoryText || "",
+            backup ? `backup ${backup.champion}` : ""
+          ].filter(Boolean);
+          return {
+            score: Number(best.pickScore || best.score || 0),
+            html: draftInsightItem(
+              `${sideName(team)} likely: ${best.champion}`,
+              detailParts.join(" - "),
+              best.metaFallback ? "gold" : "good"
+            )
+          };
+        })
+        .filter(Boolean)
+        .sort((left, right) => Number(right.score) - Number(left.score))
+        .slice(0, 5)
+        .map(row => row.html);
+    }
+
+    function renderDraftInsights(simulation, blueEntries, redEntries, pool) {
+      if (!draftMacro || !draftPredictions) return;
+      const unavailableAfterBans = new Set(
+        simulation.blueBans.concat(simulation.redBans).map(row => championDraftKey(row.champion))
+      );
+      const macroItems = []
+        .concat(sideMacroItems("blue", simulation.bluePicks, simulation.redPicks))
+        .concat(sideMacroItems("red", simulation.redPicks, simulation.bluePicks));
+      draftMacro.innerHTML = macroItems.length
+        ? macroItems.join("")
+        : draftInsightItem("No draft shape yet", "Import a draft and champion pool to generate macro and lane tips.", "gold");
+      const predictionRows = []
+        .concat(predictionItems("blue", blueEntries, pool, unavailableAfterBans))
+        .concat(predictionItems("red", redEntries, pool, unavailableAfterBans));
+      draftPredictions.innerHTML = predictionRows.length
+        ? predictionRows.join("")
+        : draftInsightItem("No enemy predictions yet", "Predictions appear once drafted players are entered.", "gold");
+    }
+
     function renderDraftCoach(simulation, blueEntries, redEntries, pool) {
       if (!draftCoachSummary || !draftCoachTurns) return;
       if (!blueEntries.length && !redEntries.length) {
         draftCoachSummary.textContent = "Enter teams and a champion pool to simulate the tournament draft order.";
         draftCoachTurns.innerHTML = "";
+        renderDraftInsights(simulation, blueEntries, redEntries, pool);
         return;
       }
       const poolText = pool.limited
@@ -7965,7 +8387,8 @@ def render_ban_planner_script(
       const banCount = simulation.blueBans.length + simulation.redBans.length;
       draftCoachSummary.textContent =
         `Simulating ${poolText}: ${banCount}/6 bans and ${pickedCount}/10 picks. ` +
-        "Role-specific comfort is used first, champion matchup bonuses apply after a lane opponent is visible, and class needs will need champion tags later.";
+        "Role-specific comfort is used first, then online role popularity, champion tags, team needs, and visible lane matchups adjust the advice.";
+      renderDraftInsights(simulation, blueEntries, redEntries, pool);
       draftCoachTurns.innerHTML = simulation.turns.map(renderDraftTurn).join("");
     }
 
@@ -8027,8 +8450,8 @@ def render_ban_planner_script(
         const roleNote = row.roleMatched ? row.assignedRole : `${row.assignedRole} eligible`;
         const fitNote = row.fit ? `, ${escapeBanHtml(row.fit)}` : "";
         const sampleNote = row.metaFallback
-          ? `${row.games} role games, ${formatBanPercent(row.winrate)} role WR, no player sample`
-          : `${row.games}g, ${formatBanPercent(row.winrate)} WR, ${Number(row.kda).toFixed(2)} KDA, ${Number(row.mvpScore).toFixed(1)} MVP`;
+          ? `${row.games} role signal, ${formatBanPercent(row.winrate)} estimated WR, ${row.categories || "role meta"}, no player sample`
+          : `${row.games}g, ${formatBanPercent(row.winrate)} WR, ${Number(row.kda).toFixed(2)} KDA, ${Number(row.mvpScore).toFixed(1)} MVP, ${row.categories || "uncategorised"}`;
         return `
           <article class="ban-pick-row">
             <b>${index + 1}</b>
@@ -8154,6 +8577,7 @@ def render_ban_planner_script(
         script.replace("__BAN_TARGET_DATA__", target_json)
         .replace("__PICK_TARGET_DATA__", pick_json)
         .replace("__CHAMPION_ROSTER_DATA__", champion_json)
+        .replace("__CHAMPION_TAG_DATA__", champion_tag_json)
         .replace("__CHAMPION_MATCHUP_DATA__", matchup_json)
         .replace("__BAN_PLAYER_NAMES__", player_json)
     )
@@ -13909,9 +14333,9 @@ def build_dashboard(
   </header>
   {render_dashboard_nav("draft_coach", main_page_name=main_page_name, teams_page_name=teams_page_name, draft_coach_page_name=draft_coach_page_name, showcases_page_name=showcases_page_name, random_pool_page_name=random_pool_page_name, experimental_page_name=experimental_page_name)}
   <main>
-    {render_target_ban_section(display_target_ban_rows, display_practice_pick_rows, display_player_rows)}
+    {render_target_ban_section(display_target_ban_rows, display_practice_pick_rows, display_player_rows, champion_tag_rows)}
   </main>
-  <script>{shared_script}{render_ban_planner_script(display_target_ban_rows, display_target_pick_rows, display_player_rows, champion_h2h_rows)}</script>
+  <script>{shared_script}{render_ban_planner_script(display_target_ban_rows, display_target_pick_rows, display_player_rows, champion_h2h_rows, champion_tag_rows)}</script>
 </body>
 </html>
 """
@@ -13966,7 +14390,6 @@ def build_dashboard(
     experimental_html = render_experimental_page(
         shared_style=shared_style,
         shared_script=shared_script,
-        champion_tag_rows=champion_tag_rows,
         meta_rows=custom_meta_rows,
         form_rows=form_rows,
         hall_rows=hall_rows,
