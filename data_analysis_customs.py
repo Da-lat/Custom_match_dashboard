@@ -64,7 +64,7 @@ CHAMPION_ROSTER_VERSION = "16.10.1"
 CHAMPION_ASSET_OVERRIDES = {
     "Bel'Veth": "Belveth",
     "Cho'Gath": "Chogath",
-    "Fiddlesticks": "FiddleSticks",
+    "Fiddlesticks": "Fiddlesticks",
     "Kai'Sa": "Kaisa",
     "Kha'Zix": "Khazix",
     "K'Sante": "KSante",
