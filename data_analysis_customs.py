@@ -5493,55 +5493,15 @@ def render_recent_form_section(rows: Sequence[dict[str, object]]) -> str:
             )
         )
 
-    cards = []
-    for row in rows:
-        timeline = []
-        for item in row.get("timeline", []):
-            result_class = "win" if item.get("result") == "Win" else "loss"
-            timeline.append(
-                f"""
-                <span class="form-pill {result_class}" title="Match {html_attr(item.get('match_id', ''))}: {html_attr(item.get('champion', ''))} {html_attr(item.get('role', ''))} {html_attr(item.get('kda', ''))}">
-                  {escape(str(item.get("result", "-"))[0])}
-                </span>
-                """
-            )
-        movement = float(row.get("mvp_movement", 0))
-        cards.append(
-            f"""
-            <article class="form-card status-{html_attr(form_status_class(row.get('status', 'stable')))}" data-card-text="{html_attr(row.get('search_text', ''))}">
-              <div class="form-card-heading">
-                <div>
-                  <span>{escape(str(row.get('status', '-')))}</span>
-                  <h3>{escape(str(row.get('name', '-')))}</h3>
-                </div>
-                <strong>{score(float(row.get('recent_score', 0)))}</strong>
-              </div>
-              <div class="form-timeline">{"".join(timeline)}</div>
-              <div class="form-stat-grid">
-                <div><span>Last {integer(row.get('recent_games', 0))}</span><b>{escape(str(row.get('recent_record', '-')))}</b></div>
-                <div><span>Recent WR</span><b>{pct(float(row.get('recent_winrate', 0)))}</b></div>
-                <div><span>KDA Trend</span><b>{two_decimal(float(row.get('recent_kda', 0)))} vs {two_decimal(float(row.get('overall_kda', 0)))}</b></div>
-                <div><span>MVP Move</span><b>{signed_integer(round(movement))}</b></div>
-              </div>
-              <small>{escape(str(row.get('streak_label', 'No streak')))}</small>
-            </article>
-            """
-        )
-
     return f"""
     <section id="recent-form" class="section">
       <div class="section-title">
         <div>
           <h2>Recent Form</h2>
-          <p class="note">Last 10 games per player, with current streak, recent KDA/KP trends, and an approximate MVP movement against season baseline.</p>
+          <p class="note">Last 10 games per player, summarised into current form, movement, slump, and streak highlights. Player-level recent form now lives on the Showcases page.</p>
         </div>
       </div>
       <div class="form-highlight-grid">{"".join(highlights)}</div>
-      <div class="form-toolbar">
-        <input class="card-search" type="search" placeholder="Search recent form" data-card-filter="recent-form">
-        <span class="pool-count">{len(rows)} form cards</span>
-      </div>
-      <div class="form-grid" data-card-container="recent-form">{"".join(cards)}</div>
     </section>
     """
 
@@ -6098,20 +6058,16 @@ def render_experimental_css() -> str:
       grid-template-columns: repeat(4, minmax(0, 1fr));
       margin-bottom: 16px;
     }
-    .form-highlight-card,
-    .form-card {
+    .form-highlight-card {
       background: linear-gradient(180deg, #121d2a, #0d1620);
       border: 1px solid var(--line);
       border-radius: 8px;
       box-shadow: var(--shadow);
-    }
-    .form-highlight-card {
       border-top: 4px solid #62a8ff;
       min-height: 142px;
       padding: 14px;
     }
-    .form-highlight-card span,
-    .form-card-heading span {
+    .form-highlight-card span {
       color: var(--muted);
       font-size: 0.78rem;
       font-weight: 950;
@@ -6134,77 +6090,6 @@ def render_experimental_css() -> str:
       color: var(--muted);
       line-height: 1.4;
       margin-top: 8px;
-    }
-    .form-grid {
-      display: grid;
-      gap: 16px;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-    .form-card {
-      border-top: 4px solid #8a94a6;
-      padding: 15px;
-    }
-    .form-card-heading {
-      align-items: start;
-      display: flex;
-      gap: 12px;
-      justify-content: space-between;
-    }
-    .form-card-heading h3 {
-      margin: 4px 0 0;
-    }
-    .form-card-heading strong {
-      color: var(--gold);
-      font-size: 1.45rem;
-      line-height: 1;
-    }
-    .form-timeline {
-      display: flex;
-      gap: 6px;
-      margin: 13px 0;
-    }
-    .form-pill {
-      align-items: center;
-      border-radius: 999px;
-      display: inline-flex;
-      font-size: 0.72rem;
-      font-weight: 950;
-      height: 22px;
-      justify-content: center;
-      width: 22px;
-    }
-    .form-pill.win {
-      background: rgba(79, 196, 139, 0.18);
-      color: #78e0a8;
-    }
-    .form-pill.loss {
-      background: rgba(255, 111, 129, 0.16);
-      color: #ff9eab;
-    }
-    .form-stat-grid {
-      display: grid;
-      gap: 8px;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .form-stat-grid div {
-      background: #101b28;
-      border: 1px solid rgba(255, 255, 255, 0.04);
-      border-radius: 7px;
-      padding: 8px;
-    }
-    .form-stat-grid span,
-    .form-card > small {
-      color: var(--muted);
-      display: block;
-      font-size: 0.76rem;
-      font-weight: 850;
-    }
-    .form-stat-grid b {
-      display: block;
-      margin-top: 3px;
-    }
-    .form-card > small {
-      margin-top: 12px;
     }
     .status-heating-up,
     .status-hot-form {
@@ -6484,7 +6369,6 @@ def render_experimental_css() -> str:
     @media (max-width: 1100px) {
       .meta-spotlight-grid,
       .form-highlight-grid,
-      .form-grid,
       .lab-award-grid,
       .upset-grid,
       .ownership-grid {
@@ -6500,7 +6384,6 @@ def render_experimental_css() -> str:
     @media (max-width: 720px) {
       .meta-spotlight-grid,
       .form-highlight-grid,
-      .form-grid,
       .lab-award-grid,
       .chemistry-list-grid,
       .upset-grid,
