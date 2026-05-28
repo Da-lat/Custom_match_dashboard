@@ -9675,36 +9675,33 @@ def render_random_pool_css() -> str:
     }
     .random-champion-grid {
       display: grid;
-      gap: 12px;
-      grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+      gap: 0;
+      grid-template-columns: repeat(var(--random-grid-columns, 8), 64px);
+      justify-content: start;
+      max-width: 100%;
+      overflow-x: auto;
+      width: max-content;
     }
     .random-champion-card {
-      background: linear-gradient(180deg, #121d2a, #0d1620);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      min-height: 146px;
-      padding: 11px;
-      text-align: center;
+      background: #0b1119;
+      height: 64px;
+      overflow: hidden;
+      position: relative;
+      width: 64px;
     }
     .random-champion-card img {
-      border-radius: 8px;
       display: block;
-      height: 72px;
-      margin: 0 auto 9px;
+      height: 100%;
       object-fit: cover;
-      width: 72px;
+      transform: scale(1.02);
+      width: 100%;
     }
-    .random-champion-card strong {
-      display: block;
-      font-size: 0.95rem;
-      line-height: 1.2;
-    }
-    .random-champion-card span {
-      color: var(--muted);
-      display: block;
-      font-size: 0.75rem;
-      font-weight: 850;
-      margin-top: 4px;
+    .random-champion-card::after {
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      content: "";
+      inset: 0;
+      pointer-events: none;
+      position: absolute;
     }
     @media (max-width: 980px) {
       .random-pool-layout {
@@ -9745,6 +9742,7 @@ def render_random_pool_script() -> str:
     const randomRosterButton = document.querySelector("[data-random-load-roster]");
     const randomClearButton = document.querySelector("[data-random-clear]");
     const randomCopyButton = document.querySelector("[data-random-copy]");
+    const randomDownloadButton = document.querySelector("[data-random-download-png]");
     const randomStatus = document.querySelector("[data-random-status]");
     const randomErrors = document.querySelector("[data-random-errors]");
     const randomResults = document.querySelector("[data-random-results]");
@@ -9801,6 +9799,12 @@ def render_random_pool_script() -> str:
       return shuffled;
     }
 
+    function randomGridColumns(count) {
+      if (count <= 0) return 8;
+      if (count <= 4) return count;
+      return Math.min(10, Math.ceil(Math.sqrt(count * 1.35)));
+    }
+
     function renderRandomSelection(champions) {
       currentRandomSelection = champions;
       if (randomResultCount) {
@@ -9808,16 +9812,85 @@ def render_random_pool_script() -> str:
       }
       if (!randomResults) return;
       if (!champions.length) {
+        randomResults.style.removeProperty("--random-grid-columns");
         randomResults.innerHTML = '<div class="empty-state">Paste a champion list, choose a number, then pick a random pool.</div>';
         return;
       }
+      randomResults.style.setProperty("--random-grid-columns", String(randomGridColumns(champions.length)));
       randomResults.innerHTML = champions.map((champion, index) => `
-        <article class="random-champion-card">
+        <article class="random-champion-card" title="${escapeRandomHtml(champion.name)}" aria-label="${escapeRandomHtml(champion.name)}">
           <img src="${escapeRandomHtml(champion.icon)}" alt="${escapeRandomHtml(champion.name)}">
-          <strong>${escapeRandomHtml(champion.name)}</strong>
-          <span>#${index + 1}</span>
         </article>
       `).join("");
+    }
+
+    function loadRandomChampionImage(champion) {
+      return new Promise(resolve => {
+        const image = new Image();
+        image.crossOrigin = "anonymous";
+        image.onload = () => resolve({ champion, image });
+        image.onerror = () => resolve({ champion, image: null });
+        image.src = champion.icon;
+      });
+    }
+
+    function drawRandomFallback(context, champion, x, y, size) {
+      context.fillStyle = "#101b28";
+      context.fillRect(x, y, size, size);
+      context.fillStyle = "#f0c96a";
+      context.font = `900 ${Math.round(size * 0.28)}px system-ui, sans-serif`;
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      const initials = champion.name
+        .split(/\\s+/)
+        .map(part => part[0])
+        .join("")
+        .slice(0, 3)
+        .toUpperCase();
+      context.fillText(initials || "?", x + size / 2, y + size / 2);
+    }
+
+    async function downloadRandomPoolPng() {
+      if (!currentRandomSelection.length) {
+        if (randomStatus) randomStatus.textContent = "Pick champions before creating a PNG.";
+        return;
+      }
+      if (randomStatus) randomStatus.textContent = "Creating PNG...";
+      const iconSize = 96;
+      const columns = randomGridColumns(currentRandomSelection.length);
+      const rows = Math.ceil(currentRandomSelection.length / columns);
+      const canvas = document.createElement("canvas");
+      canvas.width = columns * iconSize;
+      canvas.height = rows * iconSize;
+      const context = canvas.getContext("2d");
+      context.fillStyle = "#0b1119";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      const loaded = await Promise.all(currentRandomSelection.map(loadRandomChampionImage));
+      loaded.forEach(({ champion, image }, index) => {
+        const x = (index % columns) * iconSize;
+        const y = Math.floor(index / columns) * iconSize;
+        if (image) {
+          context.drawImage(image, x, y, iconSize, iconSize);
+        } else {
+          drawRandomFallback(context, champion, x, y, iconSize);
+        }
+      });
+      try {
+        const blob = await new Promise((resolve, reject) => {
+          canvas.toBlob(result => result ? resolve(result) : reject(new Error("PNG export failed")), "image/png");
+        });
+        const link = document.createElement("a");
+        const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+        link.href = URL.createObjectURL(blob);
+        link.download = `random-champion-pool-${stamp}.png`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(link.href);
+        if (randomStatus) randomStatus.textContent = `PNG created: ${currentRandomSelection.length} champions, ${columns}x${rows} grid.`;
+      } catch (_error) {
+        if (randomStatus) randomStatus.textContent = "PNG export failed. Try again after the champion icons finish loading.";
+      }
     }
 
     function updateRandomPoolStatus(parsed = parseRandomPool()) {
@@ -9868,6 +9941,7 @@ def render_random_pool_script() -> str:
         if (randomStatus) randomStatus.textContent = text;
       }
     });
+    randomDownloadButton?.addEventListener("click", downloadRandomPoolPng);
     updateRandomPoolStatus();
     renderRandomSelection([]);
     """.replace("__RANDOM_CHAMPION_DATA__", champion_json)
@@ -9939,6 +10013,7 @@ def render_random_pool_page(
               <small data-random-result-count>0 selected</small>
             </div>
             <div class="random-results-actions">
+              <button type="button" data-random-download-png>Download PNG</button>
               <button type="button" data-random-copy>Copy Names</button>
             </div>
           </div>
