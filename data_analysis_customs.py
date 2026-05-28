@@ -78,6 +78,13 @@ CHAMPION_ROSTER_SOURCE_URL = (
     f"https://ddragon.leagueoflegends.com/cdn/{CHAMPION_ROSTER_VERSION}/"
     "data/en_US/champion.json"
 )
+U_GG_PATCH_SLUG = "_".join(CHAMPION_ROSTER_VERSION.split(".")[:2])
+U_GG_ROLE_STATS_PAGE_URL = "https://u.gg/lol/tier-list"
+U_GG_ROLE_STATS_SOURCE_URL = (
+    "https://stats2.u.gg/lol/1.5/champion_ranking/world/"
+    f"{U_GG_PATCH_SLUG}/ranked_solo_5x5/emerald_plus/1.5.0.json"
+)
+U_GG_ROLE_SOURCE_LABEL = f"U.GG Emerald+ ranked {CHAMPION_ROSTER_VERSION}"
 CHAMPION_ROSTER = (
     "Aatrox",
     "Ahri",
@@ -612,6 +619,8 @@ def load_champion_catalog_metadata() -> dict[str, dict[str, object]]:
             continue
         info = champion.get("info", {})
         metadata[name] = {
+            "key": str(champion.get("key", "")).strip(),
+            "id": str(champion.get("id", "")).strip(),
             "title": str(champion.get("title", "")).strip(),
             "tags": [
                 str(tag)
@@ -622,6 +631,127 @@ def load_champion_catalog_metadata() -> dict[str, dict[str, object]]:
             "partype": str(champion.get("partype", "")).strip(),
         }
     return metadata
+
+
+def load_online_role_popularity(
+    champion_metadata: dict[str, dict[str, object]]
+) -> dict[str, dict[str, object]]:
+    from urllib.error import HTTPError, URLError
+    from urllib.request import Request, urlopen
+
+    id_to_champion = {
+        str(metadata.get("key", "")).strip(): champion
+        for champion, metadata in champion_metadata.items()
+        if str(metadata.get("key", "")).strip()
+    }
+    if not id_to_champion:
+        return {}
+
+    request = Request(
+        U_GG_ROLE_STATS_SOURCE_URL,
+        headers={"Accept": "application/json", "User-Agent": "custom-games-dashboard/1.0"},
+        method="GET",
+    )
+    try:
+        with urlopen(request, timeout=10) as response:
+            payload = response.read().decode("utf-8")
+    except (HTTPError, URLError, TimeoutError, OSError):
+        return {}
+
+    try:
+        data = json.loads(payload)
+    except json.JSONDecodeError:
+        return {}
+
+    ugg_role_map = {
+        "top": "TOP",
+        "jungle": "JUNGLE",
+        "mid": "MID",
+        "middle": "MID",
+        "adc": "BOT",
+        "bot": "BOT",
+        "support": "SUPP",
+        "supp": "SUPP",
+    }
+    role_matches: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    total_matches = 0.0
+
+    if isinstance(data, list) and data and isinstance(data[0], dict):
+        raw_role_rows = data[0]
+        for item in reversed(data):
+            if isinstance(item, (int, float)):
+                total_matches = float(item)
+                break
+        for raw_role, rows in raw_role_rows.items():
+            role = ugg_role_map.get(str(raw_role).casefold())
+            if role not in ROLE_ORDER or not isinstance(rows, list):
+                continue
+            for row in rows:
+                if not isinstance(row, list) or len(row) <= 3:
+                    continue
+                champion = id_to_champion.get(str(row[0]))
+                if not champion:
+                    continue
+                try:
+                    matches = int(row[3])
+                except (TypeError, ValueError):
+                    continue
+                role_matches[champion][role] += max(0, matches)
+    elif isinstance(data, dict):
+        raw_role_rows = data.get("win_rates", {})
+        total_matches = float(data.get("queue_type_total_matches", 0) or 0)
+        if isinstance(raw_role_rows, dict):
+            for raw_role, rows in raw_role_rows.items():
+                role = ugg_role_map.get(str(raw_role).casefold())
+                if role not in ROLE_ORDER or not isinstance(rows, list):
+                    continue
+                for row in rows:
+                    if not isinstance(row, dict):
+                        continue
+                    champion = id_to_champion.get(str(row.get("champion_id", "")))
+                    if not champion:
+                        continue
+                    try:
+                        matches = int(row.get("matches", 0) or 0)
+                    except (TypeError, ValueError):
+                        continue
+                    role_matches[champion][role] += max(0, matches)
+
+    popularity: dict[str, dict[str, object]] = {}
+    for champion, matches_by_role in role_matches.items():
+        total_champion_matches = sum(matches_by_role.values())
+        if total_champion_matches <= 0:
+            continue
+        roles = sorted(
+            matches_by_role.items(),
+            key=lambda item: (-item[1], role_sort(item[0])),
+        )
+        primary_role, primary_matches = roles[0]
+        role_details = {
+            role: {
+                "matches": matches,
+                "share": matches / total_champion_matches,
+                "pickrate": matches / total_matches if total_matches else 0.0,
+            }
+            for role, matches in roles
+        }
+        summary_roles = [
+            f"{role} {share * 100:.0f}%"
+            for role, data_row in role_details.items()
+            if (share := float(data_row.get("share", 0))) >= 0.01
+        ][:4]
+        popularity[champion] = {
+            "primary_role": primary_role,
+            "primary_share": primary_matches / total_champion_matches,
+            "primary_pickrate": (
+                primary_matches / total_matches if total_matches else 0.0
+            ),
+            "roles": role_details,
+            "role_summary": ", ".join(summary_roles) if summary_roles else "-",
+            "matches": total_champion_matches,
+            "source": U_GG_ROLE_SOURCE_LABEL,
+        }
+    return popularity
 
 
 def champion_damage_lean(info: dict[str, object]) -> str:
@@ -654,8 +784,31 @@ def champion_draft_categories(tags: Sequence[str], info: dict[str, object]) -> s
     return ", ".join(categories)
 
 
+def online_role_check(
+    observed_role: str,
+    custom_games: int,
+    online_role: str,
+    online_roles: dict[str, dict[str, object]],
+) -> str:
+    if not online_role or online_role == "-":
+        return "No online data"
+    if custom_games <= 0 or observed_role == "-":
+        return "No custom sample"
+    if observed_role == online_role:
+        return "Matches online main"
+    observed_online = online_roles.get(observed_role, {})
+    try:
+        observed_share = float(observed_online.get("share", 0))
+    except (TypeError, ValueError):
+        observed_share = 0.0
+    if observed_share >= 0.10:
+        return "Online secondary role"
+    return "Custom off-meta"
+
+
 def champion_tag_audit_rows(
     champion_metadata: dict[str, dict[str, object]],
+    online_role_popularity: dict[str, dict[str, object]],
     champion_rows: Sequence[dict[str, object]],
     champion_role_rows: Sequence[dict[str, object]],
 ) -> list[dict[str, object]]:
@@ -691,11 +844,20 @@ def champion_tag_audit_rows(
             else "-"
         )
         custom_games = int(stats.get("games", 0))
+        online = online_role_popularity.get(champion, {})
+        online_role = str(online.get("primary_role", "-"))
+        online_roles = online.get("roles", {})
+        if not isinstance(online_roles, dict):
+            online_roles = {}
         rows.append(
             {
                 "champion": champion,
                 "role": primary_role,
                 "observed_roles": observed_roles,
+                "online_role": online_role,
+                "online_role_share": float(online.get("primary_share", 0)),
+                "online_pickrate": float(online.get("primary_pickrate", 0)),
+                "online_roles": str(online.get("role_summary", "-")),
                 "riot_tags": ", ".join(tags) if tags else "Source unavailable",
                 "draft_categories": champion_draft_categories(tags, info),
                 "damage_lean": champion_damage_lean(info),
@@ -716,6 +878,9 @@ def champion_tag_audit_rows(
                     else "Multi-role sample"
                     if len(role_rows) > 1
                     else "Single observed role"
+                ),
+                "role_check": online_role_check(
+                    primary_role, custom_games, online_role, online_roles
                 ),
             }
         )
@@ -5834,7 +5999,7 @@ def render_experimental_css() -> str:
       width: 30px;
     }
     #champion-tag-audit {
-      min-width: 1320px;
+      min-width: 1780px;
     }
     #champion-tag-audit td {
       vertical-align: middle;
@@ -6379,6 +6544,10 @@ def render_experimental_page(
         ("Champion", "champion", str, "text"),
         ("Role", "role", str, "text"),
         ("Observed Roles", "observed_roles", str, "text"),
+        ("Online Role", "online_role", str, "text"),
+        ("Online Share", "online_role_share", lambda value: pct(float(value)), "number"),
+        ("Online Pickrate", "online_pickrate", lambda value: pct(float(value)), "number"),
+        ("Online Roles", "online_roles", str, "text"),
         ("Riot Tags", "riot_tags", str, "text"),
         ("Draft Categories", "draft_categories", str, "text"),
         ("Damage Lean", "damage_lean", str, "text"),
@@ -6388,6 +6557,7 @@ def render_experimental_page(
         ("Defense", "defense", integer, "number"),
         ("Magic", "magic", integer, "number"),
         ("Difficulty", "difficulty", integer, "number"),
+        ("Role Check", "role_check", str, "text"),
         ("Review", "review_note", str, "text"),
     ]
     meta_columns: list[Column] = [
@@ -6454,7 +6624,7 @@ def render_experimental_page(
       <div class="section-title">
         <div>
           <h2>Champion Tags & Role Audit</h2>
-          <p class="note">Riot tags and champion info are sourced from Data Dragon {CHAMPION_ROSTER_VERSION}; observed roles are from your custom match history. Draft Categories are a first-pass mapping from those tags for manual review before Draft Coach uses them.</p>
+          <p class="note">Riot tags and champion info are sourced from Data Dragon {CHAMPION_ROSTER_VERSION}; online role popularity is pulled from <a href="{html_attr(U_GG_ROLE_STATS_PAGE_URL)}" target="_blank" rel="noreferrer">U.GG Emerald+ ranked tier data</a>. Observed roles are from your custom match history, so the Role Check column flags where your customs differ from the wider meta.</p>
         </div>
       </div>
       {render_table("champion-tag-audit", "Champion Category Review", champion_tag_rows, tag_columns, controls_html=role_filter_control("champion-tag-audit"))}
@@ -9962,8 +10132,10 @@ def build_dashboard(
         experimental_champion_role_rows, display_player_champion_role_rows
     )
     champion_metadata = load_champion_catalog_metadata()
+    online_role_popularity = load_online_role_popularity(champion_metadata)
     champion_tag_rows = champion_tag_audit_rows(
         champion_metadata,
+        online_role_popularity,
         experimental_champion_rows,
         experimental_champion_role_rows,
     )
