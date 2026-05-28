@@ -8326,6 +8326,13 @@ def render_showcase_css() -> str:
       background: rgba(8, 13, 19, 0.94);
       border-bottom: 1px solid var(--line);
     }
+    .showcase-toolbar-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: end;
+      min-width: 0;
+    }
     .showcase-toolbar label {
       display: grid;
       gap: 5px;
@@ -8333,7 +8340,7 @@ def render_showcase_css() -> str:
       font-size: 0.76rem;
       font-weight: 900;
       text-transform: uppercase;
-      min-width: min(340px, 100%);
+      min-width: min(300px, 100%);
     }
     .showcase-toolbar select {
       min-height: 40px;
@@ -8857,9 +8864,232 @@ def render_showcase_css() -> str:
       color: #aebdcc;
       font-weight: 800;
     }
+    .showcase-compare-band {
+      background:
+        linear-gradient(135deg, rgba(98, 168, 255, 0.08), rgba(79, 196, 139, 0.05)),
+        rgba(6, 10, 16, 0.42);
+    }
+    .showcase-compare-empty {
+      border: 1px dashed rgba(232, 238, 246, 0.22);
+      border-radius: 8px;
+      color: #aebdcc;
+      font-weight: 850;
+      padding: 16px;
+    }
+    .showcase-compare-empty[hidden] {
+      display: none;
+    }
+    .showcase-compare-panel {
+      display: none;
+    }
+    .showcase-compare-panel.active {
+      display: grid;
+      gap: 16px;
+    }
+    .showcase-compare-layout {
+      display: grid;
+      grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.25fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+    .showcase-compare-card,
+    .showcase-compare-radar-wrap {
+      background: rgba(10, 16, 24, 0.78);
+      border: 1px solid rgba(232, 238, 246, 0.13);
+      border-radius: 8px;
+      padding: 16px;
+      min-width: 0;
+    }
+    .showcase-compare-card.highlight {
+      border-color: color-mix(in srgb, var(--accent) 52%, rgba(232, 238, 246, 0.13));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+    .showcase-compare-card span,
+    .showcase-compare-stat span,
+    .showcase-compare-role-row span,
+    .showcase-compare-mini span {
+      color: var(--muted);
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 950;
+      text-transform: uppercase;
+    }
+    .showcase-compare-card strong {
+      color: #f7fbff;
+      display: block;
+      font-size: 1.55rem;
+      line-height: 1.08;
+      margin-top: 5px;
+      overflow-wrap: anywhere;
+    }
+    .showcase-compare-card small,
+    .showcase-compare-stat small,
+    .showcase-compare-role-row small,
+    .showcase-compare-mini small {
+      color: #aebdcc;
+      display: block;
+      font-weight: 800;
+      line-height: 1.35;
+      margin-top: 4px;
+    }
+    .showcase-compare-stats {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .showcase-compare-stat {
+      background: rgba(255, 255, 255, 0.045);
+      border: 1px solid rgba(232, 238, 246, 0.08);
+      border-radius: 8px;
+      padding: 12px;
+      min-width: 0;
+    }
+    .showcase-compare-stat b {
+      color: #f7fbff;
+      display: block;
+      font-size: 1.1rem;
+      line-height: 1.15;
+      margin-top: 5px;
+      overflow-wrap: anywhere;
+    }
+    .showcase-compare-stat.edge b,
+    .showcase-compare-role-row .edge {
+      color: #86e7b5;
+    }
+    .showcase-compare-stat.behind b,
+    .showcase-compare-role-row .behind {
+      color: #ff9aaa;
+    }
+    .showcase-compare-radar-wrap {
+      display: grid;
+      place-items: center;
+      align-content: center;
+      gap: 8px;
+    }
+    .compare-radar {
+      max-width: 360px;
+      width: 100%;
+    }
+    .compare-radar .radar-grid polygon {
+      fill: none;
+      stroke: rgba(174, 189, 204, 0.24);
+      stroke-width: 1;
+    }
+    .compare-radar .radar-axis line {
+      stroke: rgba(174, 189, 204, 0.18);
+      stroke-width: 1;
+    }
+    .compare-radar-fill {
+      stroke-width: 3;
+    }
+    .compare-radar-primary {
+      fill: color-mix(in srgb, var(--accent) 30%, transparent);
+      stroke: var(--accent);
+    }
+    .compare-radar-opponent {
+      fill: rgba(98, 168, 255, 0.18);
+      stroke: #62a8ff;
+    }
+    .compare-radar .radar-labels text {
+      fill: #d7e3ef;
+      font-size: 0.72rem;
+      font-weight: 950;
+      letter-spacing: 0;
+    }
+    .showcase-compare-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+    }
+    .showcase-compare-legend span {
+      align-items: center;
+      color: #c7d6e7;
+      display: inline-flex;
+      font-size: 0.82rem;
+      font-weight: 900;
+      gap: 6px;
+    }
+    .showcase-compare-legend i {
+      border-radius: 999px;
+      display: inline-block;
+      height: 10px;
+      width: 10px;
+    }
+    .showcase-compare-legend .primary {
+      background: var(--accent);
+    }
+    .showcase-compare-legend .opponent {
+      background: #62a8ff;
+    }
+    .showcase-compare-details {
+      display: grid;
+      gap: 14px;
+    }
+    .showcase-compare-grid-two {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .showcase-compare-role-table {
+      display: grid;
+      gap: 8px;
+    }
+    .showcase-compare-role-row {
+      display: grid;
+      grid-template-columns: 62px minmax(0, 1fr) minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(232, 238, 246, 0.08);
+      border-radius: 8px;
+      padding: 10px;
+    }
+    .showcase-compare-role-row b {
+      display: block;
+      font-size: 1.08rem;
+      line-height: 1.1;
+    }
+    .showcase-compare-champs {
+      display: grid;
+      gap: 9px;
+    }
+    .showcase-compare-champ {
+      align-items: center;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(232, 238, 246, 0.08);
+      border-radius: 8px;
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 42px minmax(0, 1fr);
+      padding: 9px;
+    }
+    .showcase-compare-champ img {
+      border-radius: 7px;
+      display: block;
+      height: 42px;
+      object-fit: cover;
+      width: 42px;
+    }
+    .showcase-compare-champ b {
+      color: #f7fbff;
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .showcase-compare-mini-list {
+      display: grid;
+      gap: 9px;
+    }
+    .showcase-compare-mini {
+      border-left: 3px solid rgba(98, 168, 255, 0.7);
+      padding: 1px 0 1px 10px;
+    }
     @media (max-width: 1120px) {
       .showcase-hero,
-      .showcase-grid-two {
+      .showcase-grid-two,
+      .showcase-compare-layout {
         grid-template-columns: 1fr;
       }
       .showcase-hero {
@@ -8869,7 +9099,9 @@ def render_showcase_css() -> str:
       .showcase-insights,
       .showcase-champ-grid,
       .showcase-moments,
-      .showcase-form-grid {
+      .showcase-form-grid,
+      .showcase-compare-stats,
+      .showcase-compare-grid-two {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
@@ -8895,7 +9127,16 @@ def render_showcase_css() -> str:
       .showcase-insights,
       .showcase-champ-grid,
       .showcase-moments,
-      .showcase-form-grid {
+      .showcase-form-grid,
+      .showcase-compare-stats,
+      .showcase-compare-grid-two {
+        grid-template-columns: 1fr;
+      }
+      .showcase-toolbar-controls {
+        display: grid;
+        width: 100%;
+      }
+      .showcase-compare-role-row {
         grid-template-columns: 1fr;
       }
       .showcase-feature {
@@ -9158,7 +9399,360 @@ def render_player_showcase_page(
         len(showcase_player_rows),
     )
 
+    role_scores_by_name_role = {
+        (str(row.get("name", "")), str(row.get("role", ""))): row
+        for row in role_score_rows
+        if str(row.get("name", "")) in showcase_player_names
+    }
+    role_scores_by_name: dict[str, list[dict[str, object]]] = defaultdict(list)
+    for row in role_score_rows:
+        name = str(row.get("name", ""))
+        if name in showcase_player_names:
+            role_scores_by_name[name].append(row)
+    for rows in role_scores_by_name.values():
+        rows.sort(key=lambda row: (-float(row.get("role_score", 0)), -int(row.get("games", 0))))
+
+    def champion_strength_score(row: dict[str, object]) -> float:
+        games = int(row.get("games", 0))
+        winrate = float(row.get("winrate", 0))
+        kda = float(row.get("kda_ratio", 0))
+        reliability = clamp(games / 4)
+        adjusted_winrate = 0.5 + ((winrate - 0.5) * reliability)
+        return 65 * adjusted_winrate + 25 * game_sample_score(games) + 10 * clamp(kda / 6)
+
+    champion_rows_by_name: dict[str, list[dict[str, object]]] = defaultdict(list)
+    for row in player_champion_rows:
+        name = str(row.get("name", ""))
+        if name in showcase_player_names:
+            champion_rows_by_name[name].append(row)
+    for rows in champion_rows_by_name.values():
+        rows.sort(
+            key=lambda row: (
+                -champion_strength_score(row),
+                -int(row.get("games", 0)),
+                str(row.get("champion", "")),
+            )
+        )
+
+    power_pick_by_name: dict[str, dict[str, object]] = {}
+    for row in sorted(
+        target_ban_rows,
+        key=lambda item: (-float(item.get("ban_score", 0)), -int(item.get("games", 0))),
+    ):
+        name = str(row.get("name", ""))
+        if name in showcase_player_names and name not in power_pick_by_name:
+            power_pick_by_name[name] = row
+
+    appearances_by_match: dict[int, list[Appearance]] = defaultdict(list)
+    for appearance in appearances:
+        if appearance.name in showcase_player_names:
+            appearances_by_match[appearance.match_id].append(appearance)
+
+    teammate_pair_records: dict[tuple[str, str], dict[str, object]] = defaultdict(
+        lambda: {"games": 0, "wins": 0}
+    )
+    opponent_pair_records: dict[tuple[str, str], dict[str, object]] = defaultdict(
+        lambda: {
+            "games": 0,
+            "wins": Counter(),
+            "kills": Counter(),
+            "deaths": Counter(),
+            "assists": Counter(),
+            "champions": defaultdict(Counter),
+            "roles": Counter(),
+        }
+    )
+    same_role_pair_records: dict[tuple[str, str], dict[str, object]] = defaultdict(
+        lambda: {
+            "games": 0,
+            "wins": Counter(),
+            "kills": Counter(),
+            "deaths": Counter(),
+            "assists": Counter(),
+            "champions": defaultdict(Counter),
+            "roles": Counter(),
+        }
+    )
+
+    for rows in appearances_by_match.values():
+        for first, second in combinations(rows, 2):
+            if first.name == second.name:
+                continue
+            key = tuple(sorted((first.name, second.name)))
+            if first.side == second.side:
+                teammate_pair_records[key]["games"] = int(teammate_pair_records[key]["games"]) + 1
+                if first.win:
+                    teammate_pair_records[key]["wins"] = int(teammate_pair_records[key]["wins"]) + 1
+                continue
+
+            winner = first if first.win else second
+            for records in (
+                opponent_pair_records,
+                same_role_pair_records if first.role == second.role else None,
+            ):
+                if records is None:
+                    continue
+                entry = records[key]
+                entry["games"] = int(entry["games"]) + 1
+                entry["wins"][winner.name] += 1
+                if first.role == second.role:
+                    entry["roles"][first.role] += 1
+                for row in (first, second):
+                    entry["kills"][row.name] += row.kills
+                    entry["deaths"][row.name] += row.deaths
+                    entry["assists"][row.name] += row.assists
+                    entry["champions"][row.name][row.champion] += 1
+
+    def player_mvp_value(name: str) -> float:
+        return float(mvp_by_name.get(name, {}).get("mvp_score", 0))
+
+    def player_recent_value(name: str) -> float:
+        return float(form_by_name.get(name, {}).get("recent_score", 0))
+
+    def best_role_row(name: str) -> dict[str, object]:
+        return find_first(role_scores_by_name.get(name, [])) or {}
+
+    def best_champion_row(name: str) -> dict[str, object]:
+        return find_first(champion_rows_by_name.get(name, [])) or {}
+
+    def pick_profile(name: str) -> dict[str, object]:
+        power = power_pick_by_name.get(name)
+        if power:
+            return {
+                "champion": str(power.get("champion", "-")),
+                "score": float(power.get("ban_score", 0)),
+                "games": int(power.get("games", 0)),
+                "winrate": float(power.get("winrate", 0)),
+                "source": "power pick",
+            }
+        champion = best_champion_row(name)
+        if champion:
+            games = int(champion.get("games", 0))
+            winrate = float(champion.get("winrate", 0))
+            return {
+                "champion": str(champion.get("champion", "-")),
+                "score": champion_strength_score(champion),
+                "games": games,
+                "winrate": winrate,
+                "source": "best champ",
+            }
+        return {"champion": "-", "score": 0.0, "games": 0, "winrate": 0.0, "source": "none"}
+
+    def priority_pick_summary(primary_name: str, compare_name: str) -> dict[str, str]:
+        primary_pick = pick_profile(primary_name)
+        compare_pick = pick_profile(compare_name)
+        primary_pick_score = float(primary_pick.get("score", 0))
+        compare_pick_score = float(compare_pick.get("score", 0))
+        if abs(primary_pick_score - compare_pick_score) < 5:
+            return {
+                "title": "Even priority",
+                "detail": (
+                    f"{primary_name} on {primary_pick.get('champion', '-')} and "
+                    f"{compare_name} on {compare_pick.get('champion', '-')} are close enough to draft by comp need."
+                ),
+            }
+        if primary_pick_score > compare_pick_score:
+            return {
+                "title": f"{primary_name} should get priority pick",
+                "detail": (
+                    f"{primary_pick.get('champion', '-')} is the stronger comfort signal: "
+                    f"{int(primary_pick.get('games', 0))} games, {pct(float(primary_pick.get('winrate', 0)))} WR."
+                ),
+            }
+        return {
+            "title": f"{compare_name} should get priority pick",
+            "detail": (
+                f"{compare_pick.get('champion', '-')} is the stronger comfort signal: "
+                f"{int(compare_pick.get('games', 0))} games, {pct(float(compare_pick.get('winrate', 0)))} WR."
+            ),
+        }
+
+    def h2h_summary(primary_name: str, compare_name: str) -> dict[str, str]:
+        key = tuple(sorted((primary_name, compare_name)))
+        entry = same_role_pair_records.get(key)
+        heading = "Same-Role Head To Head"
+        if not entry or int(entry.get("games", 0)) == 0:
+            entry = opponent_pair_records.get(key)
+            heading = "Opposite-Side History"
+        if not entry or int(entry.get("games", 0)) == 0:
+            return {
+                "title": "Head To Head",
+                "value": "No direct games yet",
+                "detail": f"{primary_name} and {compare_name} have not faced each other in the current data.",
+            }
+        games = int(entry.get("games", 0))
+        wins = int(entry["wins"][primary_name])
+        losses = games - wins
+        primary_kda = safe_div(
+            int(entry["kills"][primary_name]) + int(entry["assists"][primary_name]),
+            max(1, int(entry["deaths"][primary_name])),
+        )
+        compare_kda = safe_div(
+            int(entry["kills"][compare_name]) + int(entry["assists"][compare_name]),
+            max(1, int(entry["deaths"][compare_name])),
+        )
+        role_detail = top_counter(entry["roles"], 2)
+        detail = (
+            f"{primary_name} is {wins}-{losses} ({pct(safe_div(wins, games))}) over {games} games. "
+            f"KDA edge: {two_decimal(primary_kda)} vs {two_decimal(compare_kda)}."
+        )
+        if role_detail != "-":
+            detail = f"{detail} Roles: {role_detail}."
+        return {
+            "title": heading,
+            "value": f"{primary_name} {wins}-{losses}",
+            "detail": detail,
+        }
+
+    def shared_teammates_summary(primary_name: str, compare_name: str) -> dict[str, object]:
+        pair_key = tuple(sorted((primary_name, compare_name)))
+        together = teammate_pair_records.get(pair_key)
+        together_detail = "No same-side games together yet."
+        if together and int(together.get("games", 0)) > 0:
+            games = int(together.get("games", 0))
+            wins = int(together.get("wins", 0))
+            together_detail = f"Together: {wins}-{games - wins}, {pct(safe_div(wins, games))} WR over {games} games."
+
+        rows = []
+        for teammate in ordered_names:
+            if teammate in {primary_name, compare_name}:
+                continue
+            primary_pair = teammate_pair_records.get(tuple(sorted((primary_name, teammate))))
+            compare_pair = teammate_pair_records.get(tuple(sorted((compare_name, teammate))))
+            if not primary_pair or not compare_pair:
+                continue
+            primary_games = int(primary_pair.get("games", 0))
+            compare_games = int(compare_pair.get("games", 0))
+            if primary_games == 0 or compare_games == 0:
+                continue
+            primary_wr = safe_div(int(primary_pair.get("wins", 0)), primary_games)
+            compare_wr = safe_div(int(compare_pair.get("wins", 0)), compare_games)
+            rows.append(
+                {
+                    "teammate": teammate,
+                    "primary_games": primary_games,
+                    "compare_games": compare_games,
+                    "primary_wr": primary_wr,
+                    "compare_wr": compare_wr,
+                    "combined_games": primary_games + compare_games,
+                    "gap": abs(primary_wr - compare_wr),
+                }
+            )
+        rows.sort(key=lambda row: (-int(row["combined_games"]), -float(row["gap"]), str(row["teammate"])))
+        rendered_rows = [
+            {
+                "teammate": str(row["teammate"]),
+                "detail": (
+                    f"{primary_name} {pct(float(row['primary_wr']))} over {integer(row['primary_games'])}g / "
+                    f"{compare_name} {pct(float(row['compare_wr']))} over {integer(row['compare_games'])}g"
+                ),
+            }
+            for row in rows[:4]
+        ]
+        return {
+            "title": "Shared Teammates",
+            "value": together_detail,
+            "rows": rendered_rows,
+        }
+
+    def player_compare_payload(name: str) -> dict[str, object]:
+        player = player_by_name.get(name, {})
+        fingerprint = fingerprint_by_name.get(name, {})
+        best_role = best_role_row(name)
+        role_rows_payload = []
+        for role in ROLE_ORDER:
+            row = role_scores_by_name_role.get((name, role), {})
+            role_rows_payload.append(
+                {
+                    "role": role,
+                    "score": float(row.get("role_score", 0)),
+                    "score_label": score(float(row.get("role_score", 0))) if row else "N/A",
+                    "games": int(row.get("games", 0)),
+                    "winrate": float(row.get("winrate", 0)),
+                    "has_data": bool(row),
+                }
+            )
+        champion_payload = []
+        for row in champion_rows_by_name.get(name, [])[:3]:
+            champion = str(row.get("champion", "-"))
+            champion_payload.append(
+                {
+                    "champion": champion,
+                    "icon": champion_icon_url(champion),
+                    "games": int(row.get("games", 0)),
+                    "winrate": float(row.get("winrate", 0)),
+                    "kda": float(row.get("kda_ratio", 0)),
+                }
+            )
+        return {
+            "name": name,
+            "mvp": player_mvp_value(name),
+            "mvp_label": score(player_mvp_value(name)) if name in mvp_by_name else "N/A",
+            "best_role": str(best_role.get("role", "-")),
+            "best_role_score": float(best_role.get("role_score", 0)),
+            "best_role_label": (
+                f"{best_role.get('role', '-')} {score(float(best_role.get('role_score', 0)))}"
+                if best_role
+                else "N/A"
+            ),
+            "recent": player_recent_value(name),
+            "recent_label": score(player_recent_value(name)) if name in form_by_name else "N/A",
+            "winrate": float(player.get("winrate", 0)),
+            "kda": float(player.get("kda_ratio", 0)),
+            "pool": float(player.get("champion_pool_rate", 0)),
+            "fingerprint": {
+                "values": [float(fingerprint.get(key, 0)) for _label, key in FINGERPRINT_METRICS],
+                "score": float(fingerprint.get("fingerprint_score", 0)),
+                "comfort": str(fingerprint.get("comfort_label", "-")),
+            },
+            "roles": role_rows_payload,
+            "champions": champion_payload,
+        }
+
+    def build_showcase_compare_payload() -> dict[str, object]:
+        players = {
+            player_showcase_slug(name): player_compare_payload(name)
+            for name in ordered_names
+            if name in player_by_name
+        }
+        pairs = {}
+        for primary_name in ordered_names:
+            if primary_name not in player_by_name:
+                continue
+            primary_slug = player_showcase_slug(primary_name)
+            for compare_name in ordered_names:
+                if compare_name == primary_name or compare_name not in player_by_name:
+                    continue
+                compare_slug = player_showcase_slug(compare_name)
+                pairs[f"{primary_slug}|{compare_slug}"] = {
+                    "priority": priority_pick_summary(primary_name, compare_name),
+                    "h2h": h2h_summary(primary_name, compare_name),
+                    "shared": shared_teammates_summary(primary_name, compare_name),
+                }
+        return {
+            "metrics": [label for label, _key in FINGERPRINT_METRICS],
+            "players": players,
+            "pairs": pairs,
+        }
+
+    def render_compare_band(primary_name: str) -> str:
+        return f"""
+        <div class="showcase-band showcase-compare-band">
+          <div class="showcase-band-inner" data-compare-wrap>
+            <div class="showcase-band-title">
+              <h3>1v1 Compare</h3>
+              <small>Select another player in the top bar</small>
+            </div>
+            <div class="showcase-compare-empty" data-compare-empty>
+              Pick a comparison player to overlay fingerprints, role scores, comfort picks, head-to-head, recent form, and shared teammate data.
+            </div>
+            <div class="showcase-compare-panels" data-compare-content></div>
+          </div>
+        </div>
+        """
+
     options = []
+    compare_options = ['<option value="">No comparison</option>']
     sections = []
     for index, name in enumerate(ordered_names):
         player = player_by_name.get(name)
@@ -9167,6 +9761,9 @@ def render_player_showcase_page(
             continue
         slug = player_showcase_slug(name)
         options.append(
+            f'<option value="{html_attr(slug)}">{escape(name)}</option>'
+        )
+        compare_options.append(
             f'<option value="{html_attr(slug)}">{escape(name)}</option>'
         )
         player_games = int(player.get("games", 0))
@@ -9444,6 +10041,8 @@ def render_player_showcase_page(
                 </div>
               </div>
 
+              {render_compare_band(name)}
+
               <div class="showcase-band">
                 <div class="showcase-band-inner">
                   <div class="showcase-band-title">
@@ -9517,15 +10116,245 @@ def render_player_showcase_page(
         )
 
     first_slug = player_showcase_slug(ordered_names[0]) if ordered_names else ""
+    showcase_compare_json = (
+        json.dumps(build_showcase_compare_payload(), ensure_ascii=True).replace("</", "<\\/")
+    )
     showcase_script = """
+    const showcaseCompareData = __SHOWCASE_COMPARE_DATA__;
     const showcaseSelect = document.querySelector("[data-showcase-select]");
+    const showcaseCompareSelect = document.querySelector("[data-showcase-compare-select]");
     const showcasePanels = Array.from(document.querySelectorAll("[data-showcase]"));
+
+    function escapeShowcaseHtml(value) {
+      const element = document.createElement("div");
+      element.textContent = String(value ?? "");
+      return element.innerHTML;
+    }
+
+    function showcasePct(value) {
+      return `${(Number(value || 0) * 100).toFixed(1)}%`;
+    }
+
+    function showcaseTwoDecimal(value) {
+      return Number(value || 0).toFixed(2);
+    }
+
+    function compareValueClass(primaryValue, compareValue) {
+      const left = Number(primaryValue || 0);
+      const right = Number(compareValue || 0);
+      if (left > right + 0.001) return "edge";
+      if (left < right - 0.001) return "behind";
+      return "neutral";
+    }
+
+    function radarPoints(values, center = 180, radius = 108) {
+      return values.map((value, index) => {
+        const angle = (-90 + (360 / values.length) * index) * Math.PI / 180;
+        const distance = radius * Math.max(0, Math.min(1, Number(value || 0)));
+        const x = center + Math.cos(angle) * distance;
+        const y = center + Math.sin(angle) * distance;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(" ");
+    }
+
+    function renderCompareRadar(primary, compare) {
+      const metrics = showcaseCompareData.metrics || [];
+      const center = 180;
+      const radius = 108;
+      const labelRadius = 138;
+      const rings = [0.25, 0.5, 0.75, 1].map(level => {
+        return `<polygon points="${radarPoints(Array(metrics.length).fill(level), center, radius)}" />`;
+      }).join("");
+      const axes = metrics.map((_label, index) => {
+        const angle = (-90 + (360 / metrics.length) * index) * Math.PI / 180;
+        const x = center + Math.cos(angle) * radius;
+        const y = center + Math.sin(angle) * radius;
+        return `<line x1="${center}" y1="${center}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}" />`;
+      }).join("");
+      const labels = metrics.map((label, index) => {
+        const angle = (-90 + (360 / metrics.length) * index) * Math.PI / 180;
+        const x = center + Math.cos(angle) * labelRadius;
+        const y = center + Math.sin(angle) * labelRadius;
+        let anchor = "middle";
+        if (x < center - 10) anchor = "end";
+        if (x > center + 10) anchor = "start";
+        return `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="${anchor}">${escapeShowcaseHtml(label)}</text>`;
+      }).join("");
+      const primaryValues = primary.fingerprint?.values || Array(metrics.length).fill(0);
+      const compareValues = compare.fingerprint?.values || Array(metrics.length).fill(0);
+      return `
+        <div class="showcase-compare-radar-wrap">
+          <svg class="compare-radar" viewBox="0 0 360 360" role="img" aria-label="${escapeShowcaseHtml(primary.name)} compared with ${escapeShowcaseHtml(compare.name)} fingerprint radar">
+            <g class="radar-grid">${rings}</g>
+            <g class="radar-axis">${axes}</g>
+            <polygon class="compare-radar-fill compare-radar-primary" points="${radarPoints(primaryValues, center, radius)}" />
+            <polygon class="compare-radar-fill compare-radar-opponent" points="${radarPoints(compareValues, center, radius)}" />
+            <g class="radar-labels">${labels}</g>
+          </svg>
+          <div class="showcase-compare-legend">
+            <span><i class="primary"></i>${escapeShowcaseHtml(primary.name)}</span>
+            <span><i class="opponent"></i>${escapeShowcaseHtml(compare.name)}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCompareStat(title, primary, compare, primaryLabel, compareLabel, primaryValue, compareValue, detail) {
+      return `
+        <article class="showcase-compare-stat ${compareValueClass(primaryValue, compareValue)}">
+          <span>${escapeShowcaseHtml(title)}</span>
+          <b>${escapeShowcaseHtml(primary.name)} ${escapeShowcaseHtml(primaryLabel)} vs ${escapeShowcaseHtml(compare.name)} ${escapeShowcaseHtml(compareLabel)}</b>
+          <small>${escapeShowcaseHtml(detail)}</small>
+        </article>
+      `;
+    }
+
+    function renderRoleRows(primary, compare) {
+      const compareRoles = new Map((compare.roles || []).map(row => [row.role, row]));
+      return (primary.roles || []).map(primaryRole => {
+        const compareRole = compareRoles.get(primaryRole.role) || { score: 0, score_label: "N/A", games: 0, winrate: 0, has_data: false };
+        const primaryClass = compareValueClass(primaryRole.score, compareRole.score);
+        const compareClass = compareValueClass(compareRole.score, primaryRole.score);
+        return `
+          <div class="showcase-compare-role-row">
+            <span>${escapeShowcaseHtml(primaryRole.role)}</span>
+            <div>
+              <b class="${primaryClass}">${escapeShowcaseHtml(primary.name)} ${escapeShowcaseHtml(primaryRole.score_label)}</b>
+              <small>${Number(primaryRole.games || 0)}g, ${showcasePct(primaryRole.winrate)} WR</small>
+            </div>
+            <div>
+              <b class="${compareClass}">${escapeShowcaseHtml(compare.name)} ${escapeShowcaseHtml(compareRole.score_label)}</b>
+              <small>${Number(compareRole.games || 0)}g, ${showcasePct(compareRole.winrate)} WR</small>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderChampionList(player) {
+      const rows = player.champions || [];
+      if (!rows.length) {
+        return `<div class="showcase-compare-mini"><small>No champion data yet.</small></div>`;
+      }
+      return rows.map(row => `
+        <div class="showcase-compare-champ">
+          <img src="${escapeShowcaseHtml(row.icon)}" alt="${escapeShowcaseHtml(row.champion)}">
+          <div>
+            <b>${escapeShowcaseHtml(row.champion)}</b>
+            <small>${Number(row.games || 0)}g, ${showcasePct(row.winrate)} WR, ${showcaseTwoDecimal(row.kda)} KDA</small>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function renderMiniRows(rows) {
+      if (!rows || !rows.length) {
+        return `<div class="showcase-compare-mini"><small>No shared teammate overlap yet.</small></div>`;
+      }
+      return rows.map(row => `
+        <div class="showcase-compare-mini">
+          <span>${escapeShowcaseHtml(row.teammate)}</span>
+          <small>${escapeShowcaseHtml(row.detail)}</small>
+        </div>
+      `).join("");
+    }
+
+    function renderCompareContent(primaryId, compareId) {
+      const primary = showcaseCompareData.players?.[primaryId];
+      const compare = showcaseCompareData.players?.[compareId];
+      const pair = showcaseCompareData.pairs?.[`${primaryId}|${compareId}`];
+      if (!primary || !compare || !pair) return "";
+      const stats = [
+        renderCompareStat("MVP Score", primary, compare, primary.mvp_label, compare.mvp_label, primary.mvp, compare.mvp, "Overall board rating from the current MVP formula."),
+        renderCompareStat("Best Role Score", primary, compare, primary.best_role_label, compare.best_role_label, primary.best_role_score, compare.best_role_score, "Best role-specific score in the current role model."),
+        renderCompareStat("Recent Form", primary, compare, primary.recent_label, compare.recent_label, primary.recent, compare.recent, "Momentum score from the latest games."),
+        renderCompareStat("Winrate", primary, compare, showcasePct(primary.winrate), showcasePct(compare.winrate), primary.winrate, compare.winrate, "Overall custom-games winrate."),
+        renderCompareStat("KDA", primary, compare, showcaseTwoDecimal(primary.kda), showcaseTwoDecimal(compare.kda), primary.kda, compare.kda, "Kills plus assists divided by deaths."),
+        renderCompareStat("Champion Pool", primary, compare, showcasePct(primary.pool), showcasePct(compare.pool), primary.pool, compare.pool, "Unique-pick rate across games played.")
+      ].join("");
+      return `
+        <article class="showcase-compare-panel active">
+          <div class="showcase-band-title">
+            <h3>${escapeShowcaseHtml(primary.name)} vs ${escapeShowcaseHtml(compare.name)}</h3>
+            <small>1v1 player showcase compare</small>
+          </div>
+          <div class="showcase-compare-layout">
+            ${renderCompareRadar(primary, compare)}
+            <div class="showcase-compare-details">
+              <article class="showcase-compare-card highlight">
+                <span>Who Gets Priority Pick?</span>
+                <strong>${escapeShowcaseHtml(pair.priority.title)}</strong>
+                <small>${escapeShowcaseHtml(pair.priority.detail)}</small>
+              </article>
+              <div class="showcase-compare-stats">${stats}</div>
+            </div>
+          </div>
+          <div class="showcase-compare-grid-two">
+            <article class="showcase-compare-card">
+              <span>Role Scores</span>
+              <div class="showcase-compare-role-table">${renderRoleRows(primary, compare)}</div>
+            </article>
+            <article class="showcase-compare-card">
+              <span>Best Champs</span>
+              <div class="showcase-compare-grid-two">
+                <div>
+                  <strong>${escapeShowcaseHtml(primary.name)}</strong>
+                  <div class="showcase-compare-champs">${renderChampionList(primary)}</div>
+                </div>
+                <div>
+                  <strong>${escapeShowcaseHtml(compare.name)}</strong>
+                  <div class="showcase-compare-champs">${renderChampionList(compare)}</div>
+                </div>
+              </div>
+            </article>
+          </div>
+          <div class="showcase-compare-grid-two">
+            <article class="showcase-compare-card">
+              <span>${escapeShowcaseHtml(pair.h2h.title)}</span>
+              <strong>${escapeShowcaseHtml(pair.h2h.value)}</strong>
+              <small>${escapeShowcaseHtml(pair.h2h.detail)}</small>
+            </article>
+            <article class="showcase-compare-card">
+              <span>${escapeShowcaseHtml(pair.shared.title)}</span>
+              <strong>${escapeShowcaseHtml(pair.shared.value)}</strong>
+              <div class="showcase-compare-mini-list">${renderMiniRows(pair.shared.rows)}</div>
+            </article>
+          </div>
+        </article>
+      `;
+    }
+
+    function updateCompareOptions(activeId) {
+      if (!showcaseCompareSelect) return;
+      Array.from(showcaseCompareSelect.options).forEach(option => {
+        option.disabled = Boolean(option.value && option.value === activeId);
+      });
+      if (showcaseCompareSelect.value === activeId) {
+        showcaseCompareSelect.value = "";
+      }
+    }
+
+    function updateComparePanel() {
+      const activePanel = showcasePanels.find(panel => panel.classList.contains("active"));
+      if (!activePanel) return;
+      const compareId = showcaseCompareSelect ? showcaseCompareSelect.value : "";
+      const wrap = activePanel.querySelector("[data-compare-wrap]");
+      if (!wrap) return;
+      const content = wrap.querySelector("[data-compare-content]");
+      const activeId = activePanel.dataset.showcase;
+      const html = compareId ? renderCompareContent(activeId, compareId) : "";
+      if (content) content.innerHTML = html;
+      const empty = wrap.querySelector("[data-compare-empty]");
+      if (empty) empty.hidden = Boolean(html);
+    }
 
     function showPlayerShowcase(id, updateHash = true) {
       const target = showcasePanels.find(panel => panel.dataset.showcase === id) || showcasePanels[0];
       if (!target) return;
       showcasePanels.forEach(panel => panel.classList.toggle("active", panel === target));
       if (showcaseSelect) showcaseSelect.value = target.dataset.showcase;
+      updateCompareOptions(target.dataset.showcase);
+      updateComparePanel();
       if (updateHash) {
         history.replaceState(null, "", `#${target.dataset.showcase}`);
       }
@@ -9533,10 +10362,13 @@ def render_player_showcase_page(
 
     if (showcaseSelect && showcasePanels.length) {
       showcaseSelect.addEventListener("change", () => showPlayerShowcase(showcaseSelect.value));
+      if (showcaseCompareSelect) {
+        showcaseCompareSelect.addEventListener("change", updateComparePanel);
+      }
       const initial = window.location.hash.replace(/^#/, "");
       showPlayerShowcase(initial || showcaseSelect.value || showcasePanels[0].dataset.showcase, false);
     }
-    """
+    """.replace("__SHOWCASE_COMPARE_DATA__", showcase_compare_json)
 
     return f"""<!doctype html>
 <html lang="en">
@@ -9560,10 +10392,16 @@ def render_player_showcase_page(
   {render_dashboard_nav("showcases", main_page_name=main_page_name, teams_page_name=teams_page_name, draft_coach_page_name=draft_coach_page_name, showcases_page_name="", random_pool_page_name=random_pool_page_name, experimental_page_name=experimental_page_name, showcase_anchor=first_slug)}
   <main>
     <div class="showcase-toolbar">
-      <label>
-        <span>Player Showcase</span>
-        <select data-showcase-select>{"".join(options)}</select>
-      </label>
+      <div class="showcase-toolbar-controls">
+        <label>
+          <span>Player Showcase</span>
+          <select data-showcase-select>{"".join(options)}</select>
+        </label>
+        <label>
+          <span>Compare Against</span>
+          <select data-showcase-compare-select>{"".join(compare_options)}</select>
+        </label>
+      </div>
       <div class="showcase-count">{len(options)} player recaps</div>
     </div>
     {"".join(sections)}
