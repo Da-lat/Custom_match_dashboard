@@ -5144,6 +5144,7 @@ def render_head_to_head_page(
     rows: Sequence[dict[str, object]],
     champion_rows: Sequence[dict[str, object]],
     pilot_champion_rows: Sequence[dict[str, object]],
+    chemistry_data: dict[str, object],
     generated_at: str,
     main_page_name: str,
     teams_page_name: str,
@@ -5238,7 +5239,7 @@ def render_head_to_head_page(
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LoL Head To Head</title>
-  <style>{shared_style}{render_head_to_head_css()}</style>
+  <style>{shared_style}{render_head_to_head_css()}{render_chemistry_css()}</style>
 </head>
 <body>
   <header>
@@ -5291,6 +5292,7 @@ def render_head_to_head_page(
       {render_head_to_head_table(rows)}
     </section>
     {render_champion_head_to_head_section(champion_rows, pilot_champion_rows)}
+    {render_team_chemistry_section(chemistry_data)}
   </main>
   <script>{render_head_to_head_script()}{render_refresh_script()}</script>
 </body>
@@ -5780,6 +5782,190 @@ def render_team_chemistry_section(data: dict[str, object]) -> str:
     """
 
 
+def render_chemistry_css() -> str:
+    return """
+    .chemistry-layout {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.75fr);
+      margin-bottom: 16px;
+    }
+    .chemistry-visual,
+    .chemistry-panel,
+    .chemistry-callout {
+      background: linear-gradient(180deg, #121d2a, #0d1620);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+    .chemistry-visual {
+      min-height: 520px;
+      overflow-x: auto;
+      padding: 10px;
+    }
+    .chemistry-network {
+      display: block;
+      height: auto;
+      min-width: 820px;
+      width: 100%;
+    }
+    .chemistry-grid ellipse {
+      fill: none;
+      stroke: rgba(98, 168, 255, 0.12);
+      stroke-dasharray: 8 11;
+      stroke-width: 1.4;
+    }
+    .chemistry-link-path {
+      fill: none;
+      opacity: 0.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .chemistry-link-good {
+      stroke: #4fc48b;
+    }
+    .chemistry-link-bad {
+      stroke: #ff6f81;
+    }
+    .chemistry-edge-label rect {
+      fill: #0b1119;
+      stroke-width: 1.2;
+    }
+    .chemistry-edge-label-good rect {
+      stroke: rgba(79, 196, 139, 0.72);
+    }
+    .chemistry-edge-label-bad rect {
+      stroke: rgba(255, 111, 129, 0.72);
+    }
+    .chemistry-edge-label text {
+      fill: var(--ink);
+      font-size: 11px;
+      font-weight: 950;
+    }
+    .chemistry-node circle {
+      fill: #142338;
+      stroke: #62a8ff;
+      stroke-width: 2.5;
+    }
+    .chemistry-node-initials {
+      fill: var(--ink);
+      font-size: 14px;
+      font-weight: 950;
+      letter-spacing: 0;
+    }
+    .chemistry-node-label-bg {
+      fill: rgba(11, 17, 25, 0.92);
+      stroke: rgba(98, 168, 255, 0.24);
+      stroke-width: 1;
+    }
+    .chemistry-node-label {
+      fill: #dce8f5;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+    .chemistry-legend rect {
+      fill: rgba(11, 17, 25, 0.92);
+      stroke: rgba(98, 168, 255, 0.22);
+    }
+    .chemistry-legend text {
+      fill: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .chemistry-empty {
+      align-items: center;
+      color: var(--muted);
+      display: flex;
+      font-weight: 850;
+      min-height: 240px;
+      justify-content: center;
+    }
+    .chemistry-callout-grid {
+      display: grid;
+      gap: 12px;
+    }
+    .chemistry-callout {
+      border-left: 4px solid #62a8ff;
+      padding: 14px;
+    }
+    .chemistry-callout span {
+      color: var(--muted);
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 950;
+      text-transform: uppercase;
+    }
+    .chemistry-callout strong,
+    .chemistry-callout b,
+    .chemistry-callout small {
+      display: block;
+    }
+    .chemistry-callout strong {
+      font-size: 1.05rem;
+      margin-top: 7px;
+    }
+    .chemistry-callout b {
+      color: var(--gold);
+      margin-top: 5px;
+    }
+    .chemistry-callout small {
+      color: var(--muted);
+      line-height: 1.4;
+      margin-top: 7px;
+    }
+    .chemistry-good { border-left-color: #4fc48b; }
+    .chemistry-bad { border-left-color: #ff6f81; }
+    .chemistry-list-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .chemistry-panel {
+      padding: 16px;
+    }
+    .chemistry-panel h3 {
+      margin: 0 0 12px;
+    }
+    .chemistry-panel ul {
+      display: grid;
+      gap: 10px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .chemistry-list-item {
+      border-left: 4px solid #62a8ff;
+      background: #101b28;
+      border-radius: 7px;
+      display: grid;
+      gap: 3px;
+      padding: 10px;
+    }
+    .chemistry-list-item span {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    @media (max-width: 1100px) {
+      .chemistry-layout {
+        grid-template-columns: 1fr;
+      }
+      .chemistry-list-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (max-width: 720px) {
+      .chemistry-visual {
+        min-height: 430px;
+        padding: 8px;
+      }
+      .chemistry-network {
+        min-width: 720px;
+      }
+    }
+    """
+
+
 def render_upset_cards(
     title: str, rows: Sequence[dict[str, object]], main_page_name: str, mood: str
 ) -> str:
@@ -6021,7 +6207,6 @@ def render_experimental_css() -> str:
       font-weight: 950;
     }
     .lab-award-card span,
-    .chemistry-callout span,
     .ownership-heading span {
       color: var(--muted);
       display: block;
@@ -6105,15 +6290,6 @@ def render_experimental_css() -> str:
     .status-small-sample {
       border-top-color: #8a94a6;
     }
-    .chemistry-layout {
-      display: grid;
-      gap: 16px;
-      grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.75fr);
-      margin-bottom: 16px;
-    }
-    .chemistry-visual,
-    .chemistry-panel,
-    .chemistry-callout,
     .upset-column,
     .ownership-card {
       background: linear-gradient(180deg, #121d2a, #0d1620);
@@ -6121,148 +6297,12 @@ def render_experimental_css() -> str:
       border-radius: 8px;
       box-shadow: var(--shadow);
     }
-    .chemistry-visual {
-      min-height: 520px;
-      overflow-x: auto;
-      padding: 10px;
-    }
-    .chemistry-network {
-      display: block;
-      height: auto;
-      min-width: 820px;
-      width: 100%;
-    }
-    .chemistry-grid ellipse {
-      fill: none;
-      stroke: rgba(98, 168, 255, 0.12);
-      stroke-dasharray: 8 11;
-      stroke-width: 1.4;
-    }
-    .chemistry-link-path {
-      fill: none;
-      opacity: 0.9;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-    .chemistry-link-good {
-      stroke: #4fc48b;
-    }
-    .chemistry-link-bad {
-      stroke: #ff6f81;
-    }
-    .chemistry-edge-label rect {
-      fill: #0b1119;
-      stroke-width: 1.2;
-    }
-    .chemistry-edge-label-good rect {
-      stroke: rgba(79, 196, 139, 0.72);
-    }
-    .chemistry-edge-label-bad rect {
-      stroke: rgba(255, 111, 129, 0.72);
-    }
-    .chemistry-edge-label text {
-      fill: var(--ink);
-      font-size: 11px;
-      font-weight: 950;
-    }
-    .chemistry-node circle {
-      fill: #142338;
-      stroke: #62a8ff;
-      stroke-width: 2.5;
-    }
-    .chemistry-node-initials {
-      fill: var(--ink);
-      font-size: 14px;
-      font-weight: 950;
-      letter-spacing: 0;
-    }
-    .chemistry-node-label-bg {
-      fill: rgba(11, 17, 25, 0.92);
-      stroke: rgba(98, 168, 255, 0.24);
-      stroke-width: 1;
-    }
-    .chemistry-node-label {
-      fill: #dce8f5;
-      font-size: 12px;
-      font-weight: 900;
-      letter-spacing: 0;
-    }
-    .chemistry-legend rect {
-      fill: rgba(11, 17, 25, 0.92);
-      stroke: rgba(98, 168, 255, 0.22);
-    }
-    .chemistry-legend text {
-      fill: var(--muted);
-      font-size: 12px;
-      font-weight: 900;
-    }
-    .chemistry-empty {
-      align-items: center;
-      color: var(--muted);
-      display: flex;
-      font-weight: 850;
-      min-height: 240px;
-      justify-content: center;
-    }
-    .chemistry-callout-grid,
     .upset-stack {
       display: grid;
       gap: 12px;
     }
-    .chemistry-callout {
-      border-left: 4px solid #62a8ff;
-      padding: 14px;
-    }
-    .chemistry-callout strong,
-    .chemistry-callout b,
-    .chemistry-callout small {
-      display: block;
-    }
-    .chemistry-callout strong {
-      font-size: 1.05rem;
-      margin-top: 7px;
-    }
-    .chemistry-callout b {
-      color: var(--gold);
-      margin-top: 5px;
-    }
-    .chemistry-callout small {
-      color: var(--muted);
-      line-height: 1.4;
-      margin-top: 7px;
-    }
-    .chemistry-good { border-left-color: #4fc48b; }
-    .chemistry-bad { border-left-color: #ff6f81; }
-    .chemistry-list-grid {
-      display: grid;
-      gap: 16px;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .chemistry-panel {
-      padding: 16px;
-    }
-    .chemistry-panel h3,
     .upset-column h3 {
       margin: 0 0 12px;
-    }
-    .chemistry-panel ul {
-      display: grid;
-      gap: 10px;
-      list-style: none;
-      margin: 0;
-      padding: 0;
-    }
-    .chemistry-list-item {
-      border-left: 4px solid #62a8ff;
-      background: #101b28;
-      border-radius: 7px;
-      display: grid;
-      gap: 3px;
-      padding: 10px;
-    }
-    .chemistry-list-item span {
-      color: var(--muted);
-      font-size: 0.82rem;
     }
     .upset-grid {
       display: grid;
@@ -6377,25 +6417,14 @@ def render_experimental_css() -> str:
       .experimental-hero {
         grid-template-columns: 1fr;
       }
-      .chemistry-layout {
-        grid-template-columns: 1fr;
-      }
     }
     @media (max-width: 720px) {
       .meta-spotlight-grid,
       .form-highlight-grid,
       .lab-award-grid,
-      .chemistry-list-grid,
       .upset-grid,
       .ownership-grid {
         grid-template-columns: 1fr;
-      }
-      .chemistry-visual {
-        min-height: 430px;
-        padding: 8px;
-      }
-      .chemistry-network {
-        min-width: 720px;
       }
       .form-toolbar {
         align-items: stretch;
@@ -6413,7 +6442,6 @@ def render_experimental_page(
     meta_rows: Sequence[dict[str, object]],
     form_rows: Sequence[dict[str, object]],
     hall_rows: Sequence[dict[str, object]],
-    chemistry_data: dict[str, object],
     upset_data: dict[str, list[dict[str, object]]],
     ownership_rows: Sequence[dict[str, object]],
     generated_at: str,
@@ -6469,7 +6497,7 @@ def render_experimental_page(
     <div class="topline">
       <div>
         <h1>LoL Experimental Stats</h1>
-        <p>Custom meta tiering, recent form, hall-of-fame awards, team chemistry, upset detection, and champion ownership experiments.</p>
+        <p>Custom meta tiering, recent form, hall-of-fame awards, upset detection, and champion ownership experiments.</p>
       </div>
       {render_refresh_control(generated_at)}
     </div>
@@ -6524,7 +6552,6 @@ def render_experimental_page(
     </section>
     {render_recent_form_section(form_rows)}
     {render_hall_of_fame_section(hall_rows, main_page_name)}
-    {render_team_chemistry_section(chemistry_data)}
     {render_upset_detector_section(upset_data, main_page_name)}
     {render_champion_ownership_section(ownership_rows)}
   </main>
@@ -12634,6 +12661,7 @@ def build_dashboard(
         rows=h2h_rows,
         champion_rows=champion_h2h_rows,
         pilot_champion_rows=pilot_champion_h2h_rows,
+        chemistry_data=chemistry_data,
         generated_at=generated_at,
         main_page_name=main_page_name,
         teams_page_name=teams_page_name,
@@ -12649,7 +12677,6 @@ def build_dashboard(
         meta_rows=custom_meta_rows,
         form_rows=form_rows,
         hall_rows=hall_rows,
-        chemistry_data=chemistry_data,
         upset_data=upset_data,
         ownership_rows=ownership_rows,
         generated_at=generated_at,
