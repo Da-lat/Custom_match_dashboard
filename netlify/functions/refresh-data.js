@@ -135,7 +135,7 @@ exports.handler = async function handler(event) {
       statusCode: 202,
       headers,
       body: JSON.stringify({
-        message: "Refresh queued. Reload after the Netlify deploy finishes.",
+        message: "Refresh queued. Reload the page after a couple of minutes",
       }),
     };
   } catch (error) {

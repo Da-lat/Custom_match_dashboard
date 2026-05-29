@@ -7478,11 +7478,6 @@ def render_ban_planner_script(
             for part in str(row.get("draft_categories", "")).split(",")
             if part.strip()
         ]
-        tags = [
-            part.strip()
-            for part in str(row.get("riot_tags", "")).split(",")
-            if part.strip() and part.strip() != "Source unavailable"
-        ]
         online_role_shares = row.get("online_role_shares", {})
         if not isinstance(online_role_shares, dict):
             online_role_shares = {}
@@ -7495,7 +7490,6 @@ def render_ban_planner_script(
                 "icon": champion_icon_url(champion),
                 "onlineRole": str(row.get("online_role", "")),
                 "onlineRoleShare": round(float(row.get("online_role_share", 0)), 4),
-                "onlinePickrate": round(float(row.get("online_pickrate", 0)), 5),
                 "onlineRoles": str(row.get("online_roles", "")),
                 "roleShares": {
                     str(role): round(float(share), 4)
@@ -7507,16 +7501,11 @@ def render_ban_planner_script(
                     for role, games in custom_role_games.items()
                     if str(role) in ROLE_ORDER
                 },
-                "riotTags": tags,
                 "categories": categories,
                 "categoryText": str(row.get("draft_categories", "")),
                 "damageLean": str(row.get("damage_lean", "")),
                 "games": int(row.get("games", 0)),
                 "winrate": round(float(row.get("winrate", 0)), 4),
-                "attack": int(row.get("attack", 0)),
-                "defense": int(row.get("defense", 0)),
-                "magic": int(row.get("magic", 0)),
-                "difficulty": int(row.get("difficulty", 0)),
                 "roleCheck": str(row.get("role_check", "")),
             }
         )
@@ -7758,19 +7747,8 @@ def render_ban_planner_script(
         onlineRole: "-",
         onlineRoleShare: 0,
         roleShares: {},
-        roleCheck: "",
-        difficulty: 0,
-        defense: 0
+        roleCheck: ""
       };
-    }
-
-    function categorySet(champion) {
-      return new Set(metaForChampion(champion).categories || []);
-    }
-
-    function hasAnyCategory(champion, categories) {
-      const set = categorySet(champion);
-      return categories.some(category => set.has(category));
     }
 
     function teamProfile(picks) {
@@ -7999,7 +7977,6 @@ def render_ban_planner_script(
           damageLean: meta.damageLean || "-",
           onlineRole: meta.onlineRole || "-",
           onlineRoleShare: Number(meta.onlineRoleShare || 0),
-          difficulty: Number(meta.difficulty || 0),
           roleContextTags: roleMeta.tags,
           needTags: teamNeed.tags,
           pickScore: Number(row.score || 0) + roleBonus + sampleBonus + comfortBonus + matchup.bonus + historyPenalty + roleMeta.bonus + teamNeed.bonus
@@ -10115,7 +10092,6 @@ def render_player_showcase_page(
             "name": name,
             "mvp": player_mvp_value(name),
             "mvp_label": score(player_mvp_value(name)) if name in mvp_by_name else "N/A",
-            "best_role": str(best_role.get("role", "-")),
             "best_role_score": float(best_role.get("role_score", 0)),
             "best_role_label": (
                 f"{best_role.get('role', '-')} {score(float(best_role.get('role_score', 0)))}"
@@ -10129,8 +10105,6 @@ def render_player_showcase_page(
             "pool": float(player.get("champion_pool_rate", 0)),
             "fingerprint": {
                 "values": [float(fingerprint.get(key, 0)) for _label, key in FINGERPRINT_METRICS],
-                "score": float(fingerprint.get("fingerprint_score", 0)),
-                "comfort": str(fingerprint.get("comfort_label", "-")),
             },
             "roles": role_rows_payload,
             "champions": champion_payload,
@@ -10162,7 +10136,7 @@ def render_player_showcase_page(
             "pairs": pairs,
         }
 
-    def render_compare_band(primary_name: str) -> str:
+    def render_compare_band() -> str:
         return f"""
         <div class="showcase-band showcase-compare-band" data-compare-section hidden>
           <div class="showcase-band-inner" data-compare-wrap>
@@ -10468,7 +10442,7 @@ def render_player_showcase_page(
                 </div>
               </div>
 
-              {render_compare_band(name)}
+              {render_compare_band()}
 
               <div class="showcase-band">
                 <div class="showcase-band-inner">
@@ -12712,6 +12686,9 @@ def build_dashboard(
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 14px;
     }}
+    .awards-section .section-title {{
+      padding: 4px 0;
+    }}
     .award-card {{
       position: relative;
       min-height: 182px;
@@ -13803,7 +13780,7 @@ def build_dashboard(
       </div>
       <div class="metric-grid">{metric_cards}</div>
       {render_popular_champions_strip(popular_champion_strip_rows)}
-      <section id="awards" class="section">
+      <section id="awards" class="section awards-section">
         <div class="section-title">
           <h2>Award Ceremony</h2>
           <p class="note">Regular-player awards use at least {MIN_PLAYER_GAMES} games where possible; pocket-pick awards use at least {MIN_COMBO_GAMES} games.</p>
